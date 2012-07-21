@@ -1,0 +1,454 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of greg_proc_data</title>
+  <meta name="keywords" content="greg_proc_data">
+  <meta name="description" content="">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../menu.html">Home</a> &gt;  <a href="../menu.html">ephys</a> &gt; <a href="menu.html">analysis_scripts</a> &gt; greg_proc_data.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../menu.html"><img alt="<" border="0" src="../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys/analysis_scripts&nbsp;<img alt=">" border="0" src="../../right.png"></a></td></tr></table>-->
+
+<h1>greg_proc_data
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong></strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong>function greg_proc_data() </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre class="comment"></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+<li><a href="../../ephys/helpers/ephys/ephys_spike_detect.html" class="code" title="function [SPIKES_PP SPIKES_PB]=ephys_spike_detect(DATA,THRESH,varargin)">ephys_spike_detect</a>	ephys_spike_detect.m performs spike detection on a vector with a pre-determined</li><li><a href="../../ephys/helpers/intan/read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>	[t,amps,data,aux] = read_intan_data</li><li><a href="../../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>	</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<ul style="list-style-image:url(../../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function greg_spike_plot(waveforms,rawdata,threshold,fs,rawdata_nospike,birdid,area,notes,snr,channel,savedir)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function greg_proc_data()</a>
+0002 <span class="comment">%</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">%</span>
+0005 <span class="comment">%</span>
+0006 <span class="comment">%</span>
+0007 <span class="comment">%</span>
+0008 
+0009 root_dir=<span class="string">'/Volumes/MRJBOD/workspace/other/greg/Examples of Acute Data/'</span>;
+0010 
+0011 listing=dir(root_dir);
+0012 proc_dirs={};
+0013 
+0014 <span class="keyword">for</span> i=1:length(listing)
+0015     <span class="keyword">if</span> listing(i).name(1)~=<span class="string">'.'</span> &amp;&amp; listing(i).isdir
+0016         proc_dirs{end+1}=fullfile(root_dir,listing(i).name);
+0017     <span class="keyword">end</span>
+0018 <span class="keyword">end</span>
+0019 
+0020 <span class="comment">% specify TDT or Intan</span>
+0021 <span class="comment">% specify CAR channels and spike channels</span>
+0022 
+0023 ref_channel_tdt=[];
+0024 ref_channel_intan=[];
+0025 
+0026 intan_fs=25e3;
+0027 tdt_fs=24414;
+0028 
+0029 <span class="comment">% subtract CAR, filter if necessary then use sensible threshold (e.g. 7*std)</span>
+0030 <span class="comment">% and compute SNR</span>
+0031 
+0032 <span class="keyword">for</span> i=1:length(proc_dirs)
+0033 
+0034     disp([proc_dirs{i}]);
+0035 
+0036     savedir=fullfile(proc_dirs{i},<span class="string">'analysis'</span>);
+0037     
+0038     proceed=1;
+0039 
+0040     <span class="keyword">if</span> ~exist(savedir,<span class="string">'dir'</span>);
+0041         mkdir(savedir);
+0042     <span class="keyword">else</span>
+0043         response=[];
+0044         <span class="keyword">while</span> isempty(response)
+0045             response=input(<span class="string">'Directory already processed, skip (y or n)?  '</span>,<span class="string">'s'</span>);
+0046             <span class="keyword">switch</span> lower(response(1))
+0047                 <span class="keyword">case</span> <span class="string">'y'</span>
+0048                     proceed=0;
+0049                 <span class="keyword">case</span> <span class="string">'n'</span>
+0050                     proceed=1;
+0051                 <span class="keyword">otherwise</span>
+0052                     response=[];
+0053             <span class="keyword">end</span>
+0054         <span class="keyword">end</span>
+0055 
+0056     <span class="keyword">end</span>
+0057 
+0058     <span class="keyword">if</span> ~proceed
+0059         <span class="keyword">continue</span>;
+0060     <span class="keyword">end</span>
+0061 
+0062 
+0063     <span class="keyword">if</span> ~exist(fullfile(proc_dirs{i},<span class="string">'spikes.txt'</span>),<span class="string">'file'</span>)
+0064         disp(<span class="string">'Did not find spikes file...'</span>);
+0065         <span class="keyword">continue</span>;
+0066     <span class="keyword">end</span>
+0067 
+0068     <span class="keyword">if</span> ~exist(fullfile(proc_dirs{i},<span class="string">'CAR.txt'</span>),<span class="string">'file'</span>)
+0069         disp(<span class="string">'Did not find CAR file...'</span>);
+0070         <span class="keyword">continue</span>;
+0071     <span class="keyword">end</span>
+0072 
+0073     <span class="keyword">if</span> ~exist(fullfile(proc_dirs{i},<span class="string">'info.txt'</span>),<span class="string">'file'</span>)
+0074         disp(<span class="string">'Did not find info file...'</span>);
+0075         birdid=<span class="string">'Pretty bird'</span>;
+0076         area=<span class="string">''</span>;
+0077         misc=<span class="string">''</span>;
+0078     <span class="keyword">else</span>
+0079         fid=fopen(fullfile(proc_dirs{i},<span class="string">'info.txt'</span>),<span class="string">'r'</span>);
+0080         birdid=fgetl(fid);
+0081         area=fgetl(fid);
+0082         misc=fgetl(fid);
+0083 
+0084         <span class="keyword">if</span> ~ischar(misc)
+0085             misc=<span class="string">''</span>;
+0086         <span class="keyword">end</span>
+0087 
+0088         fclose(fid);
+0089 
+0090     <span class="keyword">end</span>
+0091 
+0092     <span class="comment">% read in the spike channels</span>
+0093 
+0094     fid=fopen(fullfile(proc_dirs{i},<span class="string">'spikes.txt'</span>),<span class="string">'r'</span>);
+0095     spike_channels=fscanf(fid,<span class="string">'%d'</span>);
+0096     fclose(fid);
+0097 
+0098     <span class="comment">% read in CAR channels</span>
+0099 
+0100     fid=fopen(fullfile(proc_dirs{i},<span class="string">'CAR.txt'</span>),<span class="string">'r'</span>);
+0101     car_channels=fscanf(fid,<span class="string">'%d'</span>);
+0102     fclose(fid);
+0103 
+0104     <span class="comment">% are we working with Intan or TDT</span>
+0105 
+0106     intan_files=dir(fullfile(proc_dirs{i},<span class="string">'*.int'</span>));
+0107     tdt_files=dir(fullfile(proc_dirs{i},<span class="string">'*.mat'</span>));
+0108 
+0109     <span class="keyword">if</span> ~isempty(intan_files) &amp;&amp; ~isempty(tdt_files)
+0110         error(<span class="string">'Found both Intan and TDT files!'</span>);
+0111     <span class="keyword">end</span>
+0112 
+0113 
+0114     <span class="keyword">if</span> ~isempty(intan_files)
+0115 
+0116         [t,amps,data]=<a href="../../ephys/helpers/intan/read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>(fullfile(proc_dirs{i},intan_files(1).name));
+0117 
+0118         samples=length(t);
+0119 
+0120         car_mat=zeros(samples,length(car_channels));
+0121         spike_data=zeros(samples,length(spike_channels));
+0122 
+0123         <span class="keyword">for</span> j=1:length(car_channels)
+0124             car_mat(:,j)=data(:,find(amps==car_channels(j)));
+0125         <span class="keyword">end</span>
+0126 
+0127         <span class="keyword">for</span> j=1:length(spike_channels)
+0128             spike_data(:,j)=data(:,find(amps==spike_channels(j)));;
+0129         <span class="keyword">end</span>
+0130 
+0131         fs=intan_fs;
+0132 
+0133     <span class="keyword">else</span>
+0134 
+0135         <span class="comment">% odd file format...</span>
+0136         load(fullfile(proc_dirs{i},tdt_files(1).name));
+0137 
+0138         samples=length(ChRawDat{1}.rawdat);
+0139 
+0140         car_mat=zeros(samples,length(car_channels));
+0141         spike_data=zeros(samples,length(spike_channels));
+0142 
+0143         <span class="keyword">for</span> j=1:length(car_channels)
+0144             car_mat(:,j)=ChRawDat{car_channels(j)}.rawdat;
+0145         <span class="keyword">end</span>
+0146 
+0147         <span class="keyword">for</span> j=1:length(spike_channels)
+0148             spike_data(:,j)=ChRawDat{spike_channels(j)}.rawdat;
+0149         <span class="keyword">end</span>
+0150 
+0151         fs=tdt_fs;
+0152 
+0153         <span class="comment">% process each spike channel now</span>
+0154     <span class="keyword">end</span>
+0155 
+0156 
+0157 
+0158 
+0159 
+0160     [b,a]=butter(2,[10e3]/(fs/2),<span class="string">'low'</span>);
+0161 
+0162     car=mean(car_mat,2);
+0163     clear car_mat;
+0164 
+0165     <span class="comment">% re-filter to be safe</span>
+0166 
+0167     <span class="keyword">for</span> j=1:length(spike_channels)
+0168 
+0169 
+0170     
+0171         curr_data=filtfilt(b,a,spike_data(:,j)-car(:));
+0172 
+0173         <span class="keyword">if</span> exist(fullfile(proc_dirs{i},<span class="string">'avoid.txt'</span>),<span class="string">'file'</span>)
+0174             fid=fopen(fullfile(proc_dirs{i},<span class="string">'avoid.txt'</span>),<span class="string">'r'</span>);
+0175             chop_idxs=fscanf(fid,<span class="string">'%e'</span>);
+0176             curr_data(chop_idxs(1):chop_idxs(2))=[];
+0177             fclose(fid);
+0178         <span class="keyword">end</span>
+0179 
+0180         <span class="comment">% subtract CAR, choose sensible threshold, collect spike times</span>
+0181         <span class="comment">% then delete the spikes and compute SNR</span>
+0182 
+0183         threshold_file=fullfile(proc_dirs{i},[<span class="string">'threshold_'</span> num2str(spike_channels(j)) <span class="string">'.txt'</span> ]);
+0184 
+0185         <span class="keyword">if</span> exist(threshold_file,<span class="string">'file'</span>)
+0186             fid=fopen(threshold_file,<span class="string">'r'</span>);
+0187             threshold=fscanf(fid,<span class="string">'%e'</span>);
+0188             fclose(fid);
+0189         <span class="keyword">else</span>
+0190             data_display=figure();
+0191             plot([1:length(curr_data)]./fs,curr_data);
+0192             title(<span class="string">'Raw data'</span>);
+0193             response=[];
+0194             
+0195             <span class="keyword">while</span> isempty(response)
+0196                 response=input(<span class="string">'Please enter a threshold:  '</span>,<span class="string">'s'</span>);
+0197                 threshold=str2num(response);
+0198             <span class="keyword">end</span>
+0199             
+0200             fid=fopen(threshold_file,<span class="string">'w'</span>);
+0201             fprintf(fid,<span class="string">'%f'</span>,threshold);
+0202             fclose(fid);
+0203 
+0204             close([data_display]);
+0205 
+0206         <span class="keyword">end</span>    
+0207 
+0208 
+0209         <span class="comment">% threshold, may want to use Quiroga's threshold, let's test</span>
+0210         <span class="comment">% with this</span>
+0211 
+0212         noise_events=find(curr_data&gt;1000);
+0213 
+0214         <span class="keyword">if</span> ~isempty(noise_events)
+0215             curr_data(noise_events(1):noise_events(end))=[];
+0216         <span class="keyword">end</span>
+0217 
+0218         <span class="comment">%threshold=14*std(curr_data);</span>
+0219 
+0220         disp(<span class="string">'Detecting spikes..'</span>);
+0221         disp([<span class="string">'Threshold '</span> num2str(threshold)]);
+0222 
+0223         [spikes_pp spikes_pb]=<a href="../../ephys/helpers/ephys/ephys_spike_detect.html" class="code" title="function [SPIKES_PP SPIKES_PB]=ephys_spike_detect(DATA,THRESH,varargin)">ephys_spike_detect</a>(curr_data,threshold,<span class="keyword">...</span>
+0224             <span class="string">'sr'</span>,fs,<span class="string">'visualize'</span>,<span class="string">'n'</span>,<span class="string">'window'</span>,[.001 .002],<span class="string">'align'</span>,<span class="string">'max'</span>);
+0225         <span class="comment">%=spikes_pp.abs.windows;</span>
+0226 
+0227         [samples,nspikes]=size(spikes_pp.abs.windows)
+0228 
+0229         <span class="keyword">if</span> nspikes&lt;2
+0230             <span class="keyword">continue</span>;
+0231         <span class="keyword">end</span>
+0232 
+0233         window=floor((samples-1)/2); <span class="comment">% how many samples to the left and right of the spike</span>
+0234         <span class="comment">% should we delete?</span>
+0235 
+0236         adjust=0;
+0237 
+0238         <span class="comment">% compute the peak to peak of the mean waveform</span>
+0239 
+0240         mean_waveform=mean(spikes_pp.abs.windows,2);
+0241         peaktopeak=max(mean_waveform)-min(mean_waveform);
+0242         raw_data=curr_data;
+0243 
+0244         <span class="keyword">for</span> k=1:nspikes
+0245             spike_point=spikes_pp.abs.times(k)-adjust;
+0246 
+0247             <span class="keyword">if</span> spike_point&lt;1
+0248                 <span class="keyword">break</span>;
+0249             <span class="keyword">end</span>
+0250 
+0251             curr_data(spike_point-window:spike_point+window)=[];
+0252             adjust=adjust+((window*2)+1);
+0253         <span class="keyword">end</span>
+0254 
+0255         <span class="comment">% rms</span>
+0256 
+0257         rms=sqrt(mean(curr_data.^2));
+0258 
+0259         <span class="comment">% kipke critical value, assuming noise is white then 6*std</span>
+0260         <span class="comment">% accounts for 99.97% of the distribution, thus is a good</span>
+0261         <span class="comment">% approximation of noise p2p</span>
+0262 
+0263         kipke=6*std(curr_data);
+0264 
+0265         snr=mean(peaktopeak)./rms;
+0266         snr_kipke=mean(peaktopeak)./kipke;
+0267 
+0268         
+0269 
+0270         <a href="#_sub1" class="code" title="subfunction greg_spike_plot(waveforms,rawdata,threshold,fs,rawdata_nospike,birdid,area,notes,snr,channel,savedir)">greg_spike_plot</a>(spikes_pp.abs.windows,raw_data,threshold,<span class="keyword">...</span>
+0271             fs,curr_data,birdid,area,misc,snr_kipke,spike_channels(j),savedir);
+0272 
+0273         <span class="comment">% write out the stats to a text file</span>
+0274 
+0275     <span class="keyword">end</span>
+0276 
+0277 
+0278 <span class="keyword">end</span>
+0279 
+0280 <span class="keyword">end</span>
+0281 
+0282 <a name="_sub1" href="#_subfunctions" class="code">function greg_spike_plot(waveforms,rawdata,threshold,fs,rawdata_nospike,birdid,area,notes,snr,channel,savedir)</a>
+0283 <span class="comment">%</span>
+0284 <span class="comment">%</span>
+0285 <span class="comment">%</span>
+0286 
+0287 <span class="comment">% plot:</span>
+0288 <span class="comment">%</span>
+0289 <span class="comment">% 1, raw data with threshold overlaid</span>
+0290 <span class="comment">% 2, mean waveform with variance shown</span>
+0291 <span class="comment">% 3, raw data without the spikes</span>
+0292 
+0293 time=[1:length(rawdata)]./fs;
+0294 
+0295 <span class="comment">% we may want to cycle through two-five second windows and generate figures...</span>
+0296 
+0297 <span class="comment">% 5 second segments</span>
+0298 
+0299 segments=1:5*fs:length(rawdata);
+0300 
+0301 <span class="keyword">if</span> length(segments)-1&gt;15
+0302     segments=segments(1:16);
+0303 <span class="keyword">end</span>
+0304 
+0305 
+0306 rawfig=figure(<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+0307 plot(time,rawdata,<span class="string">'k-'</span>);
+0308 hold on
+0309 plot(time,ones(size(time)).*threshold,<span class="string">'k--'</span>,<span class="string">'color'</span>,<span class="string">'r'</span>,<span class="string">'linewidth'</span>,1.3);
+0310 plot(time,ones(size(time)).*-threshold,<span class="string">'k--'</span>,<span class="string">'color'</span>,<span class="string">'r'</span>,<span class="string">'linewidth'</span>,1.3);
+0311 ylimits=ylim();
+0312 xlabel({<span class="string">'Time (in s)'</span>},<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'interpreter'</span>,<span class="string">'latex'</span>);
+0313 ylabel(<span class="string">'Voltage (in $\mu$V)'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'interpreter'</span>,<span class="string">'latex'</span>)
+0314 title({[ birdid <span class="string">' '</span> area];[notes];[<span class="string">'Channel '</span> num2str(channel) <span class="string">' threshold '</span> num2str(threshold)]},<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>);
+0315 box off
+0316 set(gca,<span class="string">'tickdir'</span>,<span class="string">'out'</span>,<span class="string">'FontSize'</span>,13,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'linewidth'</span>,1.25,<span class="string">'TickLength'</span>,[.025 .025]);
+0317 axis tight
+0318 
+0319 set(gcf,<span class="string">'PaperPositionMode'</span>,<span class="string">'auto'</span>);
+0320 <a href="../../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(rawfig,savedir,[<span class="string">'channel_'</span> num2str(channel) <span class="string">'_rawdata'</span>],<span class="string">'eps'</span>);
+0321 close([rawfig]);
+0322 
+0323 <span class="keyword">for</span> i=2:length(segments)
+0324 
+0325     disp([<span class="string">'Plotting segment '</span> num2str(i-1) ]);
+0326 
+0327     segmentfig=figure(<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+0328     plot(time(segments(i-1):segments(i)),rawdata(segments(i-1):segments(i)),<span class="string">'k-'</span>);
+0329 
+0330     xlabel({<span class="string">'Time (in s)'</span>},<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'interpreter'</span>,<span class="string">'latex'</span>);
+0331     ylabel(<span class="string">'Voltage (in $\mu$V)'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'interpreter'</span>,<span class="string">'latex'</span>)
+0332     title({[ birdid <span class="string">' '</span> area];[notes];[<span class="string">'Channel '</span> num2str(channel) <span class="string">' threshold '</span> num2str(threshold)]},<span class="keyword">...</span>
+0333         <span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>);
+0334     box off
+0335     set(gca,<span class="string">'tickdir'</span>,<span class="string">'out'</span>,<span class="string">'FontSize'</span>,13,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'linewidth'</span>,1.25,<span class="string">'TickLength'</span>,[.025 .025]);
+0336     axis tight
+0337     ylim(ylimits)
+0338 
+0339     set(segmentfig,<span class="string">'PaperPositionMode'</span>,<span class="string">'auto'</span>);
+0340     <a href="../../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(segmentfig,savedir,[<span class="string">'channel_'</span> num2str(channel) <span class="string">'_segment_'</span> num2str(i-1) <span class="string">'_rawdata'</span>],<span class="string">'eps'</span>);
+0341     close([segmentfig]);
+0342 
+0343 <span class="keyword">end</span>
+0344 
+0345 wavefig=figure(<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+0346 
+0347 [samples,nspikes]=size(waveforms);
+0348 time_waveforms=[1:samples]./fs*1e3;
+0349 
+0350 <span class="comment">% plot the median and 25th--&gt;75th percentile</span>
+0351 
+0352 spike_median=median(waveforms,2);
+0353 spike_lower=prctile(waveforms',25);
+0354 spike_upper=prctile(waveforms',75);
+0355 
+0356 patch_x=time_waveforms;
+0357 patch_x=[patch_x,fliplr(patch_x)];
+0358 patch_y=[spike_lower,fliplr(spike_upper)];
+0359 patch_z=-eps*ones(size(patch_x));
+0360 patch_color=[1 .6 0];
+0361 
+0362 <span class="comment">%patch(patch_x,patch_y,patch_z,'facecolor',patch_color,'edgecolor','none')</span>
+0363 plot(time_waveforms,spike_median,<span class="string">'k-'</span>,<span class="string">'linewidth'</span>,1.3);
+0364 hold on
+0365 plot(time_waveforms,spike_upper,<span class="string">'m--'</span>);
+0366 plot(time_waveforms,spike_lower,<span class="string">'m--'</span>);
+0367 xlabel({<span class="string">'Time (in ms)'</span>},<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'interpreter'</span>,<span class="string">'latex'</span>);
+0368 ylabel(<span class="string">'Voltage (in $\mu$V)'</span>,<span class="string">'interpreter'</span>,<span class="string">'latex'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>);
+0369 set(gca,<span class="string">'tickdir'</span>,<span class="string">'out'</span>,<span class="string">'FontSize'</span>,15,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'linewidth'</span>,1.25,<span class="string">'TickLength'</span>,[.025 .025]);
+0370 title([<span class="string">'SNR  '</span> num2str(snr)],<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>);
+0371 axis tight
+0372 box off
+0373 
+0374 set(gcf,<span class="string">'PaperPositionMode'</span>,<span class="string">'auto'</span>);
+0375 <a href="../../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(wavefig,savedir,[<span class="string">'channel_'</span> num2str(channel) <span class="string">'_spike_waveforms'</span>],<span class="string">'eps'</span>);
+0376 close([wavefig]);
+0377 
+0378 
+0379 noisefig=figure(<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+0380 
+0381 time=[1:length(rawdata_nospike)]./fs;
+0382 plot(time,rawdata_nospike,<span class="string">'k-'</span>);
+0383 
+0384 <span class="comment">% noise estimate</span>
+0385 
+0386 peaktopeaknoise=6*std(rawdata_nospike);
+0387 hold on
+0388 plot(time,(peaktopeaknoise/2).*ones(size(time)),<span class="string">'k--'</span>,<span class="string">'color'</span>,<span class="string">'r'</span>,<span class="string">'linewidth'</span>,1.3);
+0389 plot(time,(-peaktopeaknoise/2).*ones(size(time)),<span class="string">'k--'</span>,<span class="string">'color'</span>,<span class="string">'r'</span>,<span class="string">'linewidth'</span>,1.3);
+0390 
+0391 xlabel({<span class="string">'Time (in s)'</span>},<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'interpreter'</span>,<span class="string">'latex'</span>);
+0392 ylabel(<span class="string">'Voltage (in $\mu$V)'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'interpreter'</span>,<span class="string">'latex'</span>)
+0393 title({birdid;<span class="string">'Data with spikes removed'</span>;[ <span class="string">'peak-to-peak:  '</span> num2str(peaktopeaknoise)]},<span class="string">'FontSize'</span>,18,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>);
+0394 set(gca,<span class="string">'tickdir'</span>,<span class="string">'out'</span>,<span class="string">'FontSize'</span>,13,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'linewidth'</span>,1.25,<span class="string">'TickLength'</span>,[.025 .025]);
+0395 box off
+0396 xlim([time(1) time(end)]);
+0397 ylim(ylimits);
+0398 
+0399 set(gcf,<span class="string">'PaperPositionMode'</span>,<span class="string">'auto'</span>);
+0400 <a href="../../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(noisefig,savedir,[<span class="string">'channel_'</span> num2str(channel) <span class="string">'_noise_estimate'</span>],<span class="string">'eps'</span>);
+0401 close([noisefig]);
+0402 
+0403 
+0404 
+0405 <span class="keyword">end</span></pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

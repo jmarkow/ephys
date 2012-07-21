@@ -1,0 +1,204 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of ephys_pipeline_songextract_aggregate</title>
+  <meta name="keywords" content="ephys_pipeline_songextract_aggregate">
+  <meta name="description" content="ephys_songextract_aggregate.m is part of the ephys pipeline">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../menu.html">Home</a> &gt;  <a href="../menu.html">ephys</a> &gt; <a href="menu.html">pipeline</a> &gt; ephys_pipeline_songextract_aggregate.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../menu.html"><img alt="<" border="0" src="../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys/pipeline&nbsp;<img alt=">" border="0" src="../../right.png"></a></td></tr></table>-->
+
+<h1>ephys_pipeline_songextract_aggregate
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong>ephys_songextract_aggregate.m is part of the ephys pipeline</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong>function ephys_songextract_aggregate(FILEDIR,SAVEDIR,CONFIG) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre class="comment">ephys_songextract_aggregate.m is part of the ephys pipeline
+and acts as a wrapper script for computing fields, multi-unit
+and (soon) single-unit rasters
+
+    ephys_songextract_aggregate(FILEDIR,SAVEDIR)
+
+    FILEDIR
+    directory with .mat files to process
+
+    SAVEDIR
+    base directory to store results</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+<li><a href="../../ephys/ephys_visual_histogram.html" class="code" title="function HISTOGRAM=ephys_visual_histogram(MIC_DATA,varargin)">ephys_visual_histogram</a>	ephys_visual_histogram.m computes a contour histogram for a group of sounds</li><li><a href="ephys_pipeline_readconfig.html" class="code" title="function [PARAMETERS]=ephys_pipeline_readconfig(FILE)">ephys_pipeline_readconfig</a>	</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function ephys_songextract_aggregate(FILEDIR,SAVEDIR,CONFIG)</a>
+0002 <span class="comment">%ephys_songextract_aggregate.m is part of the ephys pipeline</span>
+0003 <span class="comment">%and acts as a wrapper script for computing fields, multi-unit</span>
+0004 <span class="comment">%and (soon) single-unit rasters</span>
+0005 <span class="comment">%</span>
+0006 <span class="comment">%    ephys_songextract_aggregate(FILEDIR,SAVEDIR)</span>
+0007 <span class="comment">%</span>
+0008 <span class="comment">%    FILEDIR</span>
+0009 <span class="comment">%    directory with .mat files to process</span>
+0010 <span class="comment">%</span>
+0011 <span class="comment">%    SAVEDIR</span>
+0012 <span class="comment">%    base directory to store results</span>
+0013 <span class="comment">%</span>
+0014 
+0015 <span class="comment">% do we want to run ephys scripts after aggregating?</span>
+0016 
+0017 <span class="comment">% CONFIG FILE LIVES HERE!</span>
+0018 
+0019 <span class="keyword">if</span> nargin&lt;3
+0020     error(<span class="string">'Need config file to continue!'</span>);
+0021 <span class="keyword">end</span>
+0022 
+0023 parameters=<a href="ephys_pipeline_readconfig.html" class="code" title="function [PARAMETERS]=ephys_pipeline_readconfig(FILE)">ephys_pipeline_readconfig</a>(CONFIG);
+0024 
+0025 <span class="comment">% read config file one line at a time</span>
+0026 
+0027 listing=dir(fullfile(FILEDIR,<span class="string">'*.mat'</span>));
+0028 
+0029 <span class="comment">% where do we want to store the output?</span>
+0030 
+0031 <span class="keyword">if</span> length(listing)&lt;1
+0032     disp([<span class="string">'No files found in '</span> FILEDIR <span class="string">' bailing...'</span> ]);
+0033     <span class="keyword">return</span>;
+0034 <span class="keyword">end</span>
+0035 
+0036 <span class="keyword">if</span> ~exist(fullfile(FILEDIR,SAVEDIR),<span class="string">'dir'</span>)
+0037     mkdir(fullfile(FILEDIR,SAVEDIR));
+0038 <span class="keyword">end</span>
+0039 
+0040 <span class="comment">% pre-allocate the matrix, store as a single</span>
+0041 
+0042 load(fullfile(FILEDIR,listing(1).name),<span class="string">'ephys_data'</span>,<span class="string">'channels'</span>,<span class="string">'fs'</span>);
+0043 
+0044 <span class="comment">% number of samples and channels</span>
+0045 
+0046 <span class="comment">%channel_labels=channels;</span>
+0047 [samples,channels]=size(ephys_data);
+0048 ntrials=length(listing);
+0049 
+0050 disp([<span class="string">'Number of trials '</span> num2str(ntrials)]);
+0051 
+0052 <span class="comment">% assume the first trial has a consistent number of channels</span>
+0053 
+0054 
+0055 <span class="comment">% matrix is samples,trials,channels</span>
+0056 
+0057 channel_labels=[];
+0058 
+0059 <span class="comment">% check for all possible channels across the whole day, a matrix will be filled with zeros if the channel</span>
+0060 <span class="comment">% gets knocked out somehow...</span>
+0061 
+0062 <span class="keyword">for</span> i=1:ntrials
+0063     load(fullfile(FILEDIR,listing(i).name),<span class="string">'channels'</span>);
+0064 
+0065     <span class="comment">% check for any inconsistency in channel labels</span>
+0066 
+0067     <span class="keyword">for</span> j=1:length(channels)
+0068 
+0069         <span class="comment">% loop and if any channels are not included in the channel_label vector, include!</span>
+0070 
+0071         <span class="keyword">if</span> ~any(channels(j)==channel_labels)
+0072             channel_labels=[channel_labels channels(j)];
+0073         <span class="keyword">end</span>
+0074     <span class="keyword">end</span>
+0075 <span class="keyword">end</span>
+0076 
+0077 channel_labels=sort(channel_labels);
+0078 disp([<span class="string">'Found channels '</span> num2str(channel_labels)]);
+0079 
+0080 <span class="comment">% set the hard max to something like 600, we can always turn off later to extract all data</span>
+0081 <span class="comment">% &gt; 600 seems to lean pretty hard on the RAM (&gt;3-4 GB)</span>
+0082 
+0083 <span class="keyword">if</span> ntrials&gt;parameters.trial_hard_max
+0084     disp([<span class="string">'N Trials exceeds hardmax, truncating to '</span> num2str(parameters.trial_hard_max)]);
+0085     ntrials=parameters.trial_hard_max;
+0086 <span class="keyword">end</span>
+0087 
+0088 EPHYS_DATA=zeros(samples,ntrials,length(channel_labels),<span class="string">'single'</span>);
+0089 MIC_DATA=zeros(samples,ntrials);
+0090 
+0091 <span class="comment">% we may need a hard max in case the number of trials exceeds ~600 trials (starts to eat up an inordinate amount of memory)</span>
+0092 <span class="comment">% we can always override this if need be</span>
+0093 
+0094 <span class="comment">% also causes the pipeline to spend an inordinate amount of time with file i/o</span>
+0095 
+0096 <span class="keyword">for</span> i=1:ntrials
+0097     
+0098     load(fullfile(FILEDIR,listing(i).name),<span class="string">'ephys_data'</span>,<span class="string">'mic_data'</span>,<span class="string">'channels'</span>,<span class="string">'fs'</span>);
+0099     MIC_DATA(:,i)=mic_data;
+0100 
+0101     <span class="keyword">for</span> j=1:length(channels)
+0102         
+0103         ch_idx=find(channels(j)==channel_labels);
+0104 
+0105         <span class="keyword">if</span> isempty(ch_idx)
+0106             <span class="keyword">continue</span>;
+0107         <span class="keyword">end</span>
+0108 
+0109         EPHYS_DATA(:,i,ch_idx)=single(ephys_data(:,j));
+0110     
+0111     <span class="keyword">end</span>
+0112 <span class="keyword">end</span>
+0113 
+0114 CHANNELS=channel_labels;
+0115 save(fullfile(FILEDIR,SAVEDIR,<span class="string">'aggregated_data.mat'</span>),<span class="string">'EPHYS_DATA'</span>,<span class="string">'MIC_DATA'</span>,<span class="string">'CHANNELS'</span>);
+0116 
+0117 <span class="comment">% aggregator also computes histogram for now...</span>
+0118 
+0119 <span class="keyword">if</span> ntrials&gt;parameters.trial_max
+0120     disp([<span class="string">'Exceeded trial max, truncating to '</span> num2str(parameters.trial_max)]);
+0121     MIC_DATA=MIC_DATA(:,1:parameters.trial_max);
+0122 <span class="keyword">end</span>
+0123 
+0124 histogram=<a href="../../ephys/ephys_visual_histogram.html" class="code" title="function HISTOGRAM=ephys_visual_histogram(MIC_DATA,varargin)">ephys_visual_histogram</a>(MIC_DATA,<span class="string">'savedir'</span>,fullfile(FILEDIR,SAVEDIR));
+0125 
+0126 <span class="comment">% touch signals to multi-unit, single-unit, and fields processing</span>
+0127 
+0128 <span class="comment">% add a script to detect if spikes exist with SNR&gt;1.1</span>
+0129 
+0130 <span class="keyword">if</span> ntrials&gt;parameters.trial_min
+0131 
+0132     <span class="comment">% multi-unit signal</span>
+0133 
+0134     fid=fopen(fullfile(FILEDIR,SAVEDIR,<span class="string">'.mua_signal'</span>),<span class="string">'w'</span>);
+0135     fclose(fid);
+0136 
+0137     <span class="comment">% signal-unit signal</span>
+0138 
+0139     fid=fopen(fullfile(FILEDIR,SAVEDIR,<span class="string">'.sua_signal'</span>),<span class="string">'w'</span>);
+0140     fclose(fid);
+0141 
+0142     <span class="comment">% lfp signal</span>
+0143 
+0144     fid=fopen(fullfile(FILEDIR,SAVEDIR,<span class="string">'.lfp_signal'</span>),<span class="string">'w'</span>);
+0145     fclose(fid);
+0146 
+0147 <span class="keyword">end</span></pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

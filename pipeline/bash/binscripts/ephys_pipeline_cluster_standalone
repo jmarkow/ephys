@@ -1,0 +1,6 @@
+#!/bin/bash
+
+source ephys_pipeline_wrapper.cfg
+
+${EXECDIR}ephys_pipeline_cluster_standalone/ephys_pipeline_cluster_standalone.app/Contents/MacOS/ephys_pipeline_cluster_standalone $@
+

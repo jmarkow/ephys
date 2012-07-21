@@ -1,0 +1,220 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of ephys_su_lfp_coherence_quickplots</title>
+  <meta name="keywords" content="ephys_su_lfp_coherence_quickplots">
+  <meta name="description" content="">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../../menu.html">Home</a> &gt;  <a href="../../menu.html">ephys</a> &gt; <a href="../menu.html">helpers</a> &gt; <a href="menu.html">stats</a> &gt; ephys_su_lfp_coherence_quickplots.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../../menu.html"><img alt="<" border="0" src="../../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys/helpers/stats&nbsp;<img alt=">" border="0" src="../../../right.png"></a></td></tr></table>-->
+
+<h1>ephys_su_lfp_coherence_quickplots
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="box"><strong></strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="box"><strong>function ephys_su_lfp_coherence_quickplots(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="fragment"><pre class="comment"></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+<li><a href="../../../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>	</li><li><a href="../../../ephys/helpers/ephys/ephys_denoise_signal.html" class="code" title="function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)">ephys_denoise_signal</a>	</li><li><a href="../../../ephys/helpers/visualization/ephys_visual_spike_lfp.html" class="code" title="function FIGNUM=ephys_visual_spike_lfp(LFP,SPIKETIMES,IFR,varargin)">ephys_visual_spike_lfp</a>	</li><li><a href="../../../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>	</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function ephys_su_lfp_coherence_quickplots(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)</a>
+0002 <span class="comment">%</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">%</span>
+0005 <span class="comment">%</span>
+0006 <span class="comment">%</span>
+0007 <span class="comment">%</span>
+0008 <span class="comment">%</span>
+0009 
+0010 nparams=length(varargin);
+0011 
+0012 filedir=pwd;
+0013 savedir=pwd;
+0014 lfp_fs=25e3;
+0015 fig_title=[];
+0016 medfilt_scale=1.5; <span class="comment">% median filter scale (in ms)</span>
+0017 freq_range=[25 100];
+0018 singletrialplots=20;
+0019 
+0020 <span class="keyword">if</span> mod(nparams,2)&gt;0
+0021     error(<span class="string">'Parameters must be specified as parameter/value pairs'</span>);
+0022 <span class="keyword">end</span>
+0023 
+0024 <span class="keyword">for</span> i=1:2:nparams
+0025     <span class="keyword">switch</span> lower(varargin{i})
+0026         <span class="keyword">case</span> <span class="string">'filedir'</span>
+0027             filedir=varargin{i+1};
+0028         <span class="keyword">case</span> <span class="string">'savedir'</span>
+0029             savedir=varargin{i+1};
+0030         <span class="keyword">case</span> <span class="string">'lfp_fs'</span>
+0031             lfp_fs=varargin{i+1};
+0032         <span class="keyword">case</span> <span class="string">'freq_range'</span>
+0033             freq_range=varargin{i+1};
+0034         <span class="keyword">case</span> <span class="string">'median_scale'</span>
+0035             median_scale=varargin{i+1};
+0036         <span class="keyword">case</span> <span class="string">'singletrialplots'</span>
+0037             singletrialplots=varargin{i+1};
+0038         <span class="keyword">case</span> <span class="string">'medfilt_scale'</span>
+0039             medfilt_scale=varargin{i+1};
+0040     <span class="keyword">end</span>
+0041 <span class="keyword">end</span>
+0042 
+0043 [path,name,ext]=fileparts(filedir);
+0044 savename=[ name <span class="string">'_lfpch_'</span> num2str(LFPCHANNEL) <span class="string">'_such'</span> num2str(SUCHANNEL) <span class="string">'_clust'</span> num2str(SUCLUSTER) <span class="string">'_freqs'</span> num2str(freq_range)];
+0045 
+0046 
+0047 
+0048 load(fullfile(filedir,<span class="string">'aggregated_data.mat'</span>),<span class="string">'CHANNELS'</span>,<span class="string">'EPHYS_DATA'</span>); <span class="comment">% get the channel map and LFPs</span>
+0049 
+0050 <span class="comment">% first let's get the smooth spike traces and IFR (use IFR on a trial by trial basis)</span>
+0051 
+0052 sua_mat=fullfile(filedir,<span class="string">'sua'</span>,[<span class="string">'sua_channels '</span> num2str(SUCHANNEL) <span class="string">'.mat'</span>]);
+0053 load(sua_mat,<span class="string">'smooth_spikes'</span>,<span class="string">'IFR'</span>,<span class="string">'TIME'</span>,<span class="string">'clust_spike_vec'</span>,<span class="string">'subtrials'</span>); <span class="comment">% smooth spikes</span>
+0054 
+0055 <span class="comment">% filter the lfp_data</span>
+0056 
+0057 lfp_data=<a href="../../../ephys/helpers/ephys/ephys_denoise_signal.html" class="code" title="function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)">ephys_denoise_signal</a>(EPHYS_DATA,CHANNELS,LFPCHANNEL);
+0058 clear EPHYS_DATA;
+0059 lfp_data=<a href="../../../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>(lfp_data,<span class="string">'l'</span>,<span class="string">'freq_range'</span>,freq_range,<span class="string">'medfilt_scale'</span>,medfilt_scale);
+0060 lfp_data=squeeze(lfp_data);
+0061 
+0062 ifr_data=IFR{1}{SUCLUSTER};
+0063 spike_data=clust_spike_vec{1}{SUCLUSTER};
+0064 ifr_fs=1./(TIME(2)-TIME(1));
+0065 
+0066 lfp_data=lfp_data(:,subtrials);
+0067 [samples,trials]=size(lfp_data);
+0068 lfp_data=lfp_data';
+0069 
+0070 <span class="keyword">if</span> isempty(fig_title)
+0071     fig_title=[<span class="string">' LFPCH '</span> num2str(LFPCHANNEL) <span class="string">' SUCH'</span> num2str(SUCHANNEL) <span class="keyword">...</span>
+0072         <span class="string">' SUCL'</span> num2str(SUCLUSTER) <span class="string">' FILT '</span> num2str(freq_range) <span class="string">' NTRIALS'</span> num2str(trials)];
+0073 <span class="keyword">end</span>
+0074 
+0075 trialvec=1:trials;
+0076 trialperm=trialvec(randperm(trials));
+0077 
+0078 <span class="keyword">if</span> ~isempty(savedir)
+0079 
+0080     savedir=fullfile(savedir,<span class="string">'coherence'</span>,<span class="string">'quickplots'</span>);
+0081     <span class="keyword">if</span> ~exist(savedir,<span class="string">'dir'</span>)
+0082         mkdir(savedir);
+0083     <span class="keyword">end</span>
+0084 
+0085     <span class="keyword">if</span> singletrialplots&gt;trials
+0086         singletrialplots=trials;
+0087     <span class="keyword">end</span>
+0088 
+0089     <span class="keyword">for</span> i=1:singletrialplots
+0090         singletrialfig=figure(<span class="string">'Position'</span>,[0 0 800 600],<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+0091         currtrial=trialperm(i);
+0092         currlfp=lfp_data(currtrial,:);
+0093         currifr=ifr_data(currtrial,:);
+0094         currspike=spike_data{currtrial}*ifr_fs;    
+0095         <a href="../../../ephys/helpers/visualization/ephys_visual_spike_lfp.html" class="code" title="function FIGNUM=ephys_visual_spike_lfp(LFP,SPIKETIMES,IFR,varargin)">ephys_visual_spike_lfp</a>(currlfp,currspike,currifr,<span class="string">'fignum'</span>,singletrialfig,<span class="string">'lfp_fs'</span>,lfp_fs,<span class="string">'ifr_fs'</span>,ifr_fs);
+0096         set(singletrialfig,<span class="string">'paperpositionmode'</span>,<span class="string">'auto'</span>);
+0097         <a href="../../../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(singletrialfig,savedir,[ savename <span class="string">'_singletrial'</span> num2str(currtrial) ],<span class="string">'eps,png'</span>);
+0098         close([singletrialfig]);
+0099     <span class="keyword">end</span>
+0100 <span class="keyword">end</span>
+0101 
+0102 lfp_mean=mean(lfp_data);
+0103 lfp_sem=std(lfp_data)./sqrt(trials);
+0104 
+0105 ymin=floor(min(lfp_mean-lfp_sem));
+0106 ymax=ceil(max(lfp_mean+lfp_sem));
+0107 
+0108 mean_fig=figure(<span class="string">'Position'</span>,[0 0 800 600],<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+0109 <span class="keyword">if</span> isempty(savedir)
+0110     set(mean_fig,<span class="string">'Visible'</span>,<span class="string">'on'</span>);
+0111 <span class="keyword">end</span>
+0112 
+0113 lowerconf=lfp_mean-lfp_sem;
+0114 upperconf=lfp_mean+lfp_sem;
+0115 timevec_lfp=[1:length(lfp_mean)]./lfp_fs;
+0116 
+0117 xdata=[timevec_lfp fliplr(timevec_lfp)];
+0118 ydata=[lowerconf fliplr(upperconf)];
+0119 
+0120 ax(1)=gca;
+0121 <span class="comment">%patch(xdata,ydata,1,'facecolor',[1 .71 .76],'edgecolor','k');</span>
+0122 plot(timevec_lfp,lfp_mean,<span class="string">'g--'</span>,<span class="string">'linewidth'</span>,1.05);
+0123 hold on;
+0124 set(gca,<span class="string">'YTick'</span>,[ymin ymax],<span class="string">'TickDir'</span>,<span class="string">'out'</span>,<span class="string">'TickLength'</span>,[.02 .02],<span class="string">'layer'</span>,<span class="string">'top'</span>,<span class="string">'ycolor'</span>,<span class="string">'g'</span>,<span class="keyword">...</span>
+0125     <span class="string">'linewidth'</span>,2,<span class="string">'fontsize'</span>,12,<span class="string">'fontname'</span>,<span class="string">'helvetica'</span>);
+0126 ylim([ymin-eps ymax+eps]);
+0127 title([fig_title],<span class="string">'fontname'</span>,<span class="string">'helvetica'</span>,<span class="string">'fontsize'</span>,15)
+0128 box off
+0129 lab_axis=ylabel(<span class="string">'LFP Amp. ($\mu$V)'</span>,<span class="string">'fontsize'</span>,15,<span class="string">'fontname'</span>,<span class="string">'helvetica'</span>,<span class="string">'interpreter'</span>,<span class="string">'latex'</span>);
+0130 
+0131 xlabel(<span class="string">'Time (s)'</span>,<span class="string">'FontSize'</span>,13,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>);
+0132 
+0133 
+0134 ifr_mean=mean(ifr_data);
+0135 ifr_sem=std(ifr_data)./sqrt(trials);
+0136 
+0137 timevec_ifr=[1:length(ifr_mean)]./ifr_fs;
+0138 
+0139 ymin=floor(min(ifr_mean-ifr_sem));
+0140 ymax=ceil(max(ifr_mean+ifr_sem));
+0141 
+0142 <span class="keyword">if</span> ymin&gt;=ymax
+0143     ymin=0;
+0144     ymax=100;
+0145 <span class="keyword">end</span>
+0146 
+0147 lowerconf=ifr_mean-ifr_sem;
+0148 upperconf=ifr_mean+ifr_sem;
+0149 
+0150 xdata=[timevec_ifr fliplr(timevec_ifr)];
+0151 ydata=[lowerconf fliplr(upperconf)];
+0152 
+0153 ax(2)=axes(<span class="string">'Yaxislocation'</span>,<span class="string">'right'</span>,<span class="string">'xtick'</span>,[],<span class="string">'color'</span>,<span class="string">'none'</span>);
+0154 <span class="comment">%patch(xdata,ydata,1,'facecolor',[1 .71 .76],'edgecolor','none');</span>
+0155 hold on;
+0156 plot(timevec_ifr,ifr_mean,<span class="string">'m-'</span>,<span class="string">'linewidth'</span>,1.25);
+0157 set(ax(2),<span class="string">'YTick'</span>,[ymin ymax],<span class="string">'TickDir'</span>,<span class="string">'out'</span>,<span class="string">'TickLength'</span>,[.02 .02],<span class="string">'layer'</span>,<span class="string">'top'</span>,<span class="string">'ycolor'</span>,<span class="string">'m'</span>,<span class="keyword">...</span>
+0158     <span class="string">'linewidth'</span>,2,<span class="string">'fontsize'</span>,12,<span class="string">'fontname'</span>,<span class="string">'helvetica'</span>);
+0159 ylim([ymin-eps ymax+eps]);
+0160 ylabel(<span class="string">'IFR (impulses/sec)'</span>,<span class="string">'fontsize'</span>,15,<span class="string">'fontname'</span>,<span class="string">'helvetica'</span>)
+0161 box off
+0162 
+0163 <span class="comment">%</span>
+0164 linkaxes(ax,<span class="string">'x'</span>);
+0165 xlim([timevec_ifr(1) timevec_ifr(end)]);
+0166 
+0167 <span class="keyword">if</span> ~isempty(savedir)
+0168     set(mean_fig,<span class="string">'paperpositionmode'</span>,<span class="string">'auto'</span>);
+0169     <a href="../../../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(mean_fig,savedir,[ savename <span class="string">'_mean'</span> ],<span class="string">'eps,png'</span>);
+0170     save(fullfile(savedir,[savename <span class="string">'.mat'</span>]),<span class="string">'ifr_mean'</span>,<span class="string">'lfp_mean'</span>,<span class="string">'ifr_sem'</span>,<span class="string">'lfp_sem'</span>);
+0171     close([mean_fig]);
+0172 <span class="keyword">end</span>
+0173</pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

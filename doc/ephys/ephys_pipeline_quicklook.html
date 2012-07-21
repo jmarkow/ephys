@@ -1,0 +1,218 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of ephys_pipeline_quicklook</title>
+  <meta name="keywords" content="ephys_pipeline_quicklook">
+  <meta name="description" content="ephys_quicklook.m generates a figure to glance at data extracted by the pipeline">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../menu.html">Home</a> &gt;  <a href="menu.html">ephys</a> &gt; ephys_pipeline_quicklook.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../menu.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>ephys_pipeline_quicklook
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>ephys_quicklook.m generates a figure to glance at data extracted by the pipeline</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function ephys_quicklook(MIC_DATA,EPHYS_DATA,CHANNELS,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment">ephys_quicklook.m generates a figure to glance at data extracted by the pipeline
+
+
+    ephys_quicklook(MIC_DATA,EPHYS_DATA,CHANNELS,varargin)</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>	</li><li><a href="../ephys/helpers/ephys/ephys_denoise_signal.html" class="code" title="function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)">ephys_denoise_signal</a>	</li><li><a href="../ephys/helpers/visualization/pretty_sonogram.html" class="code" title="function [IMAGE,F,T]=pretty_sonogram(SIGNAL,SR,varargin)">pretty_sonogram</a>	</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function ephys_quicklook(MIC_DATA,EPHYS_DATA,CHANNELS,varargin)</a>
+0002 <span class="comment">%ephys_quicklook.m generates a figure to glance at data extracted by the pipeline</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">%</span>
+0005 <span class="comment">%    ephys_quicklook(MIC_DATA,EPHYS_DATA,CHANNELS,varargin)</span>
+0006 <span class="comment">%</span>
+0007 <span class="comment">%</span>
+0008 <span class="comment">%</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">%</span>
+0011 
+0012 
+0013 [samples,nchannels]=size(EPHYS_DATA);
+0014 
+0015 channels=[1];
+0016 colors=<span class="string">'jet'</span>;
+0017 sr=25e3;
+0018 t=[1:length(MIC_DATA)]./sr;
+0019 min_f=1e3;
+0020 max_f=8e3;
+0021 exclude=[];
+0022 figtitle=[];
+0023 figsave=[];
+0024 noise=<span class="string">'none'</span>;
+0025 car_exclude=[];
+0026 freq_range=[];
+0027 n=800;
+0028 overlap=750;
+0029 nfft=1024;
+0030 
+0031 <span class="comment">% high pass the mic trace</span>
+0032 
+0033 [b,a]=butter(4,1e3/(sr/2),<span class="string">'high'</span>);
+0034 MIC_DATA=filtfilt(b,a,MIC_DATA);
+0035 
+0036 nparams=length(varargin);
+0037 
+0038 <span class="keyword">if</span> mod(nparams,2)&gt;0
+0039     error(<span class="string">'Parameters must be specified as parameter/value pairs'</span>);
+0040 <span class="keyword">end</span>
+0041 
+0042 <span class="keyword">for</span> i=1:2:nparams
+0043     <span class="keyword">switch</span> lower(varargin{i})
+0044         <span class="keyword">case</span> <span class="string">'channels'</span>
+0045             channels=varargin{i+1};
+0046         <span class="keyword">case</span> <span class="string">'colors'</span>
+0047             colors=varargin{i+1};
+0048         <span class="keyword">case</span> <span class="string">'sr'</span>
+0049             sr=varargin{i+1};
+0050         <span class="keyword">case</span> <span class="string">'n'</span>
+0051             n=varargin{i+1};
+0052         <span class="keyword">case</span> <span class="string">'overlap'</span>
+0053             overlap=varargin{i+1};
+0054         <span class="keyword">case</span> <span class="string">'highpass'</span>
+0055             highpass=varargin{i+1};
+0056         <span class="keyword">case</span> <span class="string">'exclude'</span>
+0057             exclude=varargin{i+1};
+0058         <span class="keyword">case</span> <span class="string">'figtitle'</span>
+0059             figtitle=varargin{i+1};
+0060         <span class="keyword">case</span> <span class="string">'figsave'</span>
+0061             figsave=varargin{i+1};
+0062         <span class="keyword">case</span> <span class="string">'noise'</span>
+0063             noise=varargin{i+1};
+0064         <span class="keyword">case</span> <span class="string">'freq_range'</span>
+0065             freq_range=varargin{i+1};
+0066         <span class="keyword">case</span> <span class="string">'type'</span>
+0067             type=varargin{i+1};
+0068         <span class="keyword">otherwise</span>
+0069     <span class="keyword">end</span>
+0070 <span class="keyword">end</span>
+0071 
+0072 <span class="keyword">if</span> isempty(nfft)
+0073     nfft=2^nextpow2(n);
+0074 <span class="keyword">end</span>
+0075 
+0076 plot_data=<a href="../ephys/helpers/ephys/ephys_denoise_signal.html" class="code" title="function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)">ephys_denoise_signal</a>(EPHYS_DATA,CHANNELS,channels,<span class="string">'method'</span>,noise,<span class="string">'car_exclude'</span>,car_exclude);
+0077 
+0078 <span class="keyword">if</span> ~isempty(freq_range)
+0079     plot_data=<a href="../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>(plot_data,type,<span class="string">'freq_range'</span>,freq_range);
+0080 <span class="keyword">else</span>
+0081     plot_data=<a href="../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>(plot_data,type);
+0082 <span class="keyword">end</span>
+0083 
+0084 todel=[];
+0085 <span class="keyword">for</span> i=1:length(channels)
+0086     <span class="keyword">if</span> ~any(channels(i)==CHANNELS)
+0087         todel=[todel i];
+0088     <span class="keyword">end</span>    
+0089 <span class="keyword">end</span>
+0090 channels(todel)=[];
+0091 
+0092 [spect,f,t2]=<a href="../ephys/helpers/visualization/pretty_sonogram.html" class="code" title="function [IMAGE,F,T]=pretty_sonogram(SIGNAL,SR,varargin)">pretty_sonogram</a>(MIC_DATA,sr,<span class="string">'n'</span>,n,<span class="string">'overlap'</span>,overlap,<span class="string">'nfft'</span>,nfft);
+0093 
+0094 startidx=max([find(f&lt;=min_f)]);
+0095 stopidx=min([find(f&gt;=max_f)]);
+0096 
+0097 <span class="comment">% 3 plots for sound + n channels</span>
+0098 
+0099 nplots=3+length(channels);
+0100 
+0101 quickfig=figure(<span class="string">'Visible'</span>,<span class="string">'off'</span>,<span class="string">'Units'</span>,<span class="string">'Pixels'</span>,<span class="string">'Position'</span>,[0 0 800 1.2e3]);
+0102 
+0103 [spect,f,t2]=<a href="../ephys/helpers/visualization/pretty_sonogram.html" class="code" title="function [IMAGE,F,T]=pretty_sonogram(SIGNAL,SR,varargin)">pretty_sonogram</a>(MIC_DATA,sr,<span class="string">'n'</span>,n,<span class="string">'overlap'</span>,overlap,<span class="string">'nfft'</span>,nfft);
+0104 
+0105 startidx=max([find(f&lt;=min_f)]);
+0106 stopidx=min([find(f&gt;=max_f)]);
+0107 
+0108 <span class="comment">% 3 plots for sound + n channels</span>
+0109 nplot=3+length(channels);
+0110 <span class="keyword">if</span> strcmp(lower(noise),<span class="string">'car'</span>)
+0111     nplots=nplots+1;
+0112 <span class="keyword">end</span>
+0113 
+0114 quickfig=figure(<span class="string">'Visible'</span>,<span class="string">'off'</span>,<span class="string">'units'</span>,<span class="string">'pixels'</span>,<span class="string">'position'</span>,[ 0 0 700 length(channels)*400]);
+0115 
+0116 ax(1)=subaxis(nplots,1,1,<span class="string">'margin'</span>,.1,<span class="string">'spacingvert'</span>,0);
+0117 imagesc(t2,f(startidx:stopidx),spect(startidx:stopidx,:));
+0118 colormap(colors);
+0119 set(gca,<span class="string">'ydir'</span>,<span class="string">'normal'</span>,<span class="string">'tickdir'</span>,<span class="string">'out'</span>,<span class="string">'xtick'</span>,[],<span class="string">'ytick'</span>,[min_f max_f],<span class="string">'xcolor'</span>,get(quickfig,<span class="string">'color'</span>));
+0120 ylim([min_f max_f]);
+0121 ylabel(<span class="string">'Hz'</span>);
+0122 title([figtitle]);
+0123 box off;
+0124 
+0125 ax(2)=subaxis(nplots,1,2,<span class="string">'spacingvert'</span>,0,<span class="string">'margin'</span>,0.1,<span class="string">'paddingbottom'</span>,.025);
+0126 plot(t,MIC_DATA,<span class="string">'-k'</span>);
+0127 ylabel(<span class="string">'Osc.'</span>);
+0128 set(gca,<span class="string">'tickdir'</span>,<span class="string">'out'</span>,<span class="string">'xtick'</span>,[],<span class="string">'ytick'</span>,[],<span class="string">'xcolor'</span>,get(quickfig,<span class="string">'color'</span>));
+0129 
+0130 <span class="keyword">for</span> i=1:length(channels)
+0131 
+0132     ax(2+i)=subaxis(nplots,1,2+i,<span class="string">'spacingvert'</span>,0.025,<span class="string">'margin'</span>,0.1,<span class="string">'paddingbottom'</span>,0);
+0133     plot(t,plot_data(:,i)); <span class="comment">% took out CAR 6/20/12</span>
+0134 
+0135     <span class="keyword">if</span> i&lt;length(channels)
+0136         set(gca,<span class="string">'xtick'</span>,[],<span class="string">'xcolor'</span>,get(quickfig,<span class="string">'color'</span>));
+0137     <span class="keyword">end</span>
+0138 
+0139     <span class="comment">% add a label to the right</span>
+0140 
+0141     set(gca,<span class="string">'tickdir'</span>,<span class="string">'out'</span>);
+0142     box off;
+0143     axis tight;
+0144     
+0145     <span class="comment">%ylabel('V (in microvolts)');</span>
+0146 
+0147     rightax(i)=axes(<span class="string">'position'</span>,get(gca,<span class="string">'Position'</span>),<span class="string">'color'</span>,<span class="string">'none'</span>,<span class="keyword">...</span>
+0148         <span class="string">'xtick'</span>,[],<span class="string">'ytick'</span>,[],<span class="string">'yaxislocation'</span>,<span class="string">'right'</span>,<span class="string">'box'</span>,<span class="string">'off'</span>);
+0149     ylabel(rightax(i),[ <span class="string">'Channel '</span> num2str(channels(i))])
+0150 
+0151 <span class="keyword">end</span>
+0152 
+0153 
+0154 <span class="keyword">if</span> strcmp(lower(noise),<span class="string">'car'</span>)
+0155     car=mean(plot_data,2);
+0156     ax(end+1)=subaxis(nplots,1,3+i,<span class="string">'spacingvert'</span>,0.025,<span class="string">'margin'</span>,0.1);
+0157     plot(t,car);
+0158     rightax(i)=axes(<span class="string">'position'</span>,get(gca,<span class="string">'Position'</span>),<span class="string">'color'</span>,<span class="string">'none'</span>,<span class="keyword">...</span>
+0159         <span class="string">'xtick'</span>,[],<span class="string">'ytick'</span>,[],<span class="string">'yaxislocation'</span>,<span class="string">'right'</span>,<span class="string">'box'</span>,<span class="string">'off'</span>);
+0160 
+0161     ylabel(<span class="string">'CAR'</span>);
+0162 <span class="keyword">end</span>
+0163 
+0164 xlabel(ax(end),<span class="string">'Time (in secs)'</span>);
+0165 linkaxes([ax rightax],<span class="string">'x'</span>);
+0166 xlim([t2(1) t2(end)]);
+0167 
+0168 set(quickfig,<span class="string">'visible'</span>,<span class="string">'on'</span>);</pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

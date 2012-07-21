@@ -1,0 +1,234 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of ephys_pipeline_candidate_su</title>
+  <meta name="keywords" content="ephys_pipeline_candidate_su">
+  <meta name="description" content="ephys_candidate_su.m approximates the SNR of channels by">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../menu.html">Home</a> &gt;  <a href="../menu.html">ephys</a> &gt; <a href="menu.html">pipeline</a> &gt; ephys_pipeline_candidate_su.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../menu.html"><img alt="<" border="0" src="../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys/pipeline&nbsp;<img alt=">" border="0" src="../../right.png"></a></td></tr></table>-->
+
+<h1>ephys_pipeline_candidate_su
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong>ephys_candidate_su.m approximates the SNR of channels by</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong>function SNR=ephys_candidate_su(EPHYS_DATA,CHANNELS,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre class="comment">ephys_candidate_su.m approximates the SNR of channels by
+assuming a low threshold (Quiroga et al. 2004) and computing 
+the mean peak-to-peak of the spikes and comparing it to the 
+the noise peak-to-peak (Ludwig et al. 2009), SNR&gt;1.1 is considered
+a &quot;good&quot; or discriminable unit.  If channels with a sufficient SNR
+are found, text files are written out with the channel number and
+the trial number with putative units
+
+    ephys_candidate_su(EPHYS_DATA,CHANNELS,varargin)
+
+    EPHYS_DATA
+    sample x trial x channel matrix (single) that contains song-aligned
+    voltage traces (stored in extracted_data.mat or aggregated_data.mat)
+
+    CHANNELS
+    vector of channel labels (stored in extracted_data.mat or aggregated_data.mat)
+
+    The following may be 
+
+
+    the following may be specified as parameter/value pairs:
+
+        SR
+        sampling rate for aligned data (25e3, default Intan)
+
+        freq_range
+        filter corner frequencies (default: 600)
+
+        snr_threshold
+        SNR threshold for &quot;good unit&quot; (default: 1.1)
+        
+        savedir
+        directory to write out results to</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+<li><a href="../../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>	</li><li><a href="../../ephys/helpers/ephys/ephys_denoise_signal.html" class="code" title="function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)">ephys_denoise_signal</a>	</li><li><a href="../../ephys/helpers/ephys/ephys_spike_detect.html" class="code" title="function [SPIKES_PP SPIKES_PB]=ephys_spike_detect(DATA,THRESH,varargin)">ephys_spike_detect</a>	ephys_spike_detect.m performs spike detection on a vector with a pre-determined</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+<li><a href="ephys_pipeline_sua_standalone.html" class="code" title="function ephys_lfp_standalone(PROCDIR,CONFIG)">ephys_pipeline_sua_standalone</a>	</li></ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function SNR=ephys_candidate_su(EPHYS_DATA,CHANNELS,varargin)</a>
+0002 <span class="comment">%ephys_candidate_su.m approximates the SNR of channels by</span>
+0003 <span class="comment">%assuming a low threshold (Quiroga et al. 2004) and computing</span>
+0004 <span class="comment">%the mean peak-to-peak of the spikes and comparing it to the</span>
+0005 <span class="comment">%the noise peak-to-peak (Ludwig et al. 2009), SNR&gt;1.1 is considered</span>
+0006 <span class="comment">%a &quot;good&quot; or discriminable unit.  If channels with a sufficient SNR</span>
+0007 <span class="comment">%are found, text files are written out with the channel number and</span>
+0008 <span class="comment">%the trial number with putative units</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">%    ephys_candidate_su(EPHYS_DATA,CHANNELS,varargin)</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">%    EPHYS_DATA</span>
+0013 <span class="comment">%    sample x trial x channel matrix (single) that contains song-aligned</span>
+0014 <span class="comment">%    voltage traces (stored in extracted_data.mat or aggregated_data.mat)</span>
+0015 <span class="comment">%</span>
+0016 <span class="comment">%    CHANNELS</span>
+0017 <span class="comment">%    vector of channel labels (stored in extracted_data.mat or aggregated_data.mat)</span>
+0018 <span class="comment">%</span>
+0019 <span class="comment">%    The following may be</span>
+0020 <span class="comment">%</span>
+0021 <span class="comment">%</span>
+0022 <span class="comment">%    the following may be specified as parameter/value pairs:</span>
+0023 <span class="comment">%</span>
+0024 <span class="comment">%        SR</span>
+0025 <span class="comment">%        sampling rate for aligned data (25e3, default Intan)</span>
+0026 <span class="comment">%</span>
+0027 <span class="comment">%        freq_range</span>
+0028 <span class="comment">%        filter corner frequencies (default: 600)</span>
+0029 <span class="comment">%</span>
+0030 <span class="comment">%        snr_threshold</span>
+0031 <span class="comment">%        SNR threshold for &quot;good unit&quot; (default: 1.1)</span>
+0032 <span class="comment">%</span>
+0033 <span class="comment">%        savedir</span>
+0034 <span class="comment">%        directory to write out results to</span>
+0035 <span class="comment">%</span>
+0036 
+0037 nparams=length(varargin);
+0038 
+0039 <span class="keyword">if</span> mod(nparams,2)&gt;0
+0040     error(<span class="string">'Parameters must be specified as parameter/value pairs'</span>);
+0041 <span class="keyword">end</span>
+0042 
+0043 SR=25e3;
+0044 noise=<span class="string">'car'</span>; <span class="comment">% common-average reference for noise removal</span>
+0045 car_exclude=[];
+0046 filtering=<span class="string">'y'</span>; <span class="comment">% if defined then filtering filter the traces</span>
+0047 savedir=pwd;
+0048 freq_range=[500 8e3]; <span class="comment">% frequency range for filtering</span>
+0049 snr_threshold=1.1;
+0050 exclude_channels=[];
+0051 channels=CHANNELS;
+0052 
+0053 colors={<span class="string">'b'</span>,<span class="string">'r'</span>,<span class="string">'g'</span>,<span class="string">'c'</span>,<span class="string">'m'</span>,<span class="string">'y'</span>,<span class="string">'k'</span>,<span class="string">'r'</span>,<span class="string">'g'</span>,<span class="string">'b'</span>};
+0054 
+0055 <span class="keyword">for</span> i=1:2:nparams
+0056     <span class="keyword">switch</span> lower(varargin{i})
+0057         <span class="keyword">case</span> <span class="string">'sr'</span>
+0058             SR=varargin{i+1};
+0059         <span class="keyword">case</span> <span class="string">'noise'</span>
+0060             noise=varargin{i+1};
+0061         <span class="keyword">case</span> <span class="string">'filtering'</span>
+0062             filtering=varargin{i+1};
+0063         <span class="keyword">case</span> <span class="string">'savedir'</span>
+0064             savedir=varargin{i+1};
+0065         <span class="keyword">case</span> <span class="string">'snr_threshold'</span>
+0066             snr_threshold=varargin{i+1};
+0067         <span class="keyword">case</span> <span class="string">'car_exclude'</span>
+0068             car_exclude=varargin{i+1};
+0069     <span class="keyword">end</span>
+0070 <span class="keyword">end</span>
+0071 
+0072 [samples,ntrials,nchannels]=size(EPHYS_DATA);
+0073 
+0074 proc_data=<a href="../../ephys/helpers/ephys/ephys_denoise_signal.html" class="code" title="function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)">ephys_denoise_signal</a>(EPHYS_DATA,CHANNELS,channels,<span class="string">'method'</span>,noise,<span class="string">'car_exclude'</span>,car_exclude);
+0075 proc_data=<a href="../../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>(proc_data,<span class="string">'s'</span>,<span class="string">'freq_range'</span>,freq_range);
+0076 
+0077 clear EPHYS_DATA;
+0078 
+0079 <span class="comment">% collect spike windows and estimate SNR</span>
+0080 
+0081 disp(<span class="string">'Computing SNR'</span>);
+0082 
+0083 <span class="keyword">for</span> i=1:length(channels)
+0084 
+0085     disp([<span class="string">'Electrode '</span> num2str(CHANNELS(i))])
+0086 
+0087     <span class="comment">% collect spikes</span>
+0088 
+0089     tmp_spikewindows={};
+0090     tmp_spiketimes={};
+0091     snr=[];
+0092 
+0093     <span class="keyword">for</span> j=1:ntrials
+0094 
+0095         <span class="comment">%disp(['Trial ' num2str(j)]);</span>
+0096 
+0097         curr_data=[];
+0098         spike_pp=[];
+0099         threshold=4*median(abs(proc_data(:,j,i))/.6745);
+0100 
+0101         spikes_pp=<a href="../../ephys/helpers/ephys/ephys_spike_detect.html" class="code" title="function [SPIKES_PP SPIKES_PB]=ephys_spike_detect(DATA,THRESH,varargin)">ephys_spike_detect</a>(proc_data(:,j,i),threshold,<span class="string">'sr'</span>,SR,<span class="string">'visualize'</span>,<span class="string">'n'</span>);
+0102         
+0103         [samples,nspikes]=size(spikes_pp.abs.windows);
+0104         
+0105         <span class="keyword">if</span> nspikes&lt;2
+0106             snr(j)=NaN;
+0107             <span class="keyword">continue</span>;
+0108         <span class="keyword">end</span>
+0109 
+0110         window=floor((samples-1)/2); <span class="comment">% how many samples to the left and right of the spike</span>
+0111 
+0112         <span class="comment">% should we delete?</span>
+0113 
+0114         adjust=0;
+0115 
+0116         <span class="comment">% compute the peak to peak of the mean waveform</span>
+0117     
+0118         mean_waveform=mean(spikes_pp.abs.windows,2);
+0119         peaktopeak=max(mean_waveform)-min(mean_waveform);
+0120         curr_data=proc_data(:,j,i);
+0121 
+0122         <span class="keyword">for</span> k=1:nspikes
+0123 
+0124             spike_point=spikes_pp.abs.times(k)-adjust;
+0125 
+0126             <span class="keyword">if</span> spike_point-window&lt;1
+0127                 snr(j)=NaN;
+0128                 <span class="keyword">break</span>;
+0129             <span class="keyword">end</span>
+0130 
+0131             curr_data(spike_point-window:spike_point+window)=[];
+0132             adjust=adjust+((window*2)+1);
+0133         <span class="keyword">end</span>
+0134 
+0135         noise_est=6*std(curr_data);
+0136         snr(j)=peaktopeak/noise_est;
+0137 
+0138     <span class="keyword">end</span>
+0139 
+0140     SNR(i)=mean(snr); <span class="comment">% take the average over all trials</span>
+0141 
+0142     <span class="keyword">if</span> any(snr&gt;snr_threshold)
+0143 
+0144         disp([<span class="string">'Found trials with snr &gt; '</span> num2str(snr_threshold)]);
+0145         fid=fopen(fullfile(savedir,[<span class="string">'snr_channel_'</span> num2str(channels(i)) <span class="string">'.txt'</span>]),<span class="string">'w'</span>);
+0146         [val,loc]=find(snr&gt;snr_threshold);
+0147 
+0148         fprintf(fid,<span class="string">'Trial\tSNR(mean)\n\n'</span>);
+0149         <span class="keyword">for</span> j=1:length(val)
+0150             fprintf(fid,<span class="string">'%g\t%0.2f\n'</span>,loc(j),snr(loc(j)));
+0151         <span class="keyword">end</span>
+0152 
+0153         fclose(fid);
+0154     <span class="keyword">end</span>
+0155 <span class="keyword">end</span></pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

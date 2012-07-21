@@ -1,0 +1,40 @@
+# cribbed from http://www.kuro5hin.org/story/2004/3/9/16838/14935
+
+
+#kill startup message
+startup_message off
+
+# define a bigger scrollback, default is 100 lines
+defscrollback 1024
+
+
+# An alternative hardstatus to display a bar at the bottom listing the
+# windownames and highlighting the current windowname in blue. (This is only
+# enabled if there is no hardstatus setting for your terminal)
+hardstatus on
+hardstatus alwayslastline
+hardstatus string "%{.bW}%-w%{.rW}%n %t%{-}%+w %=%{..G} %H %{..Y} %m/%d %C%a "
+
+# ------------------------------------------------------------------------------
+# STARTUP SCREENS
+# ------------------------------------------------------------------------------
+
+# Example of automatically running some programs in windows on screen startup.
+# Use the form: screen [-flag] [window name] [window number] [program to run in window]
+# The -t flag means that the window in which that program is running
+# closes when you exit that program, so if you quit pine
+# window 2 closes.
+
+
+# you will need to change these paths to point to your logfiles (relative paths don't seem
+# to work here)
+
+screen bash
+
+
+screen -t MultiUnit 1 tail -f /Users/jmarkow/.ephys_pipeline_mua.log
+screen -t SingleUnit 2 tail -f /Users/jmarkow/.ephys_pipeline_sua.log
+screen -t LFP 3 tail -f /Users/jmarkow/.ephys_pipeline_lfp.log
+screen -t SpectralFeatures 4 tail -f /Users/jmarkow/.ephys_pipeline_smscore.log
+screen -t SoundClustering 5 tail -f /Users/jmarkow/.ephys_pipeline_cluster.log
+screen -t FileAggregating 6 tail -f /Users/jmarkow/.ephys_pipeline_aggregate.log

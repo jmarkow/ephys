@@ -1,0 +1,17 @@
+/* Created by mdot for Matlab */
+digraph m2html {
+  spectro_navigate -> pretty_sonogram;
+
+  ephys_visual_spike_lfp [URL="ephys_visual_spike_lfp.html"];
+  ephys_visual_spikestats [URL="ephys_visual_spikestats.html"];
+  multi_fig_save [URL="multi_fig_save.html"];
+  multi_unit_raster [URL="multi_unit_raster.html"];
+  new_data_plotter [URL="new_data_plotter.html"];
+  prctile_bin [URL="prctile_bin.html"];
+  prettify_axis [URL="prettify_axis.html"];
+  prettify_axislabels [URL="prettify_axislabels.html"];
+  pretty_polar [URL="pretty_polar.html"];
+  pretty_sonogram [URL="pretty_sonogram.html"];
+  spectro_navigate [URL="spectro_navigate.html"];
+  time_frequency_raster [URL="time_frequency_raster.html"];
+}

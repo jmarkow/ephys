@@ -1,0 +1,6 @@
+/* Created by mdot for Matlab */
+digraph m2html {
+
+  ephys_su_lfp_coherence_quickplots [URL="ephys_su_lfp_coherence_quickplots.html"];
+  spect_ztrans [URL="spect_ztrans.html"];
+}

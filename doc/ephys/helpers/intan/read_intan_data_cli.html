@@ -1,0 +1,241 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of read_intan_data_cli</title>
+  <meta name="keywords" content="read_intan_data_cli">
+  <meta name="description" content="[t,amps,data,aux] = read_intan_data">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../../menu.html">Home</a> &gt;  <a href="../../menu.html">ephys</a> &gt; <a href="../menu.html">helpers</a> &gt; <a href="menu.html">intan</a> &gt; read_intan_data_cli.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../../menu.html"><img alt="<" border="0" src="../../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys/helpers/intan&nbsp;<img alt=">" border="0" src="../../../right.png"></a></td></tr></table>-->
+
+<h1>read_intan_data_cli
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="box"><strong>[t,amps,data,aux] = read_intan_data</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="box"><strong>function [t,amps,data,aux] = read_intan_data(filename) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> [t,amps,data,aux] = read_intan_data
+
+ Opens file selection GUI to select and then read data from an Intan 
+ amplifier data file (*.int).
+
+ t = time vector (in seconds)
+ amps = vector listing active amplifier channels
+ data = matrix of electrode-referred amplifier signals (in microvolts)
+ aux = matrix of six auxiliary TTL input signals
+
+ Example usage:
+  &gt;&gt; [t,amps,data,aux] = read_intan_data;
+  &gt;&gt; plot(t,data(:,1));
+
+ Version 1.1, June 26, 2010
+ (c) 2010, Intan Technologies, LLC
+ For more information, see http://www.intantech.com
+ For updates and latest version, see http://www.intantech.com/software.html
+
+ 06-22-10 Added GUI file selection and optimized: Craig Patten, Plexon, Inc.</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+<li><a href="../../../ephys/analysis_scripts/greg_proc_data.html" class="code" title="function greg_proc_data()">greg_proc_data</a>	</li><li><a href="intan_align_playback.html" class="code" title="function intan_align_playback(DIR,INTAN_DIR,varargin)">intan_align_playback</a>	</li><li><a href="intan_songdet.html" class="code" title="function intan_songdet(DIR,INTAN_DIR,varargin)">intan_songdet</a>	intan_songdet.m processes .mat files for singing by looking at the ratio</li><li><a href="intan_songdet_intmic.html" class="code" title="function intan_songdet_intmic(DIR,varargin)">intan_songdet_intmic</a>	intan_songdet_intmic.m is the core script for processing Intan files</li></ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [t,amps,data,aux] = read_intan_data(filename)</a>
+0002 
+0003 <span class="comment">% [t,amps,data,aux] = read_intan_data</span>
+0004 <span class="comment">%</span>
+0005 <span class="comment">% Opens file selection GUI to select and then read data from an Intan</span>
+0006 <span class="comment">% amplifier data file (*.int).</span>
+0007 <span class="comment">%</span>
+0008 <span class="comment">% t = time vector (in seconds)</span>
+0009 <span class="comment">% amps = vector listing active amplifier channels</span>
+0010 <span class="comment">% data = matrix of electrode-referred amplifier signals (in microvolts)</span>
+0011 <span class="comment">% aux = matrix of six auxiliary TTL input signals</span>
+0012 <span class="comment">%</span>
+0013 <span class="comment">% Example usage:</span>
+0014 <span class="comment">%  &gt;&gt; [t,amps,data,aux] = read_intan_data;</span>
+0015 <span class="comment">%  &gt;&gt; plot(t,data(:,1));</span>
+0016 <span class="comment">%</span>
+0017 <span class="comment">% Version 1.1, June 26, 2010</span>
+0018 <span class="comment">% (c) 2010, Intan Technologies, LLC</span>
+0019 <span class="comment">% For more information, see http://www.intantech.com</span>
+0020 <span class="comment">% For updates and latest version, see http://www.intantech.com/software.html</span>
+0021 <span class="comment">%</span>
+0022 <span class="comment">% 06-22-10 Added GUI file selection and optimized: Craig Patten, Plexon, Inc.</span>
+0023 
+0024 <span class="comment">% use MATLAB predefined gui uigetfile to select the file(s) to analyze</span>
+0025 
+0026 <span class="comment">% changed to use with other Intan  analysis scripts 12-14-11:  Jeff Markowitz</span>
+0027 
+0028 <span class="comment">%[file, path, filterindex] = uigetfile('*.int','Select a .int file','MultiSelect', 'off');</span>
+0029 <span class="comment">%filename = [path,file];</span>
+0030 
+0031 fid = fopen(filename, <span class="string">'r'</span>);
+0032 
+0033 <span class="comment">% Read first three header bytes encoding file version</span>
+0034 <span class="keyword">for</span> i=1:3
+0035     header(i) = fread(fid, 1, <span class="string">'uint8'</span>);
+0036 <span class="keyword">end</span>
+0037 
+0038 <span class="keyword">if</span> (header(1) ~= 128)
+0039     error(<span class="string">'Improper data file format.'</span>);
+0040 <span class="keyword">end</span>
+0041 
+0042 <span class="keyword">if</span> (header(2) ~= 1 || header(3) ~= 1)
+0043     warning(<span class="string">'Data file version may not be compatible with this m-file.'</span>);
+0044 <span class="keyword">end</span>
+0045 
+0046 <span class="comment">% Now see which amplifier channels are saved in this file.</span>
+0047 <span class="keyword">for</span> i=1:64
+0048     amp_on(i) = fread(fid, 1, <span class="string">'uint8'</span>);
+0049 <span class="keyword">end</span>
+0050 
+0051 num_amps = sum(amp_on);
+0052 
+0053 <span class="comment">% Create a list of amplifier channels in this file.</span>
+0054 amps = zeros(1,num_amps);
+0055 index = 1;
+0056 <span class="keyword">for</span> i=1:64
+0057     <span class="keyword">if</span> (amp_on(i) == 1)
+0058         amps(index) = i;
+0059         index = index + 1;
+0060     <span class="keyword">end</span>
+0061 <span class="keyword">end</span>
+0062 
+0063 <span class="comment">% Now search for the end of the file to find out the length of the data.</span>
+0064 <span class="comment">% t_count = 0;</span>
+0065 <span class="comment">% while (~feof(fid))</span>
+0066 <span class="comment">%    fread(fid, 1+4*num_amps, 'uint8');</span>
+0067 <span class="comment">%    t_count = t_count + 1;</span>
+0068 <span class="comment">% end</span>
+0069 <span class="comment">% t_count = t_count - 1;</span>
+0070 <span class="comment">% t_max = t_count/25000;</span>
+0071 
+0072 <span class="comment">%-----------------------------------</span>
+0073 <span class="comment">% replace above code with a more efficient method CDP 06-24-10</span>
+0074 s = dir(filename);
+0075 filesize = s.bytes;
+0076 t_count = (filesize - 67)/(num_amps*4 + 1);
+0077 t_max = t_count/25000;
+0078 <span class="comment">%-----------------------------------</span>
+0079 
+0080 <span class="comment">% print channel (singular) when there is only one channel! CDP 06-24-10</span>
+0081 <span class="keyword">if</span> num_amps == 1;
+0082     fprintf(1, <span class="string">'\nData file contains %0.2f seconds of data from %d amplifier channel.\n'</span>, t_max, num_amps);
+0083     fprintf(1, <span class="string">'Channel: '</span>);
+0084 <span class="keyword">else</span>
+0085     fprintf(1, <span class="string">'\nData file contains %0.2f seconds of data from %d amplifier channels.\n'</span>, t_max, num_amps);
+0086     fprintf(1, <span class="string">'Channels: '</span>);
+0087 <span class="keyword">end</span>
+0088 
+0089 <span class="keyword">for</span> i=1:num_amps
+0090     fprintf(1, <span class="string">'%d '</span>, amps(i));
+0091 <span class="keyword">end</span>
+0092 fprintf(1, <span class="string">'\n\n'</span>);
+0093 
+0094 <span class="comment">% Pre-allocate large data matrices.</span>
+0095 aux = zeros(t_count,6,<span class="string">'uint8'</span>);
+0096 t = (0:1:(t_count-1))/25000;
+0097 t = t';
+0098 
+0099 <span class="comment">%--------------------------------------</span>
+0100 <span class="comment">% Replace code code below with much faster code CDP 06-24-10</span>
+0101 <span class="comment">% Go back to the beginning of the file...</span>
+0102 frewind(fid);
+0103 
+0104 <span class="comment">% ...skip the header this time...</span>
+0105 fread(fid, 3+64, <span class="string">'uint8'</span>);
+0106 
+0107 <span class="comment">% allocate space to read the entire file</span>
+0108 data2 = zeros((filesize-67),1,<span class="string">'uint8'</span>);
+0109 <span class="comment">% read the entire file</span>
+0110 data2 = fread(fid,(filesize-67),<span class="string">'uint8=&gt;uint8'</span>);
+0111 
+0112 <span class="comment">% extract the digital data</span>
+0113 aux_data = data2((num_amps*4)+1:num_amps*4+1:filesize-67);
+0114 
+0115 <span class="comment">% extract individual bits</span>
+0116 aux = [bitget(aux_data,6),bitget(aux_data,5),bitget(aux_data,4),bitget(aux_data,3),bitget(aux_data,2),bitget(aux_data,1)];
+0117 clear aux_data;
+0118 
+0119 <span class="comment">% delete the digital data</span>
+0120 data2((num_amps*4)+1:num_amps*4+1:filesize-67) = [];
+0121 
+0122 <span class="comment">% convert the remaining data from bytes to single</span>
+0123 data2 = typecast(data2,<span class="string">'single'</span>);
+0124 
+0125 data = zeros(t_count,num_amps);
+0126 <span class="comment">% de-mux the channels</span>
+0127 <span class="keyword">for</span> ind = 1:num_amps
+0128     data(:,ind) = data2(ind:num_amps:length(data2));
+0129 <span class="keyword">end</span>
+0130 <span class="comment">%---------------------------------------</span>
+0131 
+0132 <span class="comment">% % Go back to the beginning of the file...</span>
+0133 <span class="comment">% frewind(fid);</span>
+0134 <span class="comment">%</span>
+0135 <span class="comment">% % ...skip the header this time...</span>
+0136 <span class="comment">% fread(fid, 3+64, 'uint8');</span>
+0137 <span class="comment">%</span>
+0138 <span class="comment">% % ...and read all the data.</span>
+0139 <span class="comment">% fprintf(1, 'Reading data...  (This may take a while.)\n\n');</span>
+0140 <span class="comment">% for i=1:t_count</span>
+0141 <span class="comment">%     for j=1:num_amps</span>
+0142 <span class="comment">%         data(i,j) = double(fread(fid, 1, 'float32'));</span>
+0143 <span class="comment">%     end</span>
+0144 <span class="comment">%</span>
+0145 <span class="comment">%     aux_byte = fread(fid, 1, 'uint8');</span>
+0146 <span class="comment">%</span>
+0147 <span class="comment">%     % Decode auxiliary TTL inputs</span>
+0148 <span class="comment">%     if aux_byte &gt;= 32</span>
+0149 <span class="comment">%         aux(i,6) = 1;</span>
+0150 <span class="comment">%         aux_byte = aux_byte - 32;</span>
+0151 <span class="comment">%     end</span>
+0152 <span class="comment">%     if aux_byte &gt;= 16</span>
+0153 <span class="comment">%         aux(i,5) = 1;</span>
+0154 <span class="comment">%         aux_byte = aux_byte - 16;</span>
+0155 <span class="comment">%     end</span>
+0156 <span class="comment">%     if aux_byte &gt;= 8</span>
+0157 <span class="comment">%         aux(i,4) = 1;</span>
+0158 <span class="comment">%         aux_byte = aux_byte - 8;</span>
+0159 <span class="comment">%     end</span>
+0160 <span class="comment">%     if aux_byte &gt;= 4</span>
+0161 <span class="comment">%         aux(i,3) = 1;</span>
+0162 <span class="comment">%         aux_byte = aux_byte - 4;</span>
+0163 <span class="comment">%     end</span>
+0164 <span class="comment">%     if aux_byte &gt;= 2</span>
+0165 <span class="comment">%         aux(i,2) = 1;</span>
+0166 <span class="comment">%         aux_byte = aux_byte - 2;</span>
+0167 <span class="comment">%     end</span>
+0168 <span class="comment">%     if aux_byte &gt;= 1</span>
+0169 <span class="comment">%         aux(i,1) = 1;</span>
+0170 <span class="comment">%         aux_byte = aux_byte - 1;</span>
+0171 <span class="comment">%     end</span>
+0172 <span class="comment">% end</span>
+0173 
+0174 <span class="comment">% Close file, and we're done.</span>
+0175 fclose(fid);</pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

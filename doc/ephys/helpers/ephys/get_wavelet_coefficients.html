@@ -1,0 +1,143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of get_wavelet_coefficients</title>
+  <meta name="keywords" content="get_wavelet_coefficients">
+  <meta name="description" content="">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../../menu.html">Home</a> &gt;  <a href="../../menu.html">ephys</a> &gt; <a href="../menu.html">helpers</a> &gt; <a href="menu.html">ephys</a> &gt; get_wavelet_coefficients.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../../menu.html"><img alt="<" border="0" src="../../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys/helpers/ephys&nbsp;<img alt=">" border="0" src="../../../right.png"></a></td></tr></table>-->
+
+<h1>get_wavelet_coefficients
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="box"><strong></strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="box"><strong>function SELCOEFFS=get_wavelet_coefficients(WAVEFORMS,NCOEFFS,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="fragment"><pre class="comment"></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+<li><a href="ephys_spike_clustergui_tetrode.html" class="code" title="function [LABELS TRIALS ISI WINDOWS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,varargin)">ephys_spike_clustergui_tetrode</a>	</li></ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function SELCOEFFS=get_wavelet_coefficients(WAVEFORMS,NCOEFFS,varargin)</a>
+0002 <span class="comment">%</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">%</span>
+0005 <span class="comment">%</span>
+0006 <span class="comment">%</span>
+0007 
+0008 <span class="comment">% sort either according to negentropy or KS test (deviation from normality)</span>
+0009 
+0010 nparams=length(varargin);
+0011 
+0012 <span class="keyword">if</span> mod(nparams,2)&gt;0
+0013     error(<span class="string">'Parameters must be specified as parameter/value pairs!'</span>);
+0014 <span class="keyword">end</span>
+0015 
+0016 method=<span class="string">'negentropy'</span>;
+0017 
+0018 <span class="keyword">for</span> i=1:2:nparams
+0019     <span class="keyword">switch</span> lower(varargin{i})
+0020         <span class="keyword">case</span> <span class="string">'method'</span>
+0021             method=varargin{i+1};
+0022     <span class="keyword">end</span>
+0023 <span class="keyword">end</span>
+0024 
+0025 
+0026 [samples,trials]=size(WAVEFORMS);
+0027 
+0028 parfor i=1:trials
+0029     [wavecoef(:,i),l]=wavedec(WAVEFORMS(:,i),4,<span class="string">'haar'</span>); <span class="comment">% 4-level wavelet decomposition</span>
+0030 <span class="keyword">end</span>
+0031 
+0032 [coeffs,trials]=size(wavecoef);
+0033 
+0034 <span class="keyword">for</span> i=1:coeffs
+0035 
+0036     <span class="comment">% remove points &gt; +/- 3 std per quiroga et al 2004</span>
+0037 
+0038     testpoints=wavecoef(i,:);
+0039 
+0040     cutoff=3*std(testpoints);
+0041 
+0042     <span class="comment">% apparently overlapping spikes create outliers that corrupt the KS stat</span>
+0043 
+0044     testpoints(testpoints&lt;-cutoff)=[];
+0045     testpoints(testpoints&gt;cutoff)=[];
+0046 
+0047     <span class="comment">% need to compute deviation from normality take max of empirical cdf and normcdf</span>
+0048     <span class="comment">% with same mean and variance</span>
+0049 
+0050     <span class="comment">% samplecdf</span>
+0051 
+0052     <span class="keyword">if</span> length(testpoints(testpoints~=NaN))&lt;1
+0053         normdev(i)=-inf;
+0054         negentropy(i)=-inf;
+0055         <span class="keyword">continue</span>;
+0056     <span class="keyword">end</span>
+0057 
+0058     [fx,x]=ecdf(testpoints);
+0059 
+0060     <span class="comment">% evaluate normal cdf at same mean and variance as data</span>
+0061 
+0062     samplemean=mean(testpoints);
+0063     samplestd=std(testpoints);
+0064 
+0065     gx=normcdf(x,samplemean,samplestd);
+0066 
+0067     <span class="comment">% deviation, ks statistic</span>
+0068 
+0069     normdev(i)=[max(abs(fx-gx))];
+0070 
+0071     normentropy=-sum(gx.*log2(gx+eps));
+0072     obsentropy=-sum(fx.*log2(fx+eps));
+0073 
+0074     negentropy(i)=[normentropy-obsentropy]; <span class="comment">% an alternative measure</span>
+0075 
+0076 <span class="keyword">end</span>
+0077 
+0078 normdev(normdev==1)=0;
+0079 
+0080 <span class="keyword">if</span> strcmp(lower(method),<span class="string">'ks'</span>)
+0081     [val,loc]=sort(normdev,<span class="string">'descend'</span>);
+0082 <span class="keyword">else</span>
+0083     [val,loc]=sort(negentropy,<span class="string">'descend'</span>);
+0084 <span class="keyword">end</span>
+0085 
+0086 <span class="keyword">if</span> length(loc)&gt;=NCOEFFS
+0087     sortcoeffs=loc(1:NCOEFFS);
+0088 <span class="keyword">else</span>
+0089     sortcoeffs=loc;
+0090 <span class="keyword">end</span>
+0091 
+0092 <span class="keyword">for</span> i=1:length(sortcoeffs)
+0093     SELCOEFFS(:,i)=wavecoef(sortcoeffs(i),:);
+0094 <span class="keyword">end</span>
+0095 
+0096</pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

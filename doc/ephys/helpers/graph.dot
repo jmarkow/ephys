@@ -1,0 +1,5 @@
+/* Created by mdot for Matlab */
+digraph m2html {
+
+  ephys_pipeline_docgen [URL="ephys_pipeline_docgen.html"];
+}

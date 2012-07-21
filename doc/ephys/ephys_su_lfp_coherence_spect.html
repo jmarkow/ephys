@@ -1,0 +1,378 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of ephys_su_lfp_coherence_spect</title>
+  <meta name="keywords" content="ephys_su_lfp_coherence_spect">
+  <meta name="description" content="ephys_su_lfp_coherence_tf computes coherency spectra between LFPs and point processes using the">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../menu.html">Home</a> &gt;  <a href="menu.html">ephys</a> &gt; ephys_su_lfp_coherence_spect.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../menu.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>ephys_su_lfp_coherence_spect
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>ephys_su_lfp_coherence_tf computes coherency spectra between LFPs and point processes using the</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment">ephys_su_lfp_coherence_tf computes coherency spectra between LFPs and point processes using the 
+multi-taper method
+
+    [abscoh,t,f]=ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)
+    
+    LFPCHANNEL
+
+    SUCHANNEL
+    
+    SUCLUSTER
+
+    HISTOGRAM
+
+    the following may be passed as parameter/value pairs:
+
+        savedir
+
+        filedir
+
+        fig_title
+
+        colors
+
+        phasecolors
+
+        debug
+
+        nfft
+        
+        min_f
+
+        max_f
+
+        w
+
+        alpha
+
+        ntapers
+
+        beta
+
+        freq_range
+
+        lfp_fs
+
+        medfilt_scale</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>	</li><li><a href="../ephys/helpers/ephys/ephys_denoise_signal.html" class="code" title="function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)">ephys_denoise_signal</a>	</li><li><a href="../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>	</li><li><a href="../ephys/helpers/visualization/prettify_axislabels.html" class="code" title="function prettify_axislabels(FIGHANDLE,varargin)">prettify_axislabels</a>	</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)</a>
+0002 <span class="comment">%ephys_su_lfp_coherence_tf computes coherency spectra between LFPs and point processes using the</span>
+0003 <span class="comment">%multi-taper method</span>
+0004 <span class="comment">%</span>
+0005 <span class="comment">%    [abscoh,t,f]=ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)</span>
+0006 <span class="comment">%</span>
+0007 <span class="comment">%    LFPCHANNEL</span>
+0008 <span class="comment">%</span>
+0009 <span class="comment">%    SUCHANNEL</span>
+0010 <span class="comment">%</span>
+0011 <span class="comment">%    SUCLUSTER</span>
+0012 <span class="comment">%</span>
+0013 <span class="comment">%    HISTOGRAM</span>
+0014 <span class="comment">%</span>
+0015 <span class="comment">%    the following may be passed as parameter/value pairs:</span>
+0016 <span class="comment">%</span>
+0017 <span class="comment">%        savedir</span>
+0018 <span class="comment">%</span>
+0019 <span class="comment">%        filedir</span>
+0020 <span class="comment">%</span>
+0021 <span class="comment">%        fig_title</span>
+0022 <span class="comment">%</span>
+0023 <span class="comment">%        colors</span>
+0024 <span class="comment">%</span>
+0025 <span class="comment">%        phasecolors</span>
+0026 <span class="comment">%</span>
+0027 <span class="comment">%        debug</span>
+0028 <span class="comment">%</span>
+0029 <span class="comment">%        nfft</span>
+0030 <span class="comment">%</span>
+0031 <span class="comment">%        min_f</span>
+0032 <span class="comment">%</span>
+0033 <span class="comment">%        max_f</span>
+0034 <span class="comment">%</span>
+0035 <span class="comment">%        w</span>
+0036 <span class="comment">%</span>
+0037 <span class="comment">%        alpha</span>
+0038 <span class="comment">%</span>
+0039 <span class="comment">%        ntapers</span>
+0040 <span class="comment">%</span>
+0041 <span class="comment">%        beta</span>
+0042 <span class="comment">%</span>
+0043 <span class="comment">%        freq_range</span>
+0044 <span class="comment">%</span>
+0045 <span class="comment">%        lfp_fs</span>
+0046 <span class="comment">%</span>
+0047 <span class="comment">%        medfilt_scale</span>
+0048 <span class="comment">%</span>
+0049 <span class="comment">%</span>
+0050 <span class="comment">%</span>
+0051 
+0052 <span class="comment">% TODO finish documentation</span>
+0053 <span class="comment">% TODO comment thoroughly</span>
+0054 <span class="comment">%</span>
+0055 <span class="comment">%</span>
+0056 
+0057 <span class="comment">% script to demonstrate the relationship between spikes and lfps</span>
+0058 
+0059 <span class="comment">% now let's modify to work with any LFP or SPIKES, maybe run in base directory</span>
+0060 <span class="comment">% pick LFP range and spike cluster</span>
+0061 
+0062 nparams=length(varargin);
+0063 
+0064 filedir=pwd;
+0065 savedir=pwd;
+0066 fig_title=<span class="string">'noname'</span>;
+0067 nfft=[];
+0068 min_f=10;
+0069 max_f=100;
+0070 w=3;
+0071 
+0072 <span class="comment">% about 200 trials seems to be our limit here...</span>
+0073 
+0074 ntapers=[];
+0075 beta=1.5; <span class="comment">% parameter for z-transforming coherence</span>
+0076 freq_range=[300]; <span class="comment">% let's just refilter</span>
+0077 lfp_fs=25e3; <span class="comment">% default Intan sampling rate</span>
+0078 trial_range=[];
+0079 medfilt_scale=1.5; <span class="comment">% median filter scale (in ms)</span>
+0080 alpha=.001; <span class="comment">% alpha for null hypothesis line</span>
+0081 
+0082 <span class="keyword">if</span> mod(nparams,2)&gt;0
+0083     error(<span class="string">'Parameters must be specified as parameter/value pairs'</span>);
+0084 <span class="keyword">end</span>
+0085 
+0086 <span class="keyword">for</span> i=1:2:nparams
+0087     <span class="keyword">switch</span> lower(varargin{i})
+0088         <span class="keyword">case</span> <span class="string">'filedir'</span>
+0089             filedir=varargin{i+1};
+0090         <span class="keyword">case</span> <span class="string">'dir'</span>
+0091             dir=varargin{i+1};
+0092         <span class="keyword">case</span> <span class="string">'lfp_winextract'</span>
+0093             lfp_winextract=varargin{i+1};
+0094         <span class="keyword">case</span> <span class="string">'debug'</span>
+0095             debug=varargin{i+1};
+0096         <span class="keyword">case</span> <span class="string">'peakedges'</span>
+0097             peakedges=varargin{i+1};
+0098         <span class="keyword">case</span> <span class="string">'troughedges'</span>
+0099             troughedges=varargin{i+1};
+0100         <span class="keyword">case</span> <span class="string">'fig_title'</span>
+0101             fig_title=varargin{i+1};
+0102         <span class="keyword">case</span> <span class="string">'nfft'</span>
+0103             nfft=varargin{i+1};
+0104         <span class="keyword">case</span> <span class="string">'freq_range'</span>
+0105             freq_range=varargin{i+1};
+0106         <span class="keyword">case</span> <span class="string">'trial_range'</span>
+0107             trial_range=varargin{i+1};
+0108         <span class="keyword">case</span> <span class="string">'medfilt_scale'</span>
+0109             medfilt_scale=varargin{i+1};
+0110         <span class="keyword">case</span> <span class="string">'alpha'</span>
+0111             alpha=varargin{i+1};
+0112 
+0113     <span class="keyword">end</span>
+0114 <span class="keyword">end</span>
+0115 
+0116 
+0117 <span class="comment">% where to grab the files from?</span>
+0118 
+0119 sua_mat=fullfile(filedir,<span class="string">'sua'</span>,[<span class="string">'sua_channels '</span> num2str(SUCHANNEL) <span class="string">'.mat'</span>]);
+0120 
+0121 load(fullfile(filedir,<span class="string">'aggregated_data.mat'</span>),<span class="string">'CHANNELS'</span>,<span class="string">'EPHYS_DATA'</span>); <span class="comment">% get the channel map and LFPs</span>
+0122 load(sua_mat,<span class="string">'smooth_spikes'</span>,<span class="string">'clust_spike_vec'</span>,<span class="string">'subtrials'</span>); <span class="comment">% smooth spikes</span>
+0123 
+0124 lfp_data=<a href="../ephys/helpers/ephys/ephys_denoise_signal.html" class="code" title="function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)">ephys_denoise_signal</a>(EPHYS_DATA,CHANNELS,LFPCHANNEL);
+0125 clear EPHYS_DATA;
+0126 lfp_data=<a href="../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>(lfp_data,<span class="string">'l'</span>,<span class="string">'freq_range'</span>,freq_range,<span class="string">'medfilt_scale'</span>,medfilt_scale);
+0127 lfp_data=squeeze(lfp_data);
+0128 spike_data=clust_spike_vec{1}{SUCLUSTER}; 
+0129 
+0130 lfp_data=lfp_data(:,subtrials);
+0131 spike_data=clust_spike_vec{1}{SUCLUSTER}; 
+0132 
+0133 [samples,trials]=size(lfp_data);
+0134 lfp_data=lfp_data';
+0135 <span class="comment">% bin the spikes</span>
+0136 
+0137 binspike_data=zeros(trials,samples,<span class="string">'double'</span>);
+0138 
+0139 <span class="keyword">if</span> isempty(nfft)
+0140     nfft=max([samples 2^nextpow2(samples)]);
+0141 <span class="keyword">else</span>
+0142     nfft=2^nextpow2(nfft);
+0143 <span class="keyword">end</span>
+0144 
+0145 <span class="keyword">if</span> isempty(ntapers)
+0146     ntapers=2*(w)-1;
+0147 <span class="keyword">end</span>
+0148 
+0149 resolution=w*1/(samples/lfp_fs);
+0150 disp([<span class="string">'Resolution:  '</span> num2str(resolution)  <span class="string">' Hz'</span>]);
+0151 disp([<span class="string">'NFFT:  '</span> num2str(nfft)]);
+0152 
+0153 <span class="comment">% take the average spectra to compute our cross spectrum</span>
+0154 
+0155 <span class="comment">% normalize spectrum by samples and sampling rate</span>
+0156 
+0157 freqs=lfp_fs/2*linspace(0,1,nfft/2+1);
+0158 
+0159 <span class="comment">% smooth with multi-taper</span>
+0160 
+0161 [tapers,lambda]=dpss(samples,w,ntapers);
+0162 
+0163 <span class="comment">% pre allocate cell arrays to store taper and trial estimates</span>
+0164 
+0165 cross_spect_mean=zeros(1,nfft);
+0166 lfp_spect_mean=zeros(1,nfft);
+0167 spike_spect_mean=zeros(1,nfft);
+0168 
+0169 <span class="keyword">for</span> i=1:trials
+0170 
+0171     spike_locs=round(spike_data{i}*lfp_fs);
+0172 
+0173     <span class="keyword">if</span> length(unique(spike_locs))&lt;length(spike_locs)
+0174         error(<span class="string">'Error, multiple spikes in a single bin, try increasing SR'</span>);
+0175     <span class="keyword">end</span>
+0176 
+0177     binspike_data(i,spike_locs)=1;
+0178 
+0179 <span class="keyword">end</span>
+0180 
+0181 
+0182 parfor i=1:trials
+0183 
+0184     <span class="comment">% demean the data and compute the cross spectrum with the fields</span>
+0185 
+0186     currlfp=lfp_data(i,:)-mean(lfp_data(i,:));
+0187     currspikes=binspike_data(i,:)-mean(binspike_data(i,:));
+0188 
+0189     <span class="comment">% multi-taper estimate</span>
+0190     <span class="comment">% index by trial and taper, then we can estimate jackknife error bars</span>
+0191 
+0192     
+0193     cross_spect_mean_tmp=zeros(1,nfft);
+0194     lfp_spect_mean_tmp=zeros(1,nfft);
+0195     spike_spect_mean_tmp=zeros(1,nfft);
+0196 
+0197     <span class="keyword">for</span> j=1:ntapers
+0198 
+0199         spectlfp=fft(currlfp.*tapers(:,j)',nfft);
+0200         spectspikes=fft(currspikes.*tapers(:,j)',nfft);
+0201 
+0202         cross_power=(spectlfp.*conj(spectspikes))./(samples*lfp_fs);
+0203 
+0204         lfp_power=(abs(spectlfp).^2)./(samples*lfp_fs);
+0205         spike_power=(abs(spectspikes).^2)./(samples*lfp_fs);
+0206 
+0207         <span class="comment">% average across tapers, store across trials and just jackknife across trials</span>
+0208 
+0209         cross_spect_mean_tmp=cross_spect_mean_tmp+cross_power./(ntapers);
+0210         lfp_spect_mean_tmp=lfp_spect_mean_tmp+lfp_power./(ntapers);
+0211         spike_spect_mean_tmp=spike_spect_mean_tmp+spike_power./(ntapers);
+0212     <span class="keyword">end</span>
+0213 
+0214     cross_spect_mean=cross_spect_mean+cross_spect_mean_tmp./(trials);
+0215     lfp_spect_mean=lfp_spect_mean+lfp_spect_mean_tmp./(trials);
+0216     spike_spect_mean=spike_spect_mean+spike_spect_mean_tmp./(trials);
+0217 
+0218 
+0219 <span class="keyword">end</span>
+0220 
+0221 <span class="comment">% could also show phase angle here</span>
+0222 
+0223 dof=ntapers*trials;
+0224 
+0225 coh=cross_spect_mean./sqrt(lfp_spect_mean.*spike_spect_mean);
+0226 abscoh=abs(coh);
+0227 <span class="comment">% asymptotic errorbars</span>
+0228 
+0229 abscoh=abscoh(1:nfft/2+1);
+0230 
+0231 <span class="comment">% take the range that we're interested in</span>
+0232 
+0233 startidx=max([find(freqs&lt;=min_f)]);
+0234 
+0235 <span class="keyword">if</span> isempty(startidx)
+0236     startidx=1;
+0237 <span class="keyword">end</span>
+0238 
+0239 stopidx=min([find(freqs&gt;=max_f)]);
+0240 
+0241 abscoh=abscoh(startidx:stopidx);
+0242 freqs=freqs(startidx:stopidx);
+0243 
+0244 m_coherence_err=1.96./(sqrt(dof));
+0245 m_coherence_null=sqrt(1-alpha^(1/(dof/2-1)));
+0246 
+0247 upperconf=abscoh+m_coherence_err;
+0248 lowerconf=abscoh-m_coherence_err;
+0249 
+0250 <span class="comment">% save plots, data and parameters</span>
+0251 
+0252 [path,name,ext]=fileparts(savedir);
+0253 savedir=fullfile(savedir,<span class="string">'coherence'</span>);
+0254 
+0255 <span class="keyword">if</span> ~exist(savedir,<span class="string">'dir'</span>)
+0256     mkdir(savedir);
+0257 <span class="keyword">end</span>
+0258 
+0259 savefilename=[ name <span class="string">'_coherence_lfpch'</span><span class="keyword">...</span>
+0260            num2str(LFPCHANNEL) <span class="string">'_such'</span> num2str(SUCHANNEL) <span class="string">'_cl '</span> num2str(SUCLUSTER)];
+0261 
+0262 <span class="comment">% construct patch vectors</span>
+0263 
+0264 xdata=[freqs fliplr(freqs)];
+0265 ydata=[lowerconf fliplr(upperconf)];
+0266 
+0267 spect_fig=figure(<span class="string">'Visible'</span>,<span class="string">'off'</span>,<span class="string">'Position'</span>,[0 0 800 600]);
+0268 hold on;
+0269 patch(xdata,ydata,1,<span class="string">'facecolor'</span>,[.52 .81 .93],<span class="string">'edgecolor'</span>,<span class="string">'none'</span>);
+0270 h(1)=plot(freqs,abscoh,<span class="string">'-'</span>,<span class="string">'color'</span>,[0 0 1],<span class="string">'linewidth'</span>,1.25);
+0271 h(2)=plot(freqs,ones(size(abscoh)).*m_coherence_null,<span class="string">'k--'</span>,<span class="string">'linewidth'</span>,1.25);
+0272 set(gca,<span class="string">'TickDir'</span>,<span class="string">'out'</span>,<span class="string">'TickLength'</span>,[.02 .02],<span class="string">'layer'</span>,<span class="string">'top'</span>);
+0273 axis tight
+0274 box off
+0275 
+0276 l=legend(h,<span class="string">'Coh.'</span>,[<span class="string">'p='</span> num2str(alpha)]);
+0277 
+0278 xlabel(<span class="string">'Fs (Hz)'</span>);
+0279 ylabel(<span class="string">'Coherence'</span>);
+0280 title({[<span class="string">'LFP Ch. '</span> num2str(LFPCHANNEL) <span class="string">' SU Ch. '</span> num2str(SUCHANNEL) <span class="string">'cl'</span> num2str(SUCLUSTER) <span class="keyword">...</span>
+0281     <span class="string">' NTapers '</span> num2str(ntapers)' <span class="string">' trials '</span> num2str(trials) <span class="string">' res. '</span> num2str(resolution) <span class="string">' Hz '</span>]})
+0282 <a href="../ephys/helpers/visualization/prettify_axislabels.html" class="code" title="function prettify_axislabels(FIGHANDLE,varargin)">prettify_axislabels</a>(spect_fig);
+0283 
+0284 <a href="../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(spect_fig,savedir,savefilename,<span class="string">'eps,png'</span>);
+0285 
+0286 save(fullfile(savedir,[ savefilename <span class="string">'.mat'</span>]),<span class="string">'m_coherence_err'</span>,<span class="string">'m_coherence_null'</span>,<span class="string">'alpha'</span>,<span class="string">'coh'</span>,<span class="string">'abscoh'</span>,<span class="string">'freqs'</span>,<span class="string">'nfft'</span>,<span class="string">'samples'</span>,<span class="string">'ntapers'</span>,<span class="string">'w'</span>);</pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

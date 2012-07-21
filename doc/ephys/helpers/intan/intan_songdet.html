@@ -1,0 +1,826 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of intan_songdet</title>
+  <meta name="keywords" content="intan_songdet">
+  <meta name="description" content="intan_songdet.m processes .mat files for singing by looking at the ratio">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../../menu.html">Home</a> &gt;  <a href="../../menu.html">ephys</a> &gt; <a href="../menu.html">helpers</a> &gt; <a href="menu.html">intan</a> &gt; intan_songdet.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../../menu.html"><img alt="<" border="0" src="../../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys/helpers/intan&nbsp;<img alt=">" border="0" src="../../../right.png"></a></td></tr></table>-->
+
+<h1>intan_songdet
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="box"><strong>intan_songdet.m processes .mat files for singing by looking at the ratio</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="box"><strong>function intan_songdet(DIR,INTAN_DIR,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="fragment"><pre class="comment">intan_songdet.m processes .mat files for singing by looking at the ratio
+between energy in a particular &quot;song&quot; band and energy at all other frequencies.
+If song is detected, the script searches for Intan files with related ephys data
+according to their time stamp and performs a fine alignment by syncing TTL sequences
+aligned to the microphone recording and ephys recording (via the Intan aux channel).
+The output is written to &quot;extracted_song&quot; in the current folder.  
+
+Examples:
+
+intan_songdet(pwd)
+
+will use .mat files in the current directory and call up a GUI to choose the directory
+with the Intan files for alignment, the output will be saved in &quot;extracted_song&quot; in the 
+current directory.
+
+
+    intan_songdet(DIR,INTAN_DIR,varargin)
+
+    DIR
+    directory that contains .mat files with the microphone data (default: pwd)
+
+    INTAN_DIR
+    directory with Intan files (leaving empty will call up a GUI to choose a dir)
+
+    the following may be specified as parameter/value pairs:
+
+        mic_trace
+        column in data.voltage that contains the microphone trace
+
+        ttl_trace
+        column in data.voltage that contains the TTL trace
+        
+        minfs
+        lowermost frequency in the song band
+
+        maxfs
+        uppermost frequency in the song band (must be &gt;minfs)
+
+        ratio_tresh
+        threshold for song energy ratio (default:  3.5)
+
+        window
+        window to compute song energy ratio (default: 250 samples)
+
+        noverlap
+        overlap for computing song energy ratio (default: 0 samples)
+
+        song_thresh
+        threshold for song detection (default:  .3)
+
+        song_duration
+        smoothing duration for song energy ratio (default: 800 ms)
+
+        colors
+        colormap to use for generating sonograms (default:  hot)
+
+        intan_interval
+        save interval for Intan files (default: 60s, Intan default)
+
+        intan_fs
+        fs of Intan recording (default: 25e3, Intan default)
+
+        aux_trace
+        aux channel used for TTL sync signal (default: 6)
+
+        ephys_preview
+        define to write image files with aligned voltages (default: empty,
+        define to enable)
+
+        ephys_exclude
+        exclude electrodes for ephys_preview (default: empty)
+
+        debug
+        define to display windows with all relevant alignment information (default: empty)
+
+
+see also intan_align.m,<a href="read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>.m</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+<li><a href="read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>	[t,amps,data,aux] = read_intan_data</li><li><a href="song_det.html" class="code" title="function [song_idx power f t song_detvec]=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)">song_det</a>	based on Andalmann's code</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function song_idx=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)</a></li><li><a href="#_sub2" class="code">function [intan_extraction,original_ttl,intan_ttl,channels,match_score]=intan_extract(intan_dir,interval,intan_fs,aux_trace,</a></li><li><a href="#_sub3" class="code">function parsave(file,ephys_data,original_intan_ttl,adjusted_intan_ttl,resampled_mic_ttl,mic_data,fs,channels)</a></li><li><a href="#_sub4" class="code">function write_ephys_preview(save_file,intan_data,mic_data,fs,exclude)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function intan_songdet(DIR,INTAN_DIR,varargin)</a>
+0002 <span class="comment">%intan_songdet.m processes .mat files for singing by looking at the ratio</span>
+0003 <span class="comment">%between energy in a particular &quot;song&quot; band and energy at all other frequencies.</span>
+0004 <span class="comment">%If song is detected, the script searches for Intan files with related ephys data</span>
+0005 <span class="comment">%according to their time stamp and performs a fine alignment by syncing TTL sequences</span>
+0006 <span class="comment">%aligned to the microphone recording and ephys recording (via the Intan aux channel).</span>
+0007 <span class="comment">%The output is written to &quot;extracted_song&quot; in the current folder.</span>
+0008 <span class="comment">%</span>
+0009 <span class="comment">%Examples:</span>
+0010 <span class="comment">%</span>
+0011 <span class="comment">%intan_songdet(pwd)</span>
+0012 <span class="comment">%</span>
+0013 <span class="comment">%will use .mat files in the current directory and call up a GUI to choose the directory</span>
+0014 <span class="comment">%with the Intan files for alignment, the output will be saved in &quot;extracted_song&quot; in the</span>
+0015 <span class="comment">%current directory.</span>
+0016 <span class="comment">%</span>
+0017 <span class="comment">%</span>
+0018 <span class="comment">%    intan_songdet(DIR,INTAN_DIR,varargin)</span>
+0019 <span class="comment">%</span>
+0020 <span class="comment">%    DIR</span>
+0021 <span class="comment">%    directory that contains .mat files with the microphone data (default: pwd)</span>
+0022 <span class="comment">%</span>
+0023 <span class="comment">%    INTAN_DIR</span>
+0024 <span class="comment">%    directory with Intan files (leaving empty will call up a GUI to choose a dir)</span>
+0025 <span class="comment">%</span>
+0026 <span class="comment">%    the following may be specified as parameter/value pairs:</span>
+0027 <span class="comment">%</span>
+0028 <span class="comment">%        mic_trace</span>
+0029 <span class="comment">%        column in data.voltage that contains the microphone trace</span>
+0030 <span class="comment">%</span>
+0031 <span class="comment">%        ttl_trace</span>
+0032 <span class="comment">%        column in data.voltage that contains the TTL trace</span>
+0033 <span class="comment">%</span>
+0034 <span class="comment">%        minfs</span>
+0035 <span class="comment">%        lowermost frequency in the song band</span>
+0036 <span class="comment">%</span>
+0037 <span class="comment">%        maxfs</span>
+0038 <span class="comment">%        uppermost frequency in the song band (must be &gt;minfs)</span>
+0039 <span class="comment">%</span>
+0040 <span class="comment">%        ratio_tresh</span>
+0041 <span class="comment">%        threshold for song energy ratio (default:  3.5)</span>
+0042 <span class="comment">%</span>
+0043 <span class="comment">%        window</span>
+0044 <span class="comment">%        window to compute song energy ratio (default: 250 samples)</span>
+0045 <span class="comment">%</span>
+0046 <span class="comment">%        noverlap</span>
+0047 <span class="comment">%        overlap for computing song energy ratio (default: 0 samples)</span>
+0048 <span class="comment">%</span>
+0049 <span class="comment">%        song_thresh</span>
+0050 <span class="comment">%        threshold for song detection (default:  .3)</span>
+0051 <span class="comment">%</span>
+0052 <span class="comment">%        song_duration</span>
+0053 <span class="comment">%        smoothing duration for song energy ratio (default: 800 ms)</span>
+0054 <span class="comment">%</span>
+0055 <span class="comment">%        colors</span>
+0056 <span class="comment">%        colormap to use for generating sonograms (default:  hot)</span>
+0057 <span class="comment">%</span>
+0058 <span class="comment">%        intan_interval</span>
+0059 <span class="comment">%        save interval for Intan files (default: 60s, Intan default)</span>
+0060 <span class="comment">%</span>
+0061 <span class="comment">%        intan_fs</span>
+0062 <span class="comment">%        fs of Intan recording (default: 25e3, Intan default)</span>
+0063 <span class="comment">%</span>
+0064 <span class="comment">%        aux_trace</span>
+0065 <span class="comment">%        aux channel used for TTL sync signal (default: 6)</span>
+0066 <span class="comment">%</span>
+0067 <span class="comment">%        ephys_preview</span>
+0068 <span class="comment">%        define to write image files with aligned voltages (default: empty,</span>
+0069 <span class="comment">%        define to enable)</span>
+0070 <span class="comment">%</span>
+0071 <span class="comment">%        ephys_exclude</span>
+0072 <span class="comment">%        exclude electrodes for ephys_preview (default: empty)</span>
+0073 <span class="comment">%</span>
+0074 <span class="comment">%        debug</span>
+0075 <span class="comment">%        define to display windows with all relevant alignment information (default: empty)</span>
+0076 <span class="comment">%</span>
+0077 <span class="comment">%</span>
+0078 <span class="comment">%see also intan_align.m,read_intan_data_cli.m</span>
+0079 <span class="comment">%</span>
+0080 
+0081 <span class="comment">% where are the Intan files?</span>
+0082 
+0083 <span class="keyword">if</span> nargin&lt;2 | isempty(INTAN_DIR)
+0084     INTAN_DIR=uigetdir(pwd,<span class="string">'Select the directory with matching Intan files...'</span>);
+0085 <span class="keyword">end</span>
+0086 
+0087 <span class="keyword">if</span> nargin&lt;1 | isempty(DIR), DIR=pwd; <span class="keyword">end</span>
+0088 
+0089 nparams=length(varargin);
+0090 
+0091 <span class="keyword">if</span> mod(nparams,2)&gt;0
+0092     error(<span class="string">'Parameters must be specified as parameter/value pairs!'</span>);
+0093 <span class="keyword">end</span>
+0094 
+0095 mic_trace=1;
+0096 ttl_trace=2;
+0097 logfile=fullfile(DIR,<span class="string">'log.txt'</span>);
+0098 
+0099 minfs=1e3;
+0100 maxfs=4e3;
+0101 ratio_thresh=2.5;
+0102 window=250;
+0103 noverlap=0;
+0104 song_thresh=.5; <span class="comment">% between .2 and .3 seems to work best (higher is more exlusive)</span>
+0105 songduration=.5;
+0106 low=5;
+0107 high=10;
+0108 colors=hot;
+0109 intan_lag=1; <span class="comment">%consistent lag on the Intan TTL</span>
+0110 intan_pad=2; <span class="comment">%padding in seconds for the Intan extraction to account for sloppy clocks</span>
+0111          <span class="comment">%1-2 seems to be more than enough</span>
+0112 
+0113 intan_interval=60; <span class="comment">%intan save interval in seconds</span>
+0114 intan_fs=25e3; <span class="comment">%sampling rate of the Intan chip</span>
+0115 audio_fs=40e3; <span class="comment">%audio sampling rate</span>
+0116 audio_pad=.2; <span class="comment">% how much padding on each side for the extractions</span>
+0117 aux_trace=6; <span class="comment">%which Intan TTL trace to process</span>
+0118 ephys_preview=[]; <span class="comment">%write out files with squared &amp; smoothed voltage traces</span>
+0119 ephys_exclude=[];
+0120 debug=[];
+0121 
+0122 <span class="keyword">for</span> i=1:2:nparams
+0123     <span class="keyword">switch</span> lower(varargin{i})
+0124         <span class="keyword">case</span> <span class="string">'mic_trace'</span>
+0125             mic_trace=varargin{i+1};
+0126         <span class="keyword">case</span> <span class="string">'ttl_trace'</span>
+0127             ttl_trace=varargin{i+1};
+0128         <span class="keyword">case</span> <span class="string">'logfile'</span>
+0129             logfile=varargin{i+1};
+0130         <span class="keyword">case</span> <span class="string">'window'</span>
+0131             window=varargin{i+1};
+0132         <span class="keyword">case</span> <span class="string">'noverlap'</span>
+0133             noverlap=varargin{i+1};
+0134         <span class="keyword">case</span> <span class="string">'minfs'</span>
+0135             minfs=varargin{i+1};
+0136         <span class="keyword">case</span> <span class="string">'maxfs'</span>
+0137             maxfs=varargin{i+1};
+0138         <span class="keyword">case</span> <span class="string">'ratio_thresh'</span>
+0139             ratio_thresh=varargin{i+1};
+0140         <span class="keyword">case</span> <span class="string">'song_thresh'</span>
+0141             song_thresh=varargin{i+1};
+0142         <span class="keyword">case</span> <span class="string">'colors'</span>
+0143             colors=varargin{i+1};
+0144         <span class="keyword">case</span> <span class="string">'songduration'</span>
+0145             songduration=varargin{i+1};
+0146         <span class="keyword">case</span> <span class="string">'intan_interval'</span>
+0147             intan_interval=varargin{i+1};
+0148         <span class="keyword">case</span> <span class="string">'intan_fs'</span>
+0149             intan_fs=varargin{i+1};
+0150         <span class="keyword">case</span> <span class="string">'intan_interval'</span>
+0151             intan_interval=varargin{i+1};
+0152         <span class="keyword">case</span> <span class="string">'intan_pad'</span>
+0153             intan_pad=varargin{i+1};
+0154         <span class="keyword">case</span> <span class="string">'ephys_preview'</span>
+0155             ephys_preview=varargin{i+1};
+0156         <span class="keyword">case</span> <span class="string">'ephys_exclude'</span>
+0157             ephys_exclude=varargin{i+1};
+0158         <span class="keyword">case</span> <span class="string">'debug'</span>
+0159             debug=varargin{i+1};
+0160         <span class="keyword">otherwise</span>
+0161     <span class="keyword">end</span>
+0162 <span class="keyword">end</span>
+0163 
+0164 
+0165 
+0166 dir_name=[];
+0167 
+0168 <span class="keyword">while</span> isempty(dir_name)
+0169 
+0170     dir_name=input(<span class="string">'What would you like to name the directory to store the results?  '</span>,<span class="string">'s'</span>);
+0171 
+0172     <span class="keyword">if</span> exist(fullfile(DIR,dir_name),<span class="string">'dir'</span>)
+0173         disp(<span class="string">'Directory exists!'</span>);
+0174 
+0175         response=[];
+0176 
+0177         <span class="keyword">while</span> isempty(response)
+0178 
+0179             <span class="keyword">if</span> exist(fullfile(DIR,dir_name,<span class="string">'parameters.mat'</span>),<span class="string">'file'</span>)
+0180                 old=load(fullfile(DIR,dir_name,<span class="string">'parameters.mat'</span>),<span class="keyword">...</span>
+0181                     <span class="string">'window'</span>,<span class="string">'noverlap'</span>,<span class="string">'ratio_thresh'</span>,<span class="string">'song_thresh'</span>,<span class="keyword">...</span>
+0182                     <span class="string">'minfs'</span>,<span class="string">'maxfs'</span>,<span class="string">'songduration'</span>);
+0183                 flag=(old.window==window)&amp;&amp;(old.noverlap==noverlap)&amp;&amp;(old.ratio_thresh==ratio_thresh)<span class="keyword">...</span>
+0184                     &amp;&amp;(old.song_thresh==song_thresh)&amp;&amp;(old.minfs==minfs)<span class="keyword">...</span>
+0185                     &amp;&amp;(old.maxfs==maxfs)&amp;&amp;(old.songduration==songduration);
+0186                 <span class="keyword">if</span> flag
+0187                     disp(<span class="string">'Parameters match'</span>);
+0188                 <span class="keyword">else</span>
+0189                     disp(<span class="string">'Parameters do not match'</span>);
+0190                 <span class="keyword">end</span>
+0191 
+0192 
+0193             <span class="keyword">end</span>
+0194 
+0195             response=input(<span class="string">'Okay to proceed, files may be overwritten (y or n)?  '</span>,<span class="string">'s'</span>);
+0196 
+0197             <span class="keyword">switch</span> lower(response(1))
+0198 
+0199                 <span class="keyword">case</span> <span class="string">'y'</span>
+0200                     <span class="keyword">break</span>;
+0201                 <span class="keyword">case</span> <span class="string">'n'</span>
+0202                     dir_name=[];
+0203                 <span class="keyword">otherwise</span>
+0204                     response=[];
+0205             <span class="keyword">end</span>
+0206         <span class="keyword">end</span>
+0207 
+0208     <span class="keyword">end</span>
+0209 
+0210 <span class="keyword">end</span>
+0211 
+0212 mkdir(fullfile(DIR,dir_name));
+0213 
+0214 save(fullfile(DIR,dir_name,<span class="string">'parameters.mat'</span>),<span class="keyword">...</span>
+0215     <span class="string">'window'</span>,<span class="string">'noverlap'</span>,<span class="string">'ratio_thresh'</span>,<span class="string">'song_thresh'</span>,<span class="string">'minfs'</span>,<span class="string">'maxfs'</span>,<span class="string">'songduration'</span>);
+0216 
+0217 save_dir=fullfile(DIR,dir_name,<span class="string">'mat'</span>);
+0218 image_dir=fullfile(DIR,dir_name,<span class="string">'gif'</span>);
+0219 wav_dir=fullfile(DIR,dir_name,<span class="string">'wav'</span>);
+0220 mkdir(save_dir);
+0221 mkdir(image_dir);
+0222 mkdir(wav_dir);
+0223 
+0224 <span class="comment">% basic idea:</span>
+0225 <span class="comment">%</span>
+0226 <span class="comment">% 1) process mic trace for singing</span>
+0227 <span class="comment">% 2) extract slaved TTL trace</span>
+0228 <span class="comment">% 3) search the directory with relevant Intan data and parse the timestamp</span>
+0229 <span class="comment">%    in the filenames</span>
+0230 <span class="comment">% 4) use the timestamp from the mic trace to identiy the point in the Intan</span>
+0231 <span class="comment">%    data to grab</span>
+0232 <span class="comment">% 5) extract multi-channel Intan data and use the aux TTL for precise alignment</span>
+0233 
+0234 <span class="comment">% standard anonymous function to be used in parfor for saving</span>
+0235 <span class="comment">% files</span>
+0236 
+0237 <span class="comment">% should add an option to create separate directories, standard query...</span>
+0238 
+0239 par_save = @(FILE,data) save([FILE],<span class="string">'data'</span>);
+0240 
+0241 <span class="comment">%%</span>
+0242 
+0243 <span class="comment">% it is assumed that the TTL trace is the column after the mic trace, if not, specify</span>
+0244 <span class="comment">% as a parameter/value pair</span>
+0245 
+0246 <span class="keyword">if</span> isempty(ttl_trace)
+0247     ttl_trace=mic_trace+1;
+0248 <span class="keyword">end</span>
+0249 
+0250 <span class="comment">% the mic traces should be stored in the mat files</span>
+0251 
+0252 <span class="keyword">if</span> isempty(DIR)
+0253     [filename,pathname]=uigetfile(<span class="string">'*.mat'</span>,<span class="string">'MAT-files (*.mat)'</span>,<span class="keyword">...</span>
+0254         <span class="string">'Pick .mat files with mic and TTL traces'</span>,<span class="string">'MultiSelect'</span>,<span class="string">'on'</span>);
+0255     <span class="keyword">for</span> i=1:length(filename)
+0256         files_to_proc{i}=fullfile(pathname,filename{i});
+0257     <span class="keyword">end</span>
+0258 <span class="keyword">else</span>
+0259     files_to_proc_pre=dir(fullfile(DIR,<span class="string">'*.mat'</span>));
+0260     files_to_proc={files_to_proc_pre(:).name};
+0261 <span class="keyword">end</span>
+0262     
+0263 <span class="comment">% need to filter out the low_fs noise in the mic recording</span>
+0264 
+0265 match_score=[];
+0266 
+0267 [b,a]=butter(5,[600/(audio_fs/2)],<span class="string">'high'</span>);
+0268 
+0269 parfor i=1:length(files_to_proc)
+0270 
+0271     ax=[];
+0272     data=[];
+0273 
+0274     disp([<span class="string">'Processing '</span> files_to_proc{i}]);
+0275 
+0276     <span class="comment">% now we need to pull out time and extract the appropriate data from Intan</span>
+0277 
+0278     <span class="keyword">try</span>
+0279         data=getfield(load(files_to_proc{i},<span class="string">'data'</span>),<span class="string">'data'</span>);
+0280     <span class="keyword">catch</span>    
+0281         <span class="keyword">continue</span>;
+0282     <span class="keyword">end</span>
+0283 
+0284     fs=data.sampling_rate;
+0285 
+0286     <span class="comment">%[b,a]=butter(3,(600/(fs/2)),'high');</span>
+0287 
+0288     audio_data=data.voltage(:,mic_trace);
+0289 
+0290     <span class="keyword">if</span> length(audio_data)&lt;window
+0291         <span class="keyword">continue</span>;
+0292     <span class="keyword">end</span>
+0293 
+0294     <span class="comment">% run song detection, check for power in the songband relative to power outside</span>
+0295 
+0296     song_bin=<a href="song_det.html" class="code" title="function [song_idx power f t song_detvec]=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)">song_det</a>(audio_data,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh);
+0297 
+0298     song_pts=find(song_bin&gt;0);
+0299 
+0300     <span class="keyword">if</span> isempty(song_pts)
+0301         <span class="keyword">continue</span>;
+0302     <span class="keyword">else</span>
+0303         disp([<span class="string">'Song detected in file:  '</span> files_to_proc{i}]);
+0304     <span class="keyword">end</span>
+0305 
+0306     <span class="comment">% create a large sonogram with detected song marked with a black bar</span>
+0307 
+0308     audio_data=filtfilt(b,a,audio_data);
+0309 
+0310     [sonogram_im,F,T]=spectrogram(audio_data,window,noverlap,[]);
+0311     sonogram_im=1e4*abs(flipdim(sonogram_im,1));
+0312     sonogram_im=log(sonogram_im+2);
+0313     sonogram_im(sonogram_im&gt;high)=high;
+0314     sonogram_im(sonogram_im&lt;low)=low;
+0315     sonogram_im=sonogram_im-low;
+0316     sonogram_im=sonogram_im/(high-low);
+0317     sonogram_im=63*(1-sonogram_im);
+0318 
+0319     <span class="comment">% factor to move from sonogram coordinates to raw audio data coordinates</span>
+0320 
+0321     son_to_vec=(length(audio_data)-noverlap)/(length(song_bin));
+0322 
+0323     <span class="comment">% use diff to find non_continguous song bouts</span>
+0324 
+0325     song_idx=[0 find(diff(song_pts*son_to_vec)&gt;fs) length(song_pts)];
+0326 
+0327     [path,name,ext]=fileparts(files_to_proc{i});
+0328 
+0329     sonogram_filename=fullfile(image_dir,[ name <span class="string">'.gif'</span> ]);
+0330 
+0331     <span class="keyword">for</span> j=1:length(song_idx)-1
+0332 
+0333         startpoint=floor((song_pts(song_idx(j)+1))*son_to_vec-audio_pad*fs);
+0334         endpoint=ceil((song_pts(song_idx(j+1)))*son_to_vec+audio_pad*fs);
+0335 
+0336         <span class="keyword">if</span> startpoint&lt;1, startpoint=1; <span class="keyword">end</span>
+0337         <span class="keyword">if</span> endpoint&gt;length(audio_data), endpoint=length(audio_data); <span class="keyword">end</span>
+0338 
+0339         audio_extraction=audio_data(startpoint:endpoint);
+0340         save_name=[ name <span class="string">'_chunk_'</span> num2str(j) ];
+0341         
+0342         <span class="keyword">if</span> length(audio_extraction)&lt;500
+0343             <span class="keyword">continue</span>;
+0344         <span class="keyword">end</span>
+0345 
+0346         <span class="keyword">if</span> exist(fullfile(save_dir,[ save_name <span class="string">'_aggregated.mat'</span>]),<span class="string">'file'</span>)
+0347             disp([ save_name <span class="string">'_aggregated.mat'</span> <span class="string">' already processed, skipping...'</span>]);
+0348             <span class="keyword">continue</span>;
+0349         <span class="keyword">end</span>
+0350 
+0351         ttl_extraction=double(data.voltage(startpoint:endpoint,ttl_trace)&gt;1);
+0352 
+0353         sonogram_im(1:10,ceil(startpoint/son_to_vec):ceil(endpoint/son_to_vec))=0;
+0354 
+0355 
+0356         [chunk_sonogram_im,F,T]=spectrogram(audio_extraction,500,350,[]);
+0357         chunk_sonogram_im=1e4*abs(flipdim(chunk_sonogram_im,1));
+0358         chunk_sonogram_im=log(chunk_sonogram_im+2);
+0359         chunk_sonogram_im(chunk_sonogram_im&gt;high)=high;
+0360         chunk_sonogram_im(chunk_sonogram_im&lt;low)=low;
+0361         chunk_sonogram_im=chunk_sonogram_im-low;
+0362         chunk_sonogram_im=chunk_sonogram_im/(high-low);
+0363         chunk_sonogram_im=63*(1-chunk_sonogram_im);
+0364 
+0365         imwrite(uint8(chunk_sonogram_im),colors,fullfile(image_dir,[ save_name <span class="string">'.gif'</span>]),<span class="string">'gif'</span>);
+0366                 
+0367         <span class="comment">% the actual time our extraction starts</span>
+0368 
+0369         starting_time=addtodate(datenum(data.start_time),round(data.time(startpoint))+intan_lag,<span class="string">'second'</span>);
+0370 
+0371         <span class="comment">% resample data acquired by the nidaq to match Intan data</span>
+0372 
+0373         resample_factor=intan_fs/fs;
+0374         [p,q]=rat(resample_factor);
+0375 
+0376         res_mic_data=resample(audio_extraction,p,q);
+0377         res_mic_ttl=double(resample(ttl_extraction,p,q)&gt;.5);
+0378 
+0379         sound_len=length(res_mic_data)-1; <span class="comment">% length of the sound in samples</span>
+0380 
+0381         [intan_extraction,original_ttl,intan_ttl,channels,match_score_tmp]=<a href="#_sub2" class="code" title="subfunction [intan_extraction,original_ttl,intan_ttl,channels,match_score]=intan_extract(intan_dir,interval,intan_fs,aux_trace,">intan_extract</a>(INTAN_DIR,intan_interval,intan_fs,aux_trace,<span class="keyword">...</span>
+0382             res_mic_ttl,starting_time,sound_len,intan_pad);
+0383         
+0384         <span class="comment">% write the high fs audio data out as a .wav</span>
+0385 
+0386         min_audio=min(audio_extraction(:));
+0387         max_audio=max(audio_extraction(:));
+0388 
+0389         <span class="keyword">if</span> min_audio + max_audio &lt; 0
+0390             audio_extraction=audio_extraction./(-min_audio);
+0391         <span class="keyword">else</span>
+0392             audio_extraction=audio_extraction./(max_audio*(1+1e-3));
+0393         <span class="keyword">end</span>
+0394     
+0395         <span class="comment">%disp([num2str(min(audio_extraction))]);</span>
+0396         <span class="comment">%disp([num2str(max(audio_extraction))]);</span>
+0397 
+0398         wavwrite(audio_extraction,fs,fullfile(wav_dir,[ save_name <span class="string">'.wav'</span>]));
+0399         
+0400         <span class="comment">% write out the resampled audio data and ttl aligned to Intan data</span>
+0401 
+0402         <span class="keyword">if</span> ~isempty(intan_extraction)
+0403 
+0404             <a href="#_sub3" class="code" title="subfunction parsave(file,ephys_data,original_intan_ttl,adjusted_intan_ttl,resampled_mic_ttl,mic_data,fs,channels)">parsave</a>(fullfile(save_dir,[ save_name <span class="string">'_aggregated.mat'</span>]),<span class="keyword">...</span>
+0405                 intan_extraction,original_ttl,intan_ttl,res_mic_ttl,res_mic_data,intan_fs,channels);
+0406 
+0407             <span class="comment">% write out squared and smoothed traces to a PDF for previewing</span>
+0408 
+0409             <span class="keyword">if</span> ~isempty(ephys_preview)
+0410                 <a href="#_sub4" class="code" title="subfunction write_ephys_preview(save_file,intan_data,mic_data,fs,exclude)">write_ephys_preview</a>(fullfile(save_dir,[ save_name <span class="string">'_ephys'</span>]),<span class="keyword">...</span>
+0411                     intan_extraction,res_mic_data,intan_fs,ephys_exclude);
+0412             <span class="keyword">end</span>
+0413 
+0414             match_score=[match_score match_score_tmp];
+0415 
+0416             <span class="keyword">if</span> ~isempty(debug)
+0417                 figure();
+0418 
+0419                 ax(1)=subplot(3,1,1);plot(res_mic_ttl);
+0420                 ylabel(<span class="string">'NiDAQ TTL'</span>);
+0421                 ax(2)=subplot(3,1,2);plot(original_ttl);
+0422                 ylabel(<span class="string">'Intan guess'</span>);
+0423                 ax(3)=subplot(3,1,3);plot(intan_ttl);
+0424                 ylabel(<span class="string">'Adjusted with xcorr'</span>);
+0425 
+0426                 linkaxes([ax(1) ax(3)],<span class="string">'x'</span>);
+0427             <span class="keyword">end</span>
+0428 
+0429 
+0430 
+0431         <span class="keyword">end</span>
+0432 
+0433     <span class="keyword">end</span>
+0434 
+0435     reformatted_im=im_reformat(sonogram_im,10);
+0436     imwrite(uint8(reformatted_im),colors,sonogram_filename,<span class="string">'gif'</span>);
+0437 
+0438 <span class="keyword">end</span>
+0439 
+0440 save(fullfile(DIR,dir_name,<span class="string">'match_scores.mat'</span>),<span class="string">'match_score'</span>);
+0441 
+0442 <span class="keyword">end</span>
+0443 
+0444 <span class="comment">%%%%%%%%%%%%%%%</span>
+0445 
+0446 <a name="_sub1" href="#_subfunctions" class="code">function song_idx=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)</a>
+0447 
+0448 [s,f,t]=spectrogram(audio,window,noverlap,[],fs);
+0449 
+0450 <span class="comment">% take the power and find our fs band</span>
+0451 
+0452 power=abs(s);
+0453 min_idx=max(find(f&lt;=minfs));
+0454 max_idx=min(find(f&gt;=maxfs));
+0455 
+0456 <span class="comment">% take the song/nonsong power ratio</span>
+0457 
+0458 song=mean(power(min_idx:max_idx,:),1);
+0459 nonsong=mean(power([1:min_idx-1 max_idx+1:end],:),1)+eps;
+0460 
+0461 song_ratio=song./nonsong;
+0462 <span class="comment">%song_det=smooth(double(song_ratio&gt;ratio_thresh),window);</span>
+0463 
+0464 <span class="comment">% convolve with a moving average filter</span>
+0465 
+0466 filt_size=round((fs*songduration)/(window-noverlap));
+0467 mov_filt=ones(1,filt_size)*1/filt_size;
+0468 song_detvec=conv(double(song_ratio&gt;ratio_thresh),mov_filt,<span class="string">'same'</span>);
+0469 
+0470 <span class="comment">% where is the threshold exceeded?</span>
+0471 
+0472 song_idx=song_detvec&gt;song_thresh;
+0473 
+0474 <span class="keyword">end</span>
+0475 
+0476 <span class="comment">%%%%%%%%%%%%%%</span>
+0477 
+0478 <a name="_sub2" href="#_subfunctions" class="code">function [intan_extraction,original_ttl,intan_ttl,channels,match_score]=intan_extract(intan_dir,interval,intan_fs,aux_trace,</a><span class="keyword">...</span>
+0479         res_mic_ttl,starting_time,sound_len,padding)
+0480 
+0481 <span class="comment">% time is passed as a datenum, we need to find the Intan</span>
+0482 <span class="comment">% file that recorded data at the same time</span>
+0483 
+0484 <span class="comment">% parse the intan filename, which is a stamp of the TIME</span>
+0485 <span class="comment">% the file is opened, writing appears to have a slight</span>
+0486 <span class="comment">% delay (thus making the Intan data 1-2 s delayed relative</span>
+0487 <span class="comment">% to nidaq according to the file's timestamp)</span>
+0488 
+0489 <span class="comment">% and calculate approximately which data we want to extract</span>
+0490 
+0491 <span class="comment">% thus the time has to be within the interval TIME_STAMP-save_interval</span>
+0492 
+0493 pre_file_list=dir(fullfile(intan_dir,<span class="string">'*.int'</span>)); <span class="comment">%intan files have the extension int</span>
+0494 
+0495 file_list={};
+0496 
+0497 <span class="keyword">for</span> i=1:length(pre_file_list)
+0498     file_list{i}=fullfile(intan_dir,pre_file_list(i).name);
+0499 <span class="keyword">end</span>
+0500 
+0501 intan_extraction=[];
+0502 original_ttl=[];
+0503 intan_ttl=[];
+0504 channels=[];
+0505 match_score=[];
+0506 
+0507 <span class="comment">% should convert the Intan grab to samples not seconds (rounding errors are causing the</span>
+0508 <span class="comment">% the Intan data to have an extra sample occassionally, just specify in samples!)</span>
+0509 
+0510 <span class="keyword">for</span> i=1:length(file_list)
+0511 
+0512     [path,name,ext]=fileparts(file_list{i});
+0513     tokens=regexp(name,<span class="string">'\_'</span>,<span class="string">'split'</span>);
+0514 
+0515     <span class="comment">% the second token is the date, third the time</span>
+0516 
+0517     intan_start=datenum([tokens{end-1} tokens{end}],<span class="string">'yymmddHHMMSS'</span>);
+0518 
+0519     <span class="comment">% can we grab the entire sound with the padding?</span>
+0520 
+0521     <span class="comment">% intan_start&lt;micdata_start-padding &amp; micdata_start+sound_len+padding&lt;intan_start+save interval (time</span>
+0522     <span class="comment">% collected in each Intan file)</span>
+0523 
+0524 
+0525     flag_1=addtodate(starting_time,-padding,<span class="string">'second'</span>)&gt;intan_start;
+0526     flag_2=addtodate(starting_time,ceil(sound_len/intan_fs)+padding,<span class="string">'second'</span>)&lt;addtodate(intan_start,interval,<span class="string">'second'</span>);
+0527 
+0528     <span class="keyword">if</span> flag_1 &amp;&amp; flag_2
+0529 
+0530         <span class="comment">% estimated offset is the time elapsed between the starting time of the imc</span>
+0531         <span class="comment">% trace and the start of the Intan file</span>
+0532 
+0533         offset=etime(datevec(starting_time),datevec(intan_start));
+0534         disp([<span class="string">'Checking file: '</span>  file_list{i}]);
+0535         disp([<span class="string">'Assuming offset:  '</span> num2str(offset)]); 
+0536         [t,channels,intan_data,aux] = <a href="read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>(file_list{i});
+0537 
+0538         <span class="comment">% extract at the estimated point-fudge factor in samples</span>
+0539 
+0540         startpoint=round((offset-padding)*intan_fs);
+0541 
+0542         <span class="comment">% the initial extraction (endpoint+fudge factor in secs, conv to samples)</span>
+0543 
+0544         stoppoint=startpoint+sound_len+(padding*intan_fs);
+0545 
+0546         <span class="keyword">if</span> stoppoint&gt;length(t)
+0547             <span class="keyword">continue</span>;
+0548         <span class="keyword">end</span>
+0549 
+0550         intan_ttl=double(aux(startpoint:stoppoint,6));
+0551 
+0552         original_ttl=intan_ttl;
+0553 
+0554         disp(<span class="string">'Adjusting alignment...'</span>);
+0555 
+0556         <span class="comment">%intan_ttl(intan_ttl==0)=-1;</span>
+0557         [align_score,lags]=xcorr(intan_ttl,res_mic_ttl);
+0558         [dummy,delay]=max(align_score);
+0559         
+0560         align_point=lags(delay);
+0561         startpoint=align_point+startpoint;
+0562 
+0563         disp([num2str([length(intan_ttl) length(res_mic_ttl) align_point])]);
+0564 
+0565         [samples,traces]=size(intan_data);
+0566 
+0567         <span class="keyword">if</span> startpoint&lt;1 || (startpoint+sound_len)&gt;samples
+0568             disp(<span class="string">'Lag too short or too large, skipping alignment...'</span>);
+0569             <span class="keyword">return</span>;
+0570         <span class="keyword">end</span>
+0571 
+0572         intan_ttl=double(aux(startpoint:startpoint+sound_len,aux_trace));
+0573         intan_extraction=intan_data(startpoint:startpoint+sound_len,:);
+0574 
+0575         match_intan=intan_ttl;
+0576         match_intan(match_intan==0)=-1;
+0577         match_nidaq=res_mic_ttl;
+0578         match_nidaq(match_nidaq==0)=-1;
+0579 
+0580         match_score=sum(match_intan.*match_nidaq)/length(match_intan);
+0581         disp([<span class="string">'Match score '</span> num2str(match_score)]);
+0582 
+0583         <span class="keyword">if</span> match_score&lt;.75
+0584             disp(<span class="string">'Warning!  Match score is less than expected, skipping alignment...'</span>);
+0585             intan_ttl=[];
+0586             intan_extraction=[];
+0587         <span class="keyword">end</span>
+0588 
+0589         <span class="keyword">return</span>;
+0590 
+0591     <span class="keyword">end</span>
+0592 
+0593 <span class="keyword">end</span>
+0594 
+0595 
+0596 <span class="keyword">end</span>
+0597 
+0598 <span class="comment">%%%%%%%%%%%%%%%</span>
+0599 
+0600 <a name="_sub3" href="#_subfunctions" class="code">function parsave(file,ephys_data,original_intan_ttl,adjusted_intan_ttl,resampled_mic_ttl,mic_data,fs,channels)</a>
+0601 
+0602 save(file,<span class="string">'ephys_data'</span>,<span class="string">'original_intan_ttl'</span>,<span class="string">'adjusted_intan_ttl'</span>,<span class="string">'resampled_mic_ttl'</span>,<span class="string">'mic_data'</span>,<span class="string">'fs'</span>,<span class="string">'channels'</span>);
+0603 
+0604 <span class="keyword">end</span>
+0605 
+0606 
+0607 <a name="_sub4" href="#_subfunctions" class="code">function write_ephys_preview(save_file,intan_data,mic_data,fs,exclude)</a>
+0608 
+0609 <span class="comment">% spectrogram parameters</span>
+0610 
+0611 low=6;
+0612 high=13;
+0613 smoothing=.01; <span class="comment">% smoothing window in seconds</span>
+0614 subplot_space=.05;
+0615 
+0616 <span class="keyword">if</span> nargin&lt;5, exclude=[]; <span class="keyword">end</span>
+0617 
+0618 <span class="comment">% for display just square and smooth after car noise rejection</span>
+0619 
+0620 good_electrodes=setdiff([1:16],exclude);
+0621 nplots=length(good_electrodes)+3;
+0622 
+0623 [samples,traces]=size(intan_data);
+0624 
+0625 <span class="comment">% figure dimensions</span>
+0626 
+0627 width=samples/10.5e3
+0628 height=nplots*.9
+0629 
+0630 
+0631 <span class="comment">% make a large subplot with nelectrodes abutting subplots</span>
+0632 
+0633 [mic_sonogram,F,T]=spectrogram(mic_data,500,350,[],fs,<span class="string">'yaxis'</span>);
+0634 
+0635 mic_sonogram=1e4*abs(mic_sonogram);
+0636 mic_sonogram=log(mic_sonogram+2);
+0637 mic_sonogram(mic_sonogram&gt;high)=high;
+0638 mic_sonogram(mic_sonogram&lt;low)=low;
+0639 mic_sonogram=mic_sonogram-low;
+0640 mic_sonogram=mic_sonogram/(high-low);
+0641 mic_sonogram=64*(1-mic_sonogram);
+0642 
+0643 all_traces_fig=figure(<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+0644 ax(1)=subplot(nplots,1,1:3);
+0645 image(T,F,mic_sonogram);colormap(hot);
+0646 set(ax(1),<span class="string">'ydir'</span>,<span class="string">'norm'</span>);
+0647 ylabel(<span class="string">'Hz'</span>);
+0648 box off;
+0649 set(gca,<span class="string">'xtick'</span>,[],<span class="string">'tickdir'</span>,<span class="string">'out'</span>);
+0650 hold on;
+0651 
+0652 <span class="keyword">for</span> i=1:length(good_electrodes)
+0653     
+0654     ax(i+1)=subplot(nplots,1,i+3);
+0655 
+0656     <span class="comment">% car rejection</span>
+0657 
+0658     noise_estimate=mean(intan_data(:,good_electrodes),2);
+0659 
+0660     <span class="comment">% square and smooth</span>
+0661 
+0662     plot_data=smooth((intan_data(:,good_electrodes(i))-noise_estimate).^2,smoothing*fs);
+0663     plot([1:samples]./fs,plot_data);
+0664     ylabel([<span class="string">'Elec. '</span> num2str(good_electrodes(i))]);
+0665 
+0666     <span class="comment">%if i&gt;1</span>
+0667     <span class="comment">%    prev_position=get(subplot(nplots,1,i+3-1),'position');</span>
+0668     <span class="comment">%    curr_position=get(ax(i+1),'position');</span>
+0669     <span class="comment">%    new_bot=curr_position(3)+subplot_space;</span>
+0670     <span class="comment">%    curr_position(3)=new_bot;</span>
+0671     <span class="comment">%    set(ax(i+1),'position',curr_position);</span>
+0672     <span class="comment">%end</span>
+0673         
+0674     <span class="comment">%set(gca,'xtick',[],'ytick',[min(plot_data) max(plot_data)],'tickdir','out');</span>
+0675     box off
+0676     
+0677     
+0678 
+0679 <span class="keyword">end</span>
+0680 
+0681 axis tight
+0682 linkaxes(ax,<span class="string">'x'</span>);
+0683 
+0684 <span class="keyword">for</span> i=1:length(good_electrodes)-1
+0685     subplot(nplots,1,i+3);
+0686     ylimits=ylim();
+0687     set(gca,<span class="string">'xtick'</span>,[],<span class="string">'tickdir'</span>,<span class="string">'out'</span>);
+0688 <span class="keyword">end</span>
+0689 
+0690 subplot(nplots,1,nplots);
+0691 xlabel(<span class="string">'Time (in seconds'</span>);
+0692 
+0693 set(all_traces_fig,<span class="string">'PaperSize'</span>,[width height])
+0694 set(all_traces_fig,<span class="string">'PaperPosition'</span>,[ .1 .1 width-.2 height-.2 ]);
+0695 <span class="comment">%orient</span>
+0696 <span class="comment">%orient(all_traces_fig,'portrait');</span>
+0697 
+0698 print(all_traces_fig,<span class="string">'-depsc2'</span>,fullfile([save_file <span class="string">'.eps'</span>]));
+0699 close([all_traces_fig]);
+0700 
+0701 <span class="keyword">end</span></pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

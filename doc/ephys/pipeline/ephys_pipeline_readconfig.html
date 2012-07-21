@@ -1,0 +1,92 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of ephys_pipeline_readconfig</title>
+  <meta name="keywords" content="ephys_pipeline_readconfig">
+  <meta name="description" content="">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../menu.html">Home</a> &gt;  <a href="../menu.html">ephys</a> &gt; <a href="menu.html">pipeline</a> &gt; ephys_pipeline_readconfig.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../menu.html"><img alt="<" border="0" src="../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys/pipeline&nbsp;<img alt=">" border="0" src="../../right.png"></a></td></tr></table>-->
+
+<h1>ephys_pipeline_readconfig
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong></strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong>function [PARAMETERS]=ephys_pipeline_readconfig(FILE) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre class="comment"></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+<li><a href="ephys_pipeline_lfp_standalone.html" class="code" title="function ephys_lfp_standalone(PROCDIR,CONFIG)">ephys_pipeline_lfp_standalone</a>	</li><li><a href="ephys_pipeline_mua_standalone.html" class="code" title="function ephys_mua_standalone(PROCDIR,CONFIG)">ephys_pipeline_mua_standalone</a>	</li><li><a href="ephys_pipeline_smscore_standalone.html" class="code" title="function smscore_standalone(FILENAME,CONFIG)">ephys_pipeline_smscore_standalone</a>	</li><li><a href="ephys_pipeline_songextract_aggregate.html" class="code" title="function ephys_songextract_aggregate(FILEDIR,SAVEDIR,CONFIG)">ephys_pipeline_songextract_aggregate</a>	ephys_songextract_aggregate.m is part of the ephys pipeline</li><li><a href="ephys_pipeline_sua_standalone.html" class="code" title="function ephys_lfp_standalone(PROCDIR,CONFIG)">ephys_pipeline_sua_standalone</a>	</li></ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [PARAMETERS]=ephys_pipeline_readconfig(FILE)</a>
+0002 <span class="comment">%</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">%</span>
+0005 <span class="comment">%</span>
+0006 <span class="comment">%</span>
+0007 
+0008 
+0009 fid=fopen(FILE,<span class="string">'r'</span>);
+0010 readdata=textscan(fid,<span class="string">'%s%[^\n]'</span>,<span class="string">'commentstyle'</span>,<span class="string">'#'</span>);
+0011 
+0012 PARAMETERS.freq_range={};
+0013 idxs=find(strcmp(<span class="string">'freq_range'</span>,readdata{1}));
+0014 
+0015 <span class="keyword">for</span> i=1:length(idxs)
+0016     PARAMETERS.freq_range{end+1}=str2num(readdata{2}{idxs(i)});
+0017 
+0018 <span class="keyword">end</span>
+0019 
+0020 readdata{1}(idxs)=[];
+0021 readdata{2}(idxs)=[];
+0022 
+0023 <span class="keyword">for</span> i=1:length(readdata{1})
+0024     PARAMETERS.(readdata{1}{i})=str2double(readdata{2}{i});
+0025 
+0026     <span class="comment">% if this returns NaN, then the parameter value was specified as a string,</span>
+0027     <span class="comment">% read as such</span>
+0028 
+0029     <span class="keyword">if</span> isnan(PARAMETERS.(readdata{1}{i}))
+0030 
+0031         <span class="keyword">if</span> strcmp(readdata{2}{i},<span class="string">'[]'</span>)
+0032             PARAMETERS.(readdata{1}{i})=str2num(readdata{2}{i});
+0033         <span class="keyword">else</span>
+0034             PARAMETERS.(readdata{1}{i})=readdata{2}{i};
+0035         <span class="keyword">end</span>
+0036 
+0037     <span class="keyword">end</span>
+0038 
+0039 
+0040 <span class="keyword">end</span>
+0041 
+0042 
+0043 
+0044 
+0045</pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

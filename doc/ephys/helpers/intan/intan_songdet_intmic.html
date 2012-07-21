@@ -1,0 +1,522 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of intan_songdet_intmic</title>
+  <meta name="keywords" content="intan_songdet_intmic">
+  <meta name="description" content="intan_songdet_intmic.m is the core script for processing Intan files">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../../menu.html">Home</a> &gt;  <a href="../../menu.html">ephys</a> &gt; <a href="../menu.html">helpers</a> &gt; <a href="menu.html">intan</a> &gt; intan_songdet_intmic.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../../menu.html"><img alt="<" border="0" src="../../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="menu.html">Index for ephys/helpers/intan&nbsp;<img alt=">" border="0" src="../../../right.png"></a></td></tr></table>-->
+
+<h1>intan_songdet_intmic
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="box"><strong>intan_songdet_intmic.m is the core script for processing Intan files</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="box"><strong>function intan_songdet_intmic(DIR,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="fragment"><pre class="comment">intan_songdet_intmic.m is the core script for processing Intan files
+on the fly.  
+
+    intan_songdet_intmic(DIR,varargin)
+
+    DIR
+    directory to process 
+
+    the following may be specified as parameter/value pairs
+
+        mic_pre
+        mic channel (only need to specify if nosort==1)
+
+        minfs
+        minimum fs used for song detection (default: 2e3)
+
+        maxfs
+        maximum fs used for song detection (default: 6e3)
+
+        ratio_thresh
+        ratio between song frequencies and non-song frequencies for song detection (default: 4)
+
+        window
+        spectrogram window for song detection (default: 250 samples)
+        
+        noverlap
+        window overlap for song detection (default: 0)
+
+        song_thresh
+        song threshold (default: .27)
+    
+        songduration
+        song duration for song detection in secs (default: .8 seconds)
+
+        low
+        parameter for spectrogram display (default: 5), lower if spectrogram are dim        
+
+        high
+        parameter for spectrogram display (default: 10)
+
+        colors
+        spectrogram colormap (default: hot)        
+
+        disp_minfs
+        minimum fs for spectrograms (default: 1e3)        
+
+        disp_maxfs
+        maximum fs for spectrograms (default: 7e3)        
+
+        filtering
+        high pass corner for mic trace (default: 700 Hz)
+
+        intan_fs
+        Intan sampling rate (default: 25e3)
+
+        audio_pad
+        extra data to left and right of extraction points to extract (default: .2 secs)
+
+        folder_format
+        folder format (date string) (default: yyyy-mm-dd)
+
+        image_pre
+        image sub directory (default: 'gif')
+    
+        wav_pre
+        wav sub directory (default: 'wav')
+
+        data_pre
+        data sub directory (default: 'mat')
+    
+        delimiter
+        delimiter for filename parsing (default: '\_', or underscore)
+
+        nosort
+        set to 1 to not parse filename (data put into separate folder) (default: 0)
+
+        subdir
+        subdir if nosort==1 (default: 'pretty bird')</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+<li><a href="read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>	[t,amps,data,aux] = read_intan_data</li><li><a href="song_det.html" class="code" title="function [song_idx power f t song_detvec]=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)">song_det</a>	based on Andalmann's code</li><li><a href="../../../ephys/helpers/visualization/pretty_sonogram.html" class="code" title="function [IMAGE,F,T]=pretty_sonogram(SIGNAL,SR,varargin)">pretty_sonogram</a>	</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+<li><a href="../../../ephys/ephys_pipeline_intmic_daemon.html" class="code" title="function intan_songdet_intmic_daemon(DIR,varargin)">ephys_pipeline_intmic_daemon</a>	intan_songdet_intmic_daemon.m runs the Intan detection indefinitely,</li></ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<ul style="list-style-image:url(../../../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function parsave(file,ephys_data,mic_data,fs,channels)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function intan_songdet_intmic(DIR,varargin)</a>
+0002 <span class="comment">%intan_songdet_intmic.m is the core script for processing Intan files</span>
+0003 <span class="comment">%on the fly.</span>
+0004 <span class="comment">%</span>
+0005 <span class="comment">%    intan_songdet_intmic(DIR,varargin)</span>
+0006 <span class="comment">%</span>
+0007 <span class="comment">%    DIR</span>
+0008 <span class="comment">%    directory to process</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">%    the following may be specified as parameter/value pairs</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">%        mic_pre</span>
+0013 <span class="comment">%        mic channel (only need to specify if nosort==1)</span>
+0014 <span class="comment">%</span>
+0015 <span class="comment">%        minfs</span>
+0016 <span class="comment">%        minimum fs used for song detection (default: 2e3)</span>
+0017 <span class="comment">%</span>
+0018 <span class="comment">%        maxfs</span>
+0019 <span class="comment">%        maximum fs used for song detection (default: 6e3)</span>
+0020 <span class="comment">%</span>
+0021 <span class="comment">%        ratio_thresh</span>
+0022 <span class="comment">%        ratio between song frequencies and non-song frequencies for song detection (default: 4)</span>
+0023 <span class="comment">%</span>
+0024 <span class="comment">%        window</span>
+0025 <span class="comment">%        spectrogram window for song detection (default: 250 samples)</span>
+0026 <span class="comment">%</span>
+0027 <span class="comment">%        noverlap</span>
+0028 <span class="comment">%        window overlap for song detection (default: 0)</span>
+0029 <span class="comment">%</span>
+0030 <span class="comment">%        song_thresh</span>
+0031 <span class="comment">%        song threshold (default: .27)</span>
+0032 <span class="comment">%</span>
+0033 <span class="comment">%        songduration</span>
+0034 <span class="comment">%        song duration for song detection in secs (default: .8 seconds)</span>
+0035 <span class="comment">%</span>
+0036 <span class="comment">%        low</span>
+0037 <span class="comment">%        parameter for spectrogram display (default: 5), lower if spectrogram are dim</span>
+0038 <span class="comment">%</span>
+0039 <span class="comment">%        high</span>
+0040 <span class="comment">%        parameter for spectrogram display (default: 10)</span>
+0041 <span class="comment">%</span>
+0042 <span class="comment">%        colors</span>
+0043 <span class="comment">%        spectrogram colormap (default: hot)</span>
+0044 <span class="comment">%</span>
+0045 <span class="comment">%        disp_minfs</span>
+0046 <span class="comment">%        minimum fs for spectrograms (default: 1e3)</span>
+0047 <span class="comment">%</span>
+0048 <span class="comment">%        disp_maxfs</span>
+0049 <span class="comment">%        maximum fs for spectrograms (default: 7e3)</span>
+0050 <span class="comment">%</span>
+0051 <span class="comment">%        filtering</span>
+0052 <span class="comment">%        high pass corner for mic trace (default: 700 Hz)</span>
+0053 <span class="comment">%</span>
+0054 <span class="comment">%        intan_fs</span>
+0055 <span class="comment">%        Intan sampling rate (default: 25e3)</span>
+0056 <span class="comment">%</span>
+0057 <span class="comment">%        audio_pad</span>
+0058 <span class="comment">%        extra data to left and right of extraction points to extract (default: .2 secs)</span>
+0059 <span class="comment">%</span>
+0060 <span class="comment">%        folder_format</span>
+0061 <span class="comment">%        folder format (date string) (default: yyyy-mm-dd)</span>
+0062 <span class="comment">%</span>
+0063 <span class="comment">%        image_pre</span>
+0064 <span class="comment">%        image sub directory (default: 'gif')</span>
+0065 <span class="comment">%</span>
+0066 <span class="comment">%        wav_pre</span>
+0067 <span class="comment">%        wav sub directory (default: 'wav')</span>
+0068 <span class="comment">%</span>
+0069 <span class="comment">%        data_pre</span>
+0070 <span class="comment">%        data sub directory (default: 'mat')</span>
+0071 <span class="comment">%</span>
+0072 <span class="comment">%        delimiter</span>
+0073 <span class="comment">%        delimiter for filename parsing (default: '\_', or underscore)</span>
+0074 <span class="comment">%</span>
+0075 <span class="comment">%        nosort</span>
+0076 <span class="comment">%        set to 1 to not parse filename (data put into separate folder) (default: 0)</span>
+0077 <span class="comment">%</span>
+0078 <span class="comment">%        subdir</span>
+0079 <span class="comment">%        subdir if nosort==1 (default: 'pretty bird')</span>
+0080 <span class="comment">%</span>
+0081 <span class="comment">%</span>
+0082 
+0083 <span class="comment">% wrap with a bash script to run whenever files appear</span>
+0084 
+0085 <span class="comment">% detect song, place into a directory sorted by BIRD ID then DATE (two directories!), get from filename</span>
+0086 <span class="comment">% if we can't parse a bird id then place into bird # (iterate until non-overlapping), if song is not</span>
+0087 <span class="comment">% detected then junk the file, otherwise place the detected song into BIRDID/DATE/MAT</span>
+0088 
+0089 <span class="comment">% this way we can collect all raw data into a single directory, sort into new directories and delete the rest</span>
+0090 <span class="comment">% should save lots of space</span>
+0091 
+0092 <span class="comment">% add song detection parameters as well</span>
+0093 
+0094 <span class="comment">% while running the daemon this can be changed</span>
+0095 
+0096 mic_pre=12;
+0097 minfs=2e3;
+0098 maxfs=6e3;
+0099 ratio_thresh=4;
+0100 window=250;
+0101 noverlap=0;
+0102 song_thresh=.27; <span class="comment">% between .2 and .3 seems to work best (higher is more exlusive)</span>
+0103 songduration=.8;
+0104 low=5;
+0105 high=10;
+0106 colors=hot;
+0107 disp_minfs=1e3;
+0108 disp_maxfs=7e3;
+0109 filtering=700;
+0110 intan_fs=25e3;
+0111 audio_pad=.2;
+0112 config_file=<span class="string">''</span>;
+0113 folder_format=<span class="string">'yyyy-mm-dd'</span>;
+0114 image_pre=<span class="string">'gif'</span>;
+0115 wav_pre=<span class="string">'wav'</span>;
+0116 data_pre=<span class="string">'mat'</span>;
+0117 delimiter=<span class="string">'\_'</span>;
+0118 nosort=0;
+0119 subdir=<span class="string">'pretty_bird'</span>;
+0120 
+0121 <span class="comment">%logname='song_det.log';</span>
+0122 <span class="comment">% where to place the parsed files</span>
+0123 
+0124 root_dir=fullfile(pwd,<span class="string">'..'</span>,<span class="string">'..'</span>,<span class="string">'data'</span>,<span class="string">'intan_data'</span>); <span class="comment">% where will the detected files go</span>
+0125 proc_dir=fullfile(pwd,<span class="string">'..'</span>,<span class="string">'processed'</span>); <span class="comment">% where do we put the files after processing</span>
+0126 unorganized_dir=fullfile(pwd,<span class="string">'..'</span>,<span class="string">'unorganized'</span>);
+0127 
+0128 <span class="keyword">if</span> ~exist(root_dir,<span class="string">'dir'</span>)
+0129     mkdir(root_dir);
+0130 <span class="keyword">end</span>
+0131 
+0132 <span class="keyword">if</span> ~exist(proc_dir,<span class="string">'dir'</span>)
+0133     mkdir(proc_dir);
+0134 <span class="keyword">end</span>
+0135 
+0136 <span class="comment">% directory for files that have not been recognized</span>
+0137 
+0138 <span class="keyword">if</span> ~exist(unorganized_dir,<span class="string">'dir'</span>);
+0139     mkdir(unorganized_dir);
+0140 <span class="keyword">end</span>
+0141 
+0142 <span class="comment">% we should write out a log file with filtering parameters, when we started, whether song was</span>
+0143 <span class="comment">% detected in certain files, etc.</span>
+0144 
+0145 nparams=length(varargin);
+0146 
+0147 <span class="keyword">if</span> mod(nparams,2)&gt;0
+0148     error(<span class="string">'Parameters must be specified as parameter/value pairs!'</span>);
+0149 <span class="keyword">end</span>
+0150 
+0151 <span class="keyword">for</span> i=1:2:nparams
+0152     <span class="keyword">switch</span> lower(varargin{i})
+0153         <span class="keyword">case</span> <span class="string">'mic_pre'</span>
+0154             mic_pre=varargin{i+1};
+0155         <span class="keyword">case</span> <span class="string">'colors'</span>
+0156             colors=varargin{i+1};
+0157         <span class="keyword">case</span> <span class="string">'folder_format'</span>
+0158             folder_format=varargin{i+1};
+0159         <span class="keyword">case</span> <span class="string">'delimiter'</span>
+0160             delimiter=varargin{i+1};
+0161         <span class="keyword">case</span> <span class="string">'nosort'</span>
+0162             nosort=varargin{i+1};
+0163         <span class="keyword">case</span> <span class="string">'subdir'</span>
+0164             subdir=varargin{i+1};
+0165     <span class="keyword">end</span>
+0166 <span class="keyword">end</span>
+0167 
+0168 <span class="keyword">if</span> nargin&lt;1
+0169     DIR=pwd;
+0170 <span class="keyword">end</span>
+0171 
+0172 <span class="comment">% list the files to process</span>
+0173 
+0174 <span class="keyword">if</span> ~isempty(filtering)
+0175     [b,a]=butter(3,[filtering/(intan_fs/2)],<span class="string">'high'</span>);
+0176 <span class="keyword">end</span>
+0177 
+0178 
+0179 <span class="comment">% embed in infinite loop</span>
+0180 
+0181 intlisting=dir(fullfile(DIR,<span class="string">'*.int'</span>));
+0182 
+0183 proc_files={};
+0184 <span class="keyword">for</span> i=1:length(intlisting)
+0185     proc_files{i}=fullfile(DIR,intlisting(i).name);
+0186 <span class="keyword">end</span>
+0187 
+0188 parfor i=1:length(proc_files)
+0189 
+0190     t=[];
+0191     amps=[];
+0192     data=[];
+0193     aux=[];
+0194     song_bin=[];
+0195     mic_trace=[];
+0196 
+0197     <span class="comment">% read in the data</span>
+0198 
+0199     <span class="comment">% parse for the bird name,zone and date</span>
+0200     <span class="comment">% new folder format, yyyy-mm-dd for easy sorting (on Unix systems at least)</span>
+0201 
+0202     <span class="keyword">if</span> nosort
+0203         foldername=fullfile(unorganized_dir,subdir);
+0204                 mic_trace=mic_pre;
+0205     <span class="keyword">else</span>
+0206         tokens=regexpi(intlisting(i).name,delimiter,<span class="string">'split'</span>);
+0207 
+0208         <span class="comment">% first token should be bird number</span>
+0209 
+0210         birdid=tokens{1};
+0211 
+0212         <span class="comment">% second should be recording tag (normally nucleus)</span>
+0213 
+0214         recid=tokens{2};
+0215 
+0216         <span class="comment">% third should be mic trace</span>
+0217 
+0218         mictokens=regexpi(tokens{3},<span class="string">'\d+'</span>,<span class="string">'match'</span>);
+0219 
+0220         <span class="keyword">if</span> ~isempty(mictokens)
+0221             mic_trace=str2num(mictokens{1});
+0222         <span class="keyword">else</span>
+0223             mic_trace=mic_pre;
+0224         <span class="keyword">end</span>
+0225 
+0226         <span class="comment">% fourth is date</span>
+0227 
+0228         file_datenum=datenum([tokens{4} tokens{5}(1:end-4)],<span class="string">'yymmddHHMMSS'</span>);
+0229 
+0230         <span class="comment">% now create the folder it doesn't exist already</span>
+0231 
+0232         foldername=fullfile(root_dir,birdid,recid,datestr(file_datenum,folder_format));    
+0233 
+0234     <span class="keyword">end</span>
+0235 
+0236     <span class="keyword">try</span>
+0237         [t,amps,data,aux]=<a href="read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>(proc_files{i});
+0238     <span class="keyword">catch</span> err
+0239         disp([err])
+0240         disp(<span class="string">'Could not read file, continuing...'</span>);
+0241         fclose(<span class="string">'all'</span>); <span class="comment">% read_intan does not properly close file if it bails</span>
+0242         <span class="keyword">continue</span>;
+0243     <span class="keyword">end</span>
+0244 
+0245     <span class="comment">% if we're successful reading, then move the file to a processed directory</span>
+0246 
+0247     [path,name,ext]=fileparts(proc_files{i});
+0248 
+0249     disp([<span class="string">'Processing '</span> proc_files{i}]);
+0250 
+0251     <span class="keyword">try</span>
+0252         movefile(proc_files{i},proc_dir);
+0253     <span class="keyword">catch</span>
+0254         disp([<span class="string">'Could not move file '</span> proc_files{i}]);
+0255         fclose(<span class="string">'all'</span>);
+0256         <span class="keyword">continue</span>;
+0257     <span class="keyword">end</span>
+0258 
+0259     <span class="comment">% standard song detection</span>
+0260 
+0261     mic_channel=find(amps==mic_trace);
+0262     ephys_labels=setdiff(amps,mic_trace);
+0263 
+0264     ephys_channels=[];
+0265     <span class="keyword">for</span> j=1:length(ephys_labels)
+0266         ephys_channels(j)=find(amps==ephys_labels(j));
+0267     <span class="keyword">end</span>
+0268 
+0269     <span class="keyword">if</span> ~isempty(filtering)
+0270         <span class="comment">% common average re-reference for mic channel</span>
+0271         <span class="comment">%conditioned_data=data(:,find(amps==mic_trace))-mean(data(:,ephys_channels),2)</span>
+0272 
+0273         conditioned_data=filtfilt(b,a,data(:,find(amps==mic_trace)));
+0274     <span class="keyword">else</span>
+0275         conditioned_data=data(:,mic_trace);
+0276     <span class="keyword">end</span>
+0277 
+0278     conditioned_data=conditioned_data./max(abs(conditioned_data));
+0279 
+0280     <span class="comment">% did we detect song?</span>
+0281 
+0282     <span class="keyword">try</span>
+0283         [song_bin]=<a href="song_det.html" class="code" title="function [song_idx power f t song_detvec]=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)">song_det</a>(conditioned_data,intan_fs,minfs,maxfs,window,<span class="keyword">...</span>
+0284             noverlap,songduration,ratio_thresh,song_thresh);
+0285     <span class="keyword">catch</span> err
+0286         disp([err]);
+0287         disp(<span class="string">'Song detection failed, continuing...'</span>);
+0288         fclose(<span class="string">'all'</span>);
+0289         <span class="keyword">continue</span>;
+0290     <span class="keyword">end</span>
+0291 
+0292     [sonogram_im sonogram_f sonogram_t]=<a href="../../../ephys/helpers/visualization/pretty_sonogram.html" class="code" title="function [IMAGE,F,T]=pretty_sonogram(SIGNAL,SR,varargin)">pretty_sonogram</a>(conditioned_data,intan_fs,<span class="string">'n'</span>,500,<span class="string">'overlap'</span>,350,<span class="string">'low'</span>,3.5);
+0293 
+0294     startidx=max([find(sonogram_f&lt;=disp_minfs)]);
+0295     stopidx=min([find(sonogram_f&gt;=disp_maxfs)]);
+0296     sonogram_im=sonogram_im(startidx:stopidx,:);
+0297     sonogram_im=flipdim(sonogram_im,1);
+0298 
+0299     song_pts=find(song_bin&gt;0);
+0300 
+0301     <span class="keyword">if</span> isempty(song_pts)
+0302         <span class="keyword">continue</span>;
+0303     <span class="keyword">else</span>
+0304         disp([<span class="string">'Song detected in file:  '</span> proc_files{i}]);
+0305     <span class="keyword">end</span>
+0306 
+0307     <span class="comment">% if we're here, we've detected song</span>
+0308 
+0309     <span class="keyword">if</span> ~exist(foldername,<span class="string">'dir'</span>)
+0310         mkdir(foldername);
+0311     <span class="keyword">end</span>
+0312 
+0313     <span class="comment">% factor to move from sonogram coordinates to raw audio data coordinates</span>
+0314 
+0315     image_dir=fullfile(foldername,image_pre);
+0316     wav_dir=fullfile(foldername,wav_pre);
+0317     data_dir=fullfile(foldername,data_pre);
+0318 
+0319     <span class="keyword">if</span> ~exist(image_dir,<span class="string">'dir'</span>)
+0320         mkdir(image_dir);
+0321     <span class="keyword">end</span>
+0322 
+0323     <span class="keyword">if</span> ~exist(wav_dir,<span class="string">'dir'</span>);
+0324         mkdir(wav_dir);
+0325     <span class="keyword">end</span>
+0326 
+0327     <span class="keyword">if</span> ~exist(data_dir,<span class="string">'dir'</span>);
+0328         mkdir(data_dir);
+0329     <span class="keyword">end</span>
+0330 
+0331     [f,t]=size(sonogram_im);
+0332     son_to_vec=(length(conditioned_data)-noverlap)/(length(song_bin));
+0333     im_son_to_vec=(length(conditioned_data)-350)/t;
+0334 
+0335     <span class="comment">% use diff to find non_continguous song bouts</span>
+0336 
+0337     song_idx=[0 find(diff(song_pts*son_to_vec)&gt;intan_fs) length(song_pts)];
+0338     sonogram_filename=fullfile(image_dir,[ name <span class="string">'.gif'</span> ]);
+0339 
+0340     <span class="keyword">for</span> j=1:length(song_idx)-1
+0341 
+0342         startpoint=floor((song_pts(song_idx(j)+1))*son_to_vec-audio_pad*intan_fs);
+0343         endpoint=ceil((song_pts(song_idx(j+1)))*son_to_vec+audio_pad*intan_fs);
+0344 
+0345         <span class="keyword">if</span> startpoint&lt;1, startpoint=1; <span class="keyword">end</span>
+0346         <span class="keyword">if</span> endpoint&gt;length(conditioned_data), endpoint=length(conditioned_data); <span class="keyword">end</span>
+0347 
+0348         audio_extraction=conditioned_data(startpoint:endpoint);
+0349         ephys_extraction=data(startpoint:endpoint,ephys_channels);
+0350 
+0351         save_name=[ name <span class="string">'_chunk_'</span> num2str(j) ];
+0352 
+0353         <span class="keyword">if</span> length(audio_extraction)&lt;500
+0354             <span class="keyword">continue</span>;
+0355         <span class="keyword">end</span>
+0356 
+0357         sonogram_im(1:10,ceil(startpoint/im_son_to_vec):ceil(endpoint/im_son_to_vec))=63;
+0358 
+0359         [chunk_sonogram_im chunk_sonogram_f chunk_sonogram_t]=<a href="../../../ephys/helpers/visualization/pretty_sonogram.html" class="code" title="function [IMAGE,F,T]=pretty_sonogram(SIGNAL,SR,varargin)">pretty_sonogram</a>(audio_extraction,intan_fs,<span class="string">'low'</span>,3.5);
+0360 
+0361         startidx=max([find(chunk_sonogram_f&lt;=disp_minfs)]);
+0362         stopidx=min([find(chunk_sonogram_f&gt;=disp_maxfs)]);
+0363 
+0364         chunk_sonogram_im=chunk_sonogram_im(startidx:stopidx,:);
+0365         chunk_sonogram_im=flipdim(chunk_sonogram_im,1);
+0366 
+0367         imwrite(uint8(chunk_sonogram_im),colors,fullfile(image_dir,[ save_name <span class="string">'.gif'</span>]),<span class="string">'gif'</span>);
+0368 
+0369         min_audio=min(audio_extraction(:));
+0370         max_audio=max(audio_extraction(:));
+0371 
+0372         <span class="keyword">if</span> min_audio + max_audio &lt; 0
+0373             audio_extraction=audio_extraction./(-min_audio);
+0374         <span class="keyword">else</span>
+0375             audio_extraction=audio_extraction./(max_audio*(1+1e-3));
+0376         <span class="keyword">end</span>
+0377 
+0378         <a href="#_sub1" class="code" title="subfunction parsave(file,ephys_data,mic_data,fs,channels)">parsave</a>(fullfile(data_dir,[<span class="string">'songdet1_'</span> save_name <span class="string">'.mat'</span>]),ephys_extraction,audio_extraction,intan_fs,ephys_labels);
+0379         wavwrite(audio_extraction,intan_fs,fullfile(wav_dir,[ save_name <span class="string">'.wav'</span>]));
+0380 
+0381     <span class="keyword">end</span>
+0382 
+0383     reformatted_im=im_reformat(sonogram_im,10);
+0384     imwrite(uint8(reformatted_im),colors,sonogram_filename,<span class="string">'gif'</span>);
+0385 
+0386 <span class="keyword">end</span>
+0387 
+0388 <span class="keyword">end</span>
+0389 
+0390 
+0391 
+0392 <a name="_sub1" href="#_subfunctions" class="code">function parsave(file,ephys_data,mic_data,fs,channels)</a>
+0393 
+0394     save(file,<span class="string">'ephys_data'</span>,<span class="string">'mic_data'</span>,<span class="string">'fs'</span>,<span class="string">'channels'</span>);
+0395 
+0396 <span class="keyword">end</span></pre></div>
+<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

@@ -1,0 +1,37 @@
+1) To install the package, first run the install.sh bash script with super user access:
+
+sudo ./install.sh
+
+2) Add the ephys folder with sub directories to your MATLAB path
+
+3) After installation, you can modify the configuration files located at:
+
+/usr/local/bin/ephys_pipeline.cfg 
+/usr/local/bin/ephys_pipeline_wrapper.cfg
+
+4) You will need to configure your bash shell to load the appropriate environment variables for the Matlab Compiler Runtime (2011b).
+
+The first configuration file controls the parameters of the ephys scripts, which you probably won't need to change.  The second script controls program usage, and allows you to easily change how often and how many daemons are run in order to conserve memory.
+
+5) To easily check the log files, a GNU screen configuration file is included under pipeline/bash.  In order to use it, simply copy it to your user's base directory under a name you can remember, also be sure to modify the paths marked in the file to point to your log files (full paths are needed, i.e. you cannot use ~/ to point to your home directory), then run
+
+screen -c ~/nameofconfigurationfile
+
+This will open GNU Screen with multiple tabs to monitor the individual daemons that the pipeline uses.
+
+6) HTML documentation can be found at doc/menu.html, simply open it in your favorite browser.
+
+7) BONUS, if you'd like to actively monitor the pipeline progress on your desktop, download Nerdtool or Geektool and use pipeline_list.sh to generate a file that lists each bird and the auto-clustered units.  Change cron to run pipeline_list.sh every 10 minutes,
+
+crontab -e
+*/10 * * * * pipeline_list.sh > ~/.pipeline_list.txt
+
+This will run pipeline_list.sh every 10 minutes, then to read the file to your desktop, use a SHELL Geeklet,
+
+cat ~/.pipeline_list.txt
+
+You should now see a formatted table with bird IDs and clustered units if you're lucky.
+
+Comments and/or bugs should be submitted to Jeff Markowitz (jmarkow@cns.bu.edu)
+
+
