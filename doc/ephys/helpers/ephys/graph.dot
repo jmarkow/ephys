@@ -1,5 +1,6 @@
 /* Created by mdot for Matlab */
 digraph m2html {
+  ephys_spike_cluster_auto -> get_wavelet_coefficients;
   ephys_spike_clustergui_tetrode -> get_wavelet_coefficients;
 
   ephys_condition_signal [URL="ephys_condition_signal.html"];

@@ -110,10 +110,10 @@ on the fly.
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../../../matlabicon.gif)">
-<li><a href="read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>	[t,amps,data,aux] = read_intan_data</li><li><a href="song_det.html" class="code" title="function [song_idx power f t song_detvec]=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)">song_det</a>	based on Andalmann's code</li><li><a href="../../../ephys/helpers/visualization/pretty_sonogram.html" class="code" title="function [IMAGE,F,T]=pretty_sonogram(SIGNAL,SR,varargin)">pretty_sonogram</a>	</li></ul>
+<li><a href="song_det.html" class="code" title="function [song_idx power f t song_detvec]=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)">song_det</a>	based on Andalmann's code</li><li><a href="../../../ephys/helpers/visualization/pretty_sonogram.html" class="code" title="function [IMAGE,F,T]=pretty_sonogram(SIGNAL,SR,varargin)">pretty_sonogram</a>	simple 2-taper histogram (Gauss and DGauss)</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../../../matlabicon.gif)">
-<li><a href="../../../ephys/ephys_pipeline_intmic_daemon.html" class="code" title="function intan_songdet_intmic_daemon(DIR,varargin)">ephys_pipeline_intmic_daemon</a>	intan_songdet_intmic_daemon.m runs the Intan detection indefinitely,</li></ul>
+<li><a href="../../../ephys/ephys_pipeline_intmic_daemon.html" class="code" title="function intan_songdet_intmic_daemon(DIR,varargin)">ephys_pipeline_intmic_daemon</a>	runs Intan song detection indefinitely</li></ul>
 <!-- crossreference -->
 
 <h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
@@ -357,7 +357,7 @@ This function is called by:
 0234     <span class="keyword">end</span>
 0235 
 0236     <span class="keyword">try</span>
-0237         [t,amps,data,aux]=<a href="read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>(proc_files{i});
+0237         [t,amps,data,aux]=read_intan_data_cli(proc_files{i});
 0238     <span class="keyword">catch</span> err
 0239         disp([err])
 0240         disp(<span class="string">'Could not read file, continuing...'</span>);
@@ -517,6 +517,6 @@ This function is called by:
 0394     save(file,<span class="string">'ephys_data'</span>,<span class="string">'mic_data'</span>,<span class="string">'fs'</span>,<span class="string">'channels'</span>);
 0395 
 0396 <span class="keyword">end</span></pre></div>
-<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+<hr><address>Generated on Sun 22-Jul-2012 12:37:58 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

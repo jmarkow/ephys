@@ -4,7 +4,7 @@
 <head>
   <title>Description of prettify_axislabels</title>
   <meta name="keywords" content="prettify_axislabels">
-  <meta name="description" content="">
+  <meta name="description" content="makes axis labels sensible">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,13 +21,13 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
-<div class="box"><strong></strong></div>
+<div class="box"><strong>makes axis labels sensible</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
 <div class="box"><strong>function prettify_axislabels(FIGHANDLE,varargin) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
-<div class="fragment"><pre class="comment"></pre></div>
+<div class="fragment"><pre class="comment">makes axis labels sensible</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
@@ -36,14 +36,14 @@ This function calls:
 </ul>
 This function is called by:
 <ul style="list-style-image:url(../../../matlabicon.gif)">
-<li><a href="../../../ephys/ephys_su_lfp_coherence_spect.html" class="code" title="function ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)">ephys_su_lfp_coherence_spect</a>	ephys_su_lfp_coherence_tf computes coherency spectra between LFPs and point processes using the</li><li><a href="../../../ephys/ephys_su_lfp_coherence_tf.html" class="code" title="function [abscoh,t,f]=ephys_su_lfp_coherence_tf(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)">ephys_su_lfp_coherence_tf</a>	ephys_su_lfp_coherence_tf computes coherograms between LFPs and point processes using the</li></ul>
+<li><a href="../../../ephys/ephys_su_lfp_coherence_spect.html" class="code" title="function ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)">ephys_su_lfp_coherence_spect</a>	computes coherency spectra between fields and single units</li><li><a href="../../../ephys/ephys_su_lfp_coherence_tf.html" class="code" title="function [abscoh,t,f]=ephys_su_lfp_coherence_tf(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)">ephys_su_lfp_coherence_tf</a>	computes coherograms between LFPs and single units</li></ul>
 <!-- crossreference -->
 
 
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function prettify_axislabels(FIGHANDLE,varargin)</a>
-0002 <span class="comment">%</span>
+0002 <span class="comment">%makes axis labels sensible</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">%</span>
 0005 <span class="comment">%</span>
@@ -72,6 +72,6 @@ This function is called by:
 0028 all_text=findall(FIGHANDLE,<span class="string">'Type'</span>,<span class="string">'Text'</span>);
 0029 set(all_text,<span class="string">'FontSize'</span>,fontsize,<span class="string">'FontName'</span>,font);
 0030</pre></div>
-<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+<hr><address>Generated on Sun 22-Jul-2012 12:37:58 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

@@ -103,13 +103,13 @@ current directory.
         define to display windows with all relevant alignment information (default: empty)
 
 
-see also intan_align.m,<a href="read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>.m</pre></div>
+see also intan_align.m,read_intan_data_cli.m</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../../../matlabicon.gif)">
-<li><a href="read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>	[t,amps,data,aux] = read_intan_data</li><li><a href="song_det.html" class="code" title="function [song_idx power f t song_detvec]=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)">song_det</a>	based on Andalmann's code</li></ul>
+<li><a href="song_det.html" class="code" title="function [song_idx power f t song_detvec]=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)">song_det</a>	based on Andalmann's code</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../../../matlabicon.gif)">
 </ul>
@@ -655,7 +655,7 @@ This function is called by:
 0533         offset=etime(datevec(starting_time),datevec(intan_start));
 0534         disp([<span class="string">'Checking file: '</span>  file_list{i}]);
 0535         disp([<span class="string">'Assuming offset:  '</span> num2str(offset)]); 
-0536         [t,channels,intan_data,aux] = <a href="read_intan_data_cli.html" class="code" title="function [t,amps,data,aux] = read_intan_data(filename)">read_intan_data_cli</a>(file_list{i});
+0536         [t,channels,intan_data,aux] = read_intan_data_cli(file_list{i});
 0537 
 0538         <span class="comment">% extract at the estimated point-fudge factor in samples</span>
 0539 
@@ -821,6 +821,6 @@ This function is called by:
 0699 close([all_traces_fig]);
 0700 
 0701 <span class="keyword">end</span></pre></div>
-<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+<hr><address>Generated on Sun 22-Jul-2012 12:37:58 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

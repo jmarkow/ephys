@@ -4,7 +4,7 @@
 <head>
   <title>Description of prettify_axis</title>
   <meta name="keywords" content="prettify_axis">
-  <meta name="description" content="">
+  <meta name="description" content="changes axis to look sensible">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,13 +21,13 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
-<div class="box"><strong></strong></div>
+<div class="box"><strong>changes axis to look sensible</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
 <div class="box"><strong>function prettify_axis(FIGHANDLE,varargin) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
-<div class="fragment"><pre class="comment"></pre></div>
+<div class="fragment"><pre class="comment">changes axis to look sensible</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
@@ -36,14 +36,14 @@ This function calls:
 </ul>
 This function is called by:
 <ul style="list-style-image:url(../../../matlabicon.gif)">
-<li><a href="../../../ephys/ephys_su_lfp_coherence_tf.html" class="code" title="function [abscoh,t,f]=ephys_su_lfp_coherence_tf(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)">ephys_su_lfp_coherence_tf</a>	ephys_su_lfp_coherence_tf computes coherograms between LFPs and point processes using the</li></ul>
+<li><a href="../../../ephys/ephys_su_lfp_coherence_tf.html" class="code" title="function [abscoh,t,f]=ephys_su_lfp_coherence_tf(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)">ephys_su_lfp_coherence_tf</a>	computes coherograms between LFPs and single units</li></ul>
 <!-- crossreference -->
 
 
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function prettify_axis(FIGHANDLE,varargin)</a>
-0002 <span class="comment">%</span>
+0002 <span class="comment">%changes axis to look sensible</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">%</span>
 0005 <span class="comment">%</span>
@@ -79,6 +79,6 @@ This function is called by:
 0035 all_axis=findall(FIGHANDLE,<span class="string">'Type'</span>,<span class="string">'Axes'</span>);
 0036 set(all_axis,<span class="string">'Color'</span>,<span class="string">'w'</span>,<span class="string">'XColor'</span>,<span class="string">'k'</span>,<span class="string">'YColor'</span>,<span class="string">'k'</span>,<span class="string">'ticklength'</span>,ticklength,<span class="keyword">...</span>
 0037     <span class="string">'FontSize'</span>,fontsize,<span class="string">'FontName'</span>,font,<span class="string">'Linewidth'</span>,linewidth,<span class="string">'tickdir'</span>,<span class="string">'out'</span>);</pre></div>
-<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+<hr><address>Generated on Sun 22-Jul-2012 12:37:58 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

@@ -4,7 +4,7 @@
 <head>
   <title>Description of ephys_su_lfp_coherence_ifr</title>
   <meta name="keywords" content="ephys_su_lfp_coherence_ifr">
-  <meta name="description" content="ephys_su_lfp_coherence_ifr.m computes rate-triggered LFPs, the script must be run in the directory 'ephys'">
+  <meta name="description" content="computes IFR triggered LFPs">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,14 +21,13 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="box"><strong>ephys_su_lfp_coherence_ifr.m computes rate-triggered LFPs, the script must be run in the directory 'ephys'</strong></div>
+<div class="box"><strong>computes IFR triggered LFPs</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="box"><strong>function [LFPWINS_PEAK,LFPWINS_TROUGH,LFPWINS_RAND]=ephys_su_lfp_coherence_ifr(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="fragment"><pre class="comment">ephys_su_lfp_coherence_ifr.m computes rate-triggered LFPs, the script must be run in the directory 'ephys'
-after clustering single units
+<div class="fragment"><pre class="comment">computes IFR triggered LFPs
 
     [LFPWINS_PEAK,LFPWINS_TROUGH,LFPWINS_RAND]=ephys_su_lfp_coherence_ifr(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)
     
@@ -53,38 +52,37 @@ after clustering single units
         length of the window about the peak and trough points to extract (in seconds, default: [.03 .03])
         
         peakedges
+        sets threshold for positive and negative-going threshold crossings of peakedges(1) and peakedges(2) in IFR (default: [300 300])
 
         troughedges
-
-        randpoint
+        sets threshold for negative and positive-going threshold crossings of peakedges(1) and peakedges(2) in IFR (default: [100 100])
 
         fig_title
-
-        randreps
-
-        singletrialplots
+        prefix used for graph filenames (default: 'noname')
 
         debug
-
-        nfft
+        display detected peaks and troughs and pause for each trial
 
         trial_min
+        minimum peaks/troughs detected for display (default: 20)
 
-        freq_range
-        
         peak
+        how to detect peaks, use either the leading edge (e) or the mean of the positive and negative-going threshold crossings (default: 'm')
 
         trough
+        how to detect troughs, use either the leading edge (e) or the mean of the positive and negative-going threshold crossings (default: 'm')
         
         medfilt_scale
+        median filter scale, in ms (default: 1.5)
 
-        lfp_fs</pre></div>
+        lfp_fs
+        sampling rate of fields (default: 25e3)</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>	</li><li><a href="../ephys/helpers/visualization/pretty_polar.html" class="code" title="function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)">pretty_polar</a>	</li></ul>
+<li><a href="../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>	conditions signals for further processing</li><li><a href="../ephys/helpers/ephys/ephys_denoise_signal.html" class="code" title="function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)">ephys_denoise_signal</a>	takes ephys data from Intan recordings and re-references</li><li><a href="../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>	save in multiple formats in a single command</li><li><a href="../ephys/helpers/visualization/pretty_polar.html" class="code" title="function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)">pretty_polar</a>	wrapper for rose plot for circular histogramming</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
 </ul>
@@ -94,591 +92,590 @@ This function is called by:
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [LFPWINS_PEAK,LFPWINS_TROUGH,LFPWINS_RAND]=ephys_su_lfp_coherence_ifr(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)</a>
-0002 <span class="comment">%ephys_su_lfp_coherence_ifr.m computes rate-triggered LFPs, the script must be run in the directory 'ephys'</span>
-0003 <span class="comment">%after clustering single units</span>
-0004 <span class="comment">%</span>
-0005 <span class="comment">%    [LFPWINS_PEAK,LFPWINS_TROUGH,LFPWINS_RAND]=ephys_su_lfp_coherence_ifr(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)</span>
-0006 <span class="comment">%</span>
-0007 <span class="comment">%    LFPCHANNEL</span>
-0008 <span class="comment">%    LFPCHANNEL to use</span>
-0009 <span class="comment">%</span>
-0010 <span class="comment">%    SUCHANNEL</span>
-0011 <span class="comment">%    channel with single units (already clustered and saved in 'sua')</span>
-0012 <span class="comment">%</span>
-0013 <span class="comment">%    SUCLUSTER</span>
-0014 <span class="comment">%    number of cluster with single unit</span>
-0015 <span class="comment">%</span>
-0016 <span class="comment">%    the following parameters may be passed as parameter/value pairs:</span>
-0017 <span class="comment">%</span>
-0018 <span class="comment">%        filedir</span>
-0019 <span class="comment">%        base directory with clustered single unit data in the folder &quot;sua&quot; and the lfp data in aggregated_data.mat</span>
-0020 <span class="comment">%</span>
-0021 <span class="comment">%        savedir</span>
-0022 <span class="comment">%        directory to save results (default: 'coherence')</span>
-0023 <span class="comment">%</span>
-0024 <span class="comment">%        lfp_winextract</span>
-0025 <span class="comment">%        length of the window about the peak and trough points to extract (in seconds, default: [.03 .03])</span>
-0026 <span class="comment">%</span>
-0027 <span class="comment">%        peakedges</span>
+0002 <span class="comment">%computes IFR triggered LFPs</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">%    [LFPWINS_PEAK,LFPWINS_TROUGH,LFPWINS_RAND]=ephys_su_lfp_coherence_ifr(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)</span>
+0005 <span class="comment">%</span>
+0006 <span class="comment">%    LFPCHANNEL</span>
+0007 <span class="comment">%    LFPCHANNEL to use</span>
+0008 <span class="comment">%</span>
+0009 <span class="comment">%    SUCHANNEL</span>
+0010 <span class="comment">%    channel with single units (already clustered and saved in 'sua')</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">%    SUCLUSTER</span>
+0013 <span class="comment">%    number of cluster with single unit</span>
+0014 <span class="comment">%</span>
+0015 <span class="comment">%    the following parameters may be passed as parameter/value pairs:</span>
+0016 <span class="comment">%</span>
+0017 <span class="comment">%        filedir</span>
+0018 <span class="comment">%        base directory with clustered single unit data in the folder &quot;sua&quot; and the lfp data in aggregated_data.mat</span>
+0019 <span class="comment">%</span>
+0020 <span class="comment">%        savedir</span>
+0021 <span class="comment">%        directory to save results (default: 'coherence')</span>
+0022 <span class="comment">%</span>
+0023 <span class="comment">%        lfp_winextract</span>
+0024 <span class="comment">%        length of the window about the peak and trough points to extract (in seconds, default: [.03 .03])</span>
+0025 <span class="comment">%</span>
+0026 <span class="comment">%        peakedges</span>
+0027 <span class="comment">%        sets threshold for positive and negative-going threshold crossings of peakedges(1) and peakedges(2) in IFR (default: [300 300])</span>
 0028 <span class="comment">%</span>
 0029 <span class="comment">%        troughedges</span>
-0030 <span class="comment">%</span>
-0031 <span class="comment">%        randpoint</span>
-0032 <span class="comment">%</span>
-0033 <span class="comment">%        fig_title</span>
+0030 <span class="comment">%        sets threshold for negative and positive-going threshold crossings of peakedges(1) and peakedges(2) in IFR (default: [100 100])</span>
+0031 <span class="comment">%</span>
+0032 <span class="comment">%        fig_title</span>
+0033 <span class="comment">%        prefix used for graph filenames (default: 'noname')</span>
 0034 <span class="comment">%</span>
-0035 <span class="comment">%        randreps</span>
-0036 <span class="comment">%</span>
-0037 <span class="comment">%        singletrialplots</span>
-0038 <span class="comment">%</span>
-0039 <span class="comment">%        debug</span>
+0035 <span class="comment">%        debug</span>
+0036 <span class="comment">%        display detected peaks and troughs and pause for each trial</span>
+0037 <span class="comment">%</span>
+0038 <span class="comment">%        trial_min</span>
+0039 <span class="comment">%        minimum peaks/troughs detected for display (default: 20)</span>
 0040 <span class="comment">%</span>
-0041 <span class="comment">%        nfft</span>
-0042 <span class="comment">%</span>
-0043 <span class="comment">%        trial_min</span>
-0044 <span class="comment">%</span>
-0045 <span class="comment">%        freq_range</span>
+0041 <span class="comment">%        peak</span>
+0042 <span class="comment">%        how to detect peaks, use either the leading edge (e) or the mean of the positive and negative-going threshold crossings (default: 'm')</span>
+0043 <span class="comment">%</span>
+0044 <span class="comment">%        trough</span>
+0045 <span class="comment">%        how to detect troughs, use either the leading edge (e) or the mean of the positive and negative-going threshold crossings (default: 'm')</span>
 0046 <span class="comment">%</span>
-0047 <span class="comment">%        peak</span>
-0048 <span class="comment">%</span>
-0049 <span class="comment">%        trough</span>
-0050 <span class="comment">%</span>
-0051 <span class="comment">%        medfilt_scale</span>
+0047 <span class="comment">%        medfilt_scale</span>
+0048 <span class="comment">%        median filter scale, in ms (default: 1.5)</span>
+0049 <span class="comment">%</span>
+0050 <span class="comment">%        lfp_fs</span>
+0051 <span class="comment">%        sampling rate of fields (default: 25e3)</span>
 0052 <span class="comment">%</span>
-0053 <span class="comment">%        lfp_fs</span>
+0053 <span class="comment">%</span>
 0054 <span class="comment">%</span>
-0055 <span class="comment">%</span>
-0056 <span class="comment">%</span>
-0057 <span class="comment">%</span>
+0055 
+0056 <span class="comment">% TODO finish documentation</span>
+0057 <span class="comment">% TODO comment thoroughly</span>
 0058 <span class="comment">%</span>
 0059 
-0060 <span class="comment">% TODO finish documentation</span>
-0061 <span class="comment">% TODO comment thoroughly</span>
-0062 <span class="comment">%</span>
-0063 
-0064 <span class="comment">% script to demonstrate the relationship between spikes and lfps</span>
-0065 
-0066 <span class="comment">% now let's modify to work with any LFP or SPIKES, maybe run in base directory</span>
-0067 <span class="comment">% pick LFP range and spike cluster</span>
-0068 
-0069 nparams=length(varargin);
-0070 
-0071 filedir=pwd;
-0072 savedir=[];
-0073 lfp_winextract=[.03 .03]; <span class="comment">% msec before and after peak or trough to grab LFP</span>
-0074 peakedges=[300 300]; <span class="comment">% take the leading edge of the peak</span>
-0075 troughedges=[100 100];
-0076 randpoints=20;
-0077 fig_title=<span class="string">'noname'</span>;
-0078 randreps=100;
-0079 singletrialplots=30; <span class="comment">% trials chosen at random to plot with fields, spikes, and IFR</span>
-0080 debug=0;
-0081 nfft=1e6;
-0082 trial_min=20;
-0083 freq_range=[10 40];
-0084 options=statset(<span class="string">'UseParallel'</span>,<span class="string">'Always'</span>);
-0085 peak=<span class="string">'m'</span>;
-0086 trough=<span class="string">'m'</span>;
-0087 medfilt_scale=1.5; <span class="comment">% median filter scale (in ms)</span>
-0088 lfp_fs=25e3;
-0089 
-0090 <span class="keyword">if</span> mod(nparams,2)&gt;0
-0091     error(<span class="string">'Parameters must be specified as parameter/value pairs'</span>);
-0092 <span class="keyword">end</span>
-0093 
-0094 <span class="keyword">for</span> i=1:2:nparams
-0095     <span class="keyword">switch</span> lower(varargin{i})
-0096         <span class="keyword">case</span> <span class="string">'filedir'</span>
-0097             filedir=varargin{i+1};
-0098         <span class="keyword">case</span> <span class="string">'savedir'</span>
-0099             savedir=varargin{i+1};
-0100         <span class="keyword">case</span> <span class="string">'lfp_winextract'</span>
-0101             lfp_winextract=varargin{i+1};
-0102         <span class="keyword">case</span> <span class="string">'debug'</span>
-0103             debug=varargin{i+1};
-0104         <span class="keyword">case</span> <span class="string">'peakedges'</span>
-0105             peakedges=varargin{i+1};
-0106         <span class="keyword">case</span> <span class="string">'troughedges'</span>
-0107             troughedges=varargin{i+1};
-0108         <span class="keyword">case</span> <span class="string">'fig_title'</span>
-0109             fig_title=varargin{i+1};
-0110         <span class="keyword">case</span> <span class="string">'nfft'</span>
-0111             nfft=varargin{i+1};
-0112         <span class="keyword">case</span> <span class="string">'freq_range'</span>
-0113             freq_range=varargin{i+1};
-0114         <span class="keyword">case</span> <span class="string">'peak'</span>
-0115             peak=varargin{i+1};
-0116         <span class="keyword">case</span> <span class="string">'trough'</span>
-0117             trough=varargin{i+1};
-0118         <span class="keyword">case</span> <span class="string">'medfilt_scale'</span>
-0119             medfilt_scale=varargin{i+1};
-0120         <span class="keyword">case</span> <span class="string">'lfp_fs'</span>
-0121             lfp_fs=varargin{i+1};
-0122     <span class="keyword">end</span>
-0123 <span class="keyword">end</span>
+0060 
+0061 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION  %%%%%%%%%%%%%%</span>
+0062 
+0063 nparams=length(varargin);
+0064 filedir=pwd;
+0065 savedir=[];
+0066 lfp_winextract=[.03 .03]; <span class="comment">% msec before and after peak or trough to grab LFP</span>
+0067 peakedges=[300 300]; <span class="comment">% take the leading edge of the peak</span>
+0068 troughedges=[100 100];
+0069 fig_title=<span class="string">'noname'</span>;
+0070 randreps=100;
+0071 singletrialplots=30; <span class="comment">% trials chosen at random to plot with fields, spikes, and IFR</span>
+0072 debug=0;
+0073 trial_min=20;
+0074 freq_range=[10 40];
+0075 options=statset(<span class="string">'UseParallel'</span>,<span class="string">'Always'</span>);
+0076 peak=<span class="string">'m'</span>;
+0077 trough=<span class="string">'m'</span>;
+0078 medfilt_scale=1.5; <span class="comment">% median filter scale (in ms)</span>
+0079 lfp_fs=25e3;
+0080 
+0081 <span class="keyword">if</span> mod(nparams,2)&gt;0
+0082     error(<span class="string">'Parameters must be specified as parameter/value pairs'</span>);
+0083 <span class="keyword">end</span>
+0084 
+0085 <span class="keyword">for</span> i=1:2:nparams
+0086     <span class="keyword">switch</span> lower(varargin{i})
+0087         <span class="keyword">case</span> <span class="string">'filedir'</span>
+0088             filedir=varargin{i+1};
+0089         <span class="keyword">case</span> <span class="string">'savedir'</span>
+0090             savedir=varargin{i+1};
+0091         <span class="keyword">case</span> <span class="string">'lfp_winextract'</span>
+0092             lfp_winextract=varargin{i+1};
+0093         <span class="keyword">case</span> <span class="string">'debug'</span>
+0094             debug=varargin{i+1};
+0095         <span class="keyword">case</span> <span class="string">'peakedges'</span>
+0096             peakedges=varargin{i+1};
+0097         <span class="keyword">case</span> <span class="string">'troughedges'</span>
+0098             troughedges=varargin{i+1};
+0099         <span class="keyword">case</span> <span class="string">'fig_title'</span>
+0100             fig_title=varargin{i+1};
+0101         <span class="keyword">case</span> <span class="string">'freq_range'</span>
+0102             freq_range=varargin{i+1};
+0103         <span class="keyword">case</span> <span class="string">'peak'</span>
+0104             peak=varargin{i+1};
+0105         <span class="keyword">case</span> <span class="string">'trough'</span>
+0106             trough=varargin{i+1};
+0107         <span class="keyword">case</span> <span class="string">'medfilt_scale'</span>
+0108             medfilt_scale=varargin{i+1};
+0109         <span class="keyword">case</span> <span class="string">'lfp_fs'</span>
+0110             lfp_fs=varargin{i+1};
+0111     <span class="keyword">end</span>
+0112 <span class="keyword">end</span>
+0113 
+0114 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
+0115 
+0116 
+0117 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA COLLECTION %%%%%%%%%%%%%%%%%%%%</span>
+0118 
+0119 
+0120 <span class="comment">% where to grab the files from?</span>
+0121 
+0122 savename=[ fig_title <span class="string">'_lfpch_'</span> num2str(LFPCHANNEL) <span class="string">'_such'</span> num2str(SUCHANNEL) <span class="string">'_clust'</span> num2str(SUCLUSTER)];
+0123 load(fullfile(filedir,<span class="string">'aggregated_data.mat'</span>),<span class="string">'CHANNELS'</span>,<span class="string">'EPHYS_DATA'</span>); <span class="comment">% get the channel map and LFPs</span>
 0124 
-0125 <span class="comment">% where to grab the files from?</span>
+0125 <span class="comment">% first let's get the smooth spike traces and IFR (use IFR on a trial by trial basis)</span>
 0126 
-0127 savename=[ fig_title <span class="string">'_lfpch_'</span> num2str(LFPCHANNEL) <span class="string">'_such'</span> num2str(SUCHANNEL) <span class="string">'_clust'</span> num2str(SUCLUSTER)];
-0128 load(fullfile(filedir,<span class="string">'aggregated_data.mat'</span>),<span class="string">'CHANNELS'</span>,<span class="string">'EPHYS_DATA'</span>); <span class="comment">% get the channel map and LFPs</span>
+0127 sua_mat=fullfile(filedir,<span class="string">'sua'</span>,[<span class="string">'sua_channels '</span> num2str(SUCHANNEL) <span class="string">'.mat'</span>]);
+0128 load(sua_mat,<span class="string">'smooth_spikes'</span>,<span class="string">'IFR'</span>,<span class="string">'TIME'</span>,<span class="string">'clust_spike_vec'</span>,<span class="string">'subtrials'</span>); <span class="comment">% smooth spikes</span>
 0129 
-0130 <span class="comment">% first let's get the smooth spike traces and IFR (use IFR on a trial by trial basis)</span>
+0130 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
 0131 
-0132 sua_mat=fullfile(filedir,<span class="string">'sua'</span>,[<span class="string">'sua_channels '</span> num2str(SUCHANNEL) <span class="string">'.mat'</span>]);
+0132 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%</span>
 0133 
-0134 load(sua_mat,<span class="string">'smooth_spikes'</span>,<span class="string">'IFR'</span>,<span class="string">'TIME'</span>,<span class="string">'clust_spike_vec'</span>,<span class="string">'subtrials'</span>); <span class="comment">% smooth spikes</span>
-0135 lfp_data=double(EPHYS_DATA(:,:,CHANNELS==LFPCHANNEL));
-0136 
-0137 <span class="comment">% need to account for subset of trials if used in single unit data</span>
-0138 
-0139 lfp_data=lfp_data(:,subtrials);
-0140 [samples,trials]=size(lfp_data);
+0134 
+0135 lfp_data=<a href="../ephys/helpers/ephys/ephys_denoise_signal.html" class="code" title="function [DATA,CAR]=ephys_denoise_signal(EPHYS_DATA,CHIN,CHOUT,varargin)">ephys_denoise_signal</a>(EPHYS_DATA,CHANNELS,LFPCHANNEL);
+0136 clear EPHYS_DATA;
+0137 lfp_data=<a href="../ephys/helpers/ephys/ephys_condition_signal.html" class="code" title="function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)">ephys_condition_signal</a>(lfp_data,<span class="string">'l'</span>,<span class="string">'freq_range'</span>,freq_range,<span class="string">'medfilt_scale'</span>,medfilt_scale);
+0138 lfp_data=squeeze(lfp_data);
+0139 
+0140 <span class="comment">% need to account for subset of trials if used in single unit data</span>
 0141 
-0142 <span class="comment">% filter the lfp_data</span>
-0143 
-0144 <span class="keyword">if</span> ~isempty(medfilt_scale)
+0142 lfp_data=lfp_data(:,subtrials);
+0143 [samples,trials]=size(lfp_data);
+0144 lfp_data=lfp_data';
 0145 
-0146     <span class="comment">% use a median filter with the timescale of a spike to remove big</span>
-0147     <span class="comment">% spike events</span>
-0148 
-0149     disp(<span class="string">'Median filtering'</span>);
-0150 
-0151     medfilt_order=round((medfilt_scale/1e3)*lfp_fs);
-0152 
-0153     parfor i=1:trials
-0154         lfp_data(:,i)=medfilt1(lfp_data(:,i),medfilt_order);
-0155     <span class="keyword">end</span>
-0156 
-0157 <span class="keyword">end</span>
-0158 
-0159 [b,a]=butter(2,[freq_range]/(lfp_fs/2));
+0146 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
+0147 
+0148 <span class="comment">% get the IFR sampling rate</span>
+0149 
+0150 ifr_fs=1./(TIME(2)-TIME(1));
+0151 
+0152 lfp_winextract=round(lfp_winextract.*lfp_fs);
+0153 winlength=length([-lfp_winextract(1):lfp_winextract(2)]);
+0154 
+0155 <span class="comment">% take IFR zscore from each trial, check for peaks and troughs</span>
+0156 <span class="comment">% extract LFPs triggered on &quot;peaks&quot; or &quot;bursts&quot; and &quot;pauses&quot;</span>
+0157 
+0158 <span class="comment">% peak detection: check for zero crossings in the positive-going direction</span>
+0159 <span class="comment">% trough detection:  check for zero crossings in the negative-going direction</span>
 0160 
-0161 lfp_data=filtfilt(b,a,lfp_data);
-0162 lfp_data=lfp_data';
+0161 <span class="comment">% for peaks and troughs, we can set the magnitude of change for the zero-crossings, i.e. x[i+1]&gt;&gt;x[i] | x[i+1]&lt;&lt;x[i]</span>
+0162 <span class="comment">% this will detect the **leading edge** of peaks and troughs, so interpret accordingly</span>
 0163 
-0164 <span class="comment">% get the LFP and IFR sampling rate</span>
-0165 
-0166 ifr_fs=1./(TIME(2)-TIME(1));
-0167 
-0168 lfp_winextract=round(lfp_winextract.*lfp_fs);
-0169 winlength=length([-lfp_winextract(1):lfp_winextract(2)]);
-0170 
-0171 <span class="comment">% take IFR zscore from each trial, check for peaks and troughs</span>
-0172 <span class="comment">% extract LFPs triggered on &quot;peaks&quot; or &quot;bursts&quot; and &quot;pauses&quot;</span>
+0164 
+0165 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREALLOCATION FOR WINDOW EXTRACTION %</span>
+0166 
+0167 [ntrials,samples]=size(IFR{1}{SUCLUSTER});
+0168 ifr=zeros(ntrials,samples);
+0169 
+0170 <span class="comment">% ifr and lfp amplitudes in a trial x sample matrix</span>
+0171 
+0172 ifr_data=IFR{1}{SUCLUSTER};
 0173 
-0174 <span class="comment">% peak detection: check for zero crossings in the positive-going direction</span>
+0174 <span class="comment">% need to account for subset of trials if used in single unit data</span>
 0175 
-0176 <span class="comment">% trough detection:  check for zero crossings in the negative-going direction</span>
+0176 lfp_data=lfp_data(subtrials,:);
 0177 
-0178 <span class="comment">% for peaks and troughs, we can set the magnitude of change for the zero-crossings, i.e. x[i+1]&gt;&gt;x[i] | x[i+1]&lt;&lt;x[i]</span>
-0179 <span class="comment">% this will detect the **leading edge** of peaks and troughs, so interpret accordingly</span>
+0178 spike_data=clust_spike_vec{1}{SUCLUSTER};
+0179 <span class="comment">% vector for peak/trough detection</span>
 0180 
-0181 [ntrials,samples]=size(IFR{1}{SUCLUSTER});
-0182 ifr=zeros(ntrials,samples);
-0183 
-0184 <span class="comment">% ifr and lfp amplitudes in a trial x sample matrix</span>
+0181 indx=[1:samples-1];
+0182 LFPWINS_TROUGH.waveforms=[];
+0183 LFPWINS_PEAK.waveforms=[];
+0184 LFPWINS_RAND.waveforms=[];
 0185 
-0186 ifr_data=IFR{1}{SUCLUSTER};
+0186 <span class="comment">% count the number of extractions in each case to pre-allocate (major speedup)</span>
 0187 
-0188 <span class="comment">% need to account for subset of trials if used in single unit data</span>
-0189 
-0190 lfp_data=lfp_data(subtrials,:);
-0191 
-0192 spike_data=clust_spike_vec{1}{SUCLUSTER};
-0193 <span class="comment">% vector for peak/trough detection</span>
-0194 
-0195 indx=[1:samples-1];
-0196 LFPWINS_TROUGH.waveforms=[];
-0197 LFPWINS_PEAK.waveforms=[];
-0198 LFPWINS_RAND.waveforms=[];
+0188 zerocount=0;
+0189 poscount=0;
+0190 randcount=0;
+0191 <span class="keyword">for</span> i=1:ntrials
+0192 
+0193     <span class="comment">%normifr(i,:)=zscore(ifr_data(i,:));</span>
+0194     normifr(i,:)=ifr_data(i,:);
+0195     normlfp(i,:)=zscore(lfp_data(i,:));
+0196     phaselfp(i,:)=angle(hilbert(normlfp(i,:)));
+0197     currifr=normifr(i,:);
+0198     currlfp=normlfp(i,:);
 0199 
-0200 <span class="comment">% count the number of extractions in each case to pre-allocate (major speedup)</span>
-0201 zerocount=0;
-0202 poscount=0;
-0203 randcount=0;
-0204 <span class="keyword">for</span> i=1:ntrials
-0205 
-0206     <span class="comment">%normifr(i,:)=zscore(ifr_data(i,:));</span>
-0207     normifr(i,:)=ifr_data(i,:);
-0208     normlfp(i,:)=zscore(lfp_data(i,:));
-0209     phaselfp(i,:)=angle(hilbert(normlfp(i,:)));
-0210     currifr=normifr(i,:);
-0211     currlfp=normlfp(i,:);
+0200     <span class="comment">%randifr=zscore(ifr_data(randtrial,:));</span>
+0201 
+0202     <span class="comment">% find zero crossings where IFR &gt; 3*Std and next point &lt; 0</span>
+0203     
+0204     zerocross{i}=find(currifr(indx)&gt;troughedges(1) &amp; currifr(indx+1)&lt;troughedges(2))+1; 
+0205     poscross{i}=find(currifr(indx)&lt;peakedges(1) &amp; currifr(indx+1)&gt;peakedges(2))+1;
+0206 
+0207     ncross(i)=length(zerocross);
+0208 
+0209     <span class="comment">% grab LFP windows around the troughs</span>
+0210 
+0211     <span class="keyword">for</span> j=1:length(zerocross{i})
 0212 
-0213     <span class="comment">%randifr=zscore(ifr_data(randtrial,:));</span>
-0214 
-0215     <span class="comment">% find zero crossings where IFR &gt; 3*Std and next point &lt; 0</span>
-0216     
-0217     zerocross{i}=find(currifr(indx)&gt;troughedges(1) &amp; currifr(indx+1)&lt;troughedges(2))+1; 
-0218     poscross{i}=find(currifr(indx)&lt;peakedges(1) &amp; currifr(indx+1)&gt;peakedges(2))+1;
-0219 
-0220     ncross(i)=length(zerocross);
-0221 
-0222     <span class="comment">% grab LFP windows around the troughs</span>
-0223 
-0224     <span class="keyword">for</span> j=1:length(zerocross{i})
+0213         <span class="keyword">if</span> lower(trough(1))==<span class="string">'m'</span>
+0214             trough_end=min(find(currifr(zerocross{i}(j)+1:end)&gt;troughedges(2)))+zerocross{i}(j);
+0215 
+0216             <span class="keyword">if</span> ~isempty(trough_end)
+0217                 zerocross{i}(j)=round((zerocross{i}(j)+trough_end)/2);
+0218             <span class="keyword">else</span>
+0219                 zerocross{i}(j)=[];
+0220                 <span class="keyword">continue</span>;
+0221             <span class="keyword">end</span>
+0222         <span class="keyword">end</span>
+0223         
+0224         lfpcenter=round((zerocross{i}(j)/ifr_fs)*lfp_fs);
 0225 
-0226         <span class="keyword">if</span> lower(trough(1))==<span class="string">'m'</span>
-0227             trough_end=min(find(currifr(zerocross{i}(j)+1:end)&gt;troughedges(2)))+zerocross{i}(j);
-0228 
-0229             <span class="keyword">if</span> ~isempty(trough_end)
-0230                 zerocross{i}(j)=round((zerocross{i}(j)+trough_end)/2);
-0231             <span class="keyword">else</span>
-0232                 zerocross{i}(j)=[];
-0233                 <span class="keyword">continue</span>;
-0234             <span class="keyword">end</span>
-0235         <span class="keyword">end</span>
-0236         
-0237         lfpcenter=round((zerocross{i}(j)/ifr_fs)*lfp_fs);
+0226         <span class="comment">% attempt to find the end of the trough</span>
+0227 
+0228         startidx=lfpcenter-lfp_winextract(1);
+0229         stopidx=lfpcenter+lfp_winextract(2);
+0230 
+0231         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
+0232             zerocount=zerocount+1;
+0233         <span class="keyword">end</span>
+0234 
+0235     <span class="keyword">end</span>
+0236 
+0237     <span class="comment">% grab LFP windows around the peaks</span>
 0238 
-0239         <span class="comment">% attempt to find the end of the trough</span>
+0239     <span class="keyword">for</span> j=1:length(poscross{i})
 0240 
-0241         startidx=lfpcenter-lfp_winextract(1);
-0242         stopidx=lfpcenter+lfp_winextract(2);
-0243 
-0244         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
-0245             zerocount=zerocount+1;
-0246         <span class="keyword">end</span>
-0247 
-0248     <span class="keyword">end</span>
-0249 
-0250     <span class="comment">% grab LFP windows around the peaks</span>
-0251 
-0252     <span class="keyword">for</span> j=1:length(poscross{i})
-0253 
-0254         <span class="keyword">if</span> lower(peak(1))==<span class="string">'m'</span>
-0255 
-0256             peak_end=min(find(currifr(poscross{i}(j)+1:end)&lt;peakedges(2)))+poscross{i}(j);
-0257 
-0258             <span class="keyword">if</span> ~isempty(peak_end)
-0259                 poscross{i}(j)=round((poscross{i}(j)+peak_end)/2);
-0260             <span class="keyword">else</span>
-0261                 poscross{i}(j)=[];
-0262                 <span class="keyword">continue</span>;
-0263             <span class="keyword">end</span>
-0264         <span class="keyword">end</span>
+0241         <span class="keyword">if</span> lower(peak(1))==<span class="string">'m'</span>
+0242 
+0243             peak_end=min(find(currifr(poscross{i}(j)+1:end)&lt;peakedges(2)))+poscross{i}(j);
+0244 
+0245             <span class="keyword">if</span> ~isempty(peak_end)
+0246                 poscross{i}(j)=round((poscross{i}(j)+peak_end)/2);
+0247             <span class="keyword">else</span>
+0248                 poscross{i}(j)=[];
+0249                 <span class="keyword">continue</span>;
+0250             <span class="keyword">end</span>
+0251         <span class="keyword">end</span>
+0252 
+0253         lfpcenter=round((poscross{i}(j)/ifr_fs)*lfp_fs);
+0254         startidx=lfpcenter-lfp_winextract(1);
+0255         stopidx=lfpcenter+lfp_winextract(2);
+0256 
+0257         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
+0258             poscount=poscount+1;
+0259         <span class="keyword">end</span>
+0260 
+0261     <span class="keyword">end</span>
+0262 
+0263     population=[1:samples];
+0264     randcross{i}=population(randsample(length(population),max([length(poscross{i}) length(zerocross{i})])));
 0265 
-0266         lfpcenter=round((poscross{i}(j)/ifr_fs)*lfp_fs);
-0267         startidx=lfpcenter-lfp_winextract(1);
-0268         stopidx=lfpcenter+lfp_winextract(2);
+0266     <span class="keyword">for</span> j=1:length(randcross{i})
+0267 
+0268         lfpcenter=round((randcross{i}(j)/ifr_fs)*lfp_fs);
 0269 
-0270         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
-0271             poscount=poscount+1;
-0272         <span class="keyword">end</span>
-0273 
-0274     <span class="keyword">end</span>
-0275 
-0276     population=[1:samples];
-0277     randcross{i}=population(randsample(length(population),max([length(poscross{i}) length(zerocross{i})])));
+0270         startidx=lfpcenter-lfp_winextract(1);
+0271         stopidx=lfpcenter+lfp_winextract(2);
+0272 
+0273         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
+0274             randcount=randcount+1;
+0275         <span class="keyword">end</span>
+0276 
+0277     <span class="keyword">end</span>
 0278 
-0279     <span class="keyword">for</span> j=1:length(randcross{i})
+0279     <span class="comment">% show the results if debugging</span>
 0280 
-0281         lfpcenter=round((randcross{i}(j)/ifr_fs)*lfp_fs);
-0282 
-0283         startidx=lfpcenter-lfp_winextract(1);
-0284         stopidx=lfpcenter+lfp_winextract(2);
-0285 
-0286         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
-0287             randcount=randcount+1;
-0288         <span class="keyword">end</span>
-0289 
-0290     <span class="keyword">end</span>
-0291 
-0292     <span class="comment">% show the results if debugging</span>
-0293 
-0294     <span class="keyword">if</span> debug
-0295         lfpfig=figure();plotyy(TIME,normifr(i,:),LFP_RASTER.t,normlfp(i,:));
-0296         hold on;
-0297         <span class="keyword">if</span> ~isempty(zerocross{i})
-0298             plot(TIME(zerocross{i}),currifr(zerocross{i}),<span class="string">'g*'</span>);
-0299         <span class="keyword">end</span>
-0300 
-0301         <span class="keyword">if</span> ~isempty(poscross{i})
-0302             plot(TIME(poscross{i}),currifr(poscross{i}),<span class="string">'r*'</span>);
-0303         <span class="keyword">end</span>
-0304         <span class="keyword">if</span> ~isempty(randcross{i})
-0305             plot(TIME(randcross{i}),currifr(randcross{i}),<span class="string">'m*'</span>);
-0306         <span class="keyword">end</span>
-0307         pause();
-0308         close([lfpfig]);
-0309     <span class="keyword">end</span>
-0310 
-0311 <span class="keyword">end</span>
+0281     <span class="keyword">if</span> debug
+0282         lfpfig=figure();plotyy(TIME,normifr(i,:),LFP_RASTER.t,normlfp(i,:));
+0283         hold on;
+0284         <span class="keyword">if</span> ~isempty(zerocross{i})
+0285             plot(TIME(zerocross{i}),currifr(zerocross{i}),<span class="string">'g*'</span>);
+0286         <span class="keyword">end</span>
+0287 
+0288         <span class="keyword">if</span> ~isempty(poscross{i})
+0289             plot(TIME(poscross{i}),currifr(poscross{i}),<span class="string">'r*'</span>);
+0290         <span class="keyword">end</span>
+0291         <span class="keyword">if</span> ~isempty(randcross{i})
+0292             plot(TIME(randcross{i}),currifr(randcross{i}),<span class="string">'m*'</span>);
+0293         <span class="keyword">end</span>
+0294         pause();
+0295         close([lfpfig]);
+0296     <span class="keyword">end</span>
+0297 
+0298 <span class="keyword">end</span>
+0299 
+0300 <span class="comment">% now pre-allocate wave matrices</span>
+0301 
+0302 LFPWINS_TROUGH.waveforms=zeros(winlength,zerocount);
+0303 LFPWINS_PEAK.waveforms=zeros(winlength,poscount);
+0304 LFPWINS_RAND.waveforms=zeros(winlength,randcount);
+0305 LFPWINS_TROUGH.phaseangle=zeros(zerocount,1);
+0306 LFPWINS_PEAK.phaseangle=zeros(poscount,1);
+0307 LFPWINS_RAND.phaseangle=zeros(randcount,1);
+0308 
+0309 zerocount=1;
+0310 poscount=1;
+0311 randcount=1;
 0312 
-0313 <span class="comment">% now pre-allocate wave matrices</span>
+0313 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
 0314 
-0315 LFPWINS_TROUGH.waveforms=zeros(winlength,zerocount);
-0316 LFPWINS_PEAK.waveforms=zeros(winlength,poscount);
-0317 LFPWINS_RAND.waveforms=zeros(winlength,randcount);
-0318 LFPWINS_TROUGH.phaseangle=zeros(zerocount,1);
-0319 LFPWINS_PEAK.phaseangle=zeros(poscount,1);
-0320 LFPWINS_RAND.phaseangle=zeros(randcount,1);
-0321 
-0322 zerocount=1;
-0323 poscount=1;
-0324 randcount=1;
+0315 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% WINDOW EXTRACTION %%%%%%%%%%%%%%%%%%</span>
+0316 
+0317 
+0318 <span class="keyword">for</span> i=1:ntrials
+0319 
+0320     currifr=normifr(i,:);
+0321     currlfp=normlfp(i,:);
+0322     
+0323     <span class="comment">% find zero crossings where IFR &gt; 3*Std and next point &lt; 0</span>
+0324     
 0325 
-0326 <span class="keyword">for</span> i=1:ntrials
+0326     <span class="comment">% grab LFP windows around the troughs</span>
 0327 
-0328     currifr=normifr(i,:);
-0329     currlfp=normlfp(i,:);
-0330     
-0331     <span class="comment">% find zero crossings where IFR &gt; 3*Std and next point &lt; 0</span>
-0332     
-0333 
-0334     <span class="comment">% grab LFP windows around the troughs</span>
-0335 
-0336     <span class="keyword">for</span> j=1:length(zerocross{i})
-0337 
-0338         lfpcenter=round((zerocross{i}(j)/ifr_fs)*lfp_fs);
-0339 
-0340         startidx=lfpcenter-lfp_winextract(1);
-0341         stopidx=lfpcenter+lfp_winextract(2);
+0328     <span class="keyword">for</span> j=1:length(zerocross{i})
+0329 
+0330         lfpcenter=round((zerocross{i}(j)/ifr_fs)*lfp_fs);
+0331 
+0332         startidx=lfpcenter-lfp_winextract(1);
+0333         stopidx=lfpcenter+lfp_winextract(2);
+0334 
+0335         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
+0336             LFPWINS_TROUGH.waveforms(1:winlength,zerocount)=currlfp(startidx:stopidx)';
+0337             LFPWINS_TROUGH.phaseangle(zerocount)=phaselfp(i,lfpcenter);
+0338             zerocount=zerocount+1;
+0339         <span class="keyword">end</span>
+0340 
+0341     <span class="keyword">end</span>
 0342 
-0343         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
-0344             LFPWINS_TROUGH.waveforms(1:winlength,zerocount)=currlfp(startidx:stopidx)';
-0345             LFPWINS_TROUGH.phaseangle(zerocount)=phaselfp(i,lfpcenter);
-0346             zerocount=zerocount+1;
-0347         <span class="keyword">end</span>
+0343     <span class="comment">% grab LFP windows around the peaks</span>
+0344 
+0345     <span class="keyword">for</span> j=1:length(poscross{i})
+0346 
+0347         lfpcenter=round((poscross{i}(j)/ifr_fs)*lfp_fs);
 0348 
-0349     <span class="keyword">end</span>
-0350 
-0351     <span class="comment">% grab LFP windows around the peaks</span>
-0352 
-0353     <span class="keyword">for</span> j=1:length(poscross{i})
-0354 
-0355         lfpcenter=round((poscross{i}(j)/ifr_fs)*lfp_fs);
-0356 
-0357         startidx=lfpcenter-lfp_winextract(1);
-0358         stopidx=lfpcenter+lfp_winextract(2);
+0349         startidx=lfpcenter-lfp_winextract(1);
+0350         stopidx=lfpcenter+lfp_winextract(2);
+0351 
+0352         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
+0353             LFPWINS_PEAK.waveforms(1:winlength,poscount)=currlfp(startidx:stopidx)';
+0354             LFPWINS_PEAK.phaseangle(poscount)=phaselfp(i,lfpcenter);
+0355             poscount=poscount+1;
+0356         <span class="keyword">end</span>
+0357 
+0358     <span class="keyword">end</span>
 0359 
-0360         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
-0361             LFPWINS_PEAK.waveforms(1:winlength,poscount)=currlfp(startidx:stopidx)';
-0362             LFPWINS_PEAK.phaseangle(poscount)=phaselfp(i,lfpcenter);
-0363             poscount=poscount+1;
-0364         <span class="keyword">end</span>
-0365 
-0366     <span class="keyword">end</span>
-0367 
-0368     <span class="keyword">for</span> j=1:length(randcross{i})
-0369 
-0370         lfpcenter=round((randcross{i}(j)/ifr_fs)*lfp_fs);
-0371 
-0372         startidx=lfpcenter-lfp_winextract(1);
-0373         stopidx=lfpcenter+lfp_winextract(2);
+0360     <span class="keyword">for</span> j=1:length(randcross{i})
+0361 
+0362         lfpcenter=round((randcross{i}(j)/ifr_fs)*lfp_fs);
+0363 
+0364         startidx=lfpcenter-lfp_winextract(1);
+0365         stopidx=lfpcenter+lfp_winextract(2);
+0366 
+0367         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
+0368             LFPWINS_RAND.waveforms(1:winlength,poscount)=currlfp(startidx:stopidx)';
+0369             LFPWINS_RAND.phaseangle(randcount)=phaselfp(i,lfpcenter);
+0370             randcount=randcount+1;
+0371         <span class="keyword">end</span>
+0372 
+0373     <span class="keyword">end</span>
 0374 
-0375         <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
-0376             LFPWINS_RAND.waveforms(1:winlength,poscount)=currlfp(startidx:stopidx)';
-0377             LFPWINS_RAND.phaseangle(randcount)=phaselfp(i,lfpcenter);
-0378             randcount=randcount+1;
-0379         <span class="keyword">end</span>
-0380 
-0381     <span class="keyword">end</span>
-0382 
+0375 
+0376     
+0377     <span class="comment">% show the results if debugging</span>
+0378 
+0379 
+0380 <span class="keyword">end</span>
+0381 
+0382 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
 0383 
-0384     
-0385     <span class="comment">% show the results if debugging</span>
+0384 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% RANDOM POINT WINDOW EXTRACTION %%%%%</span>
+0385 
 0386 
-0387 
-0388 <span class="keyword">end</span>
-0389 
-0390 disp(<span class="string">'Computing random repetitions'</span>)
-0391 mean_rand=zeros(randreps,winlength);
-0392 
-0393 parfor i=1:randreps
-0394 
-0395     randcross={};
-0396     currlfp=[];
-0397 
-0398     counter=0;
-0399     <span class="keyword">for</span> j=1:ntrials
-0400         
-0401         currlfp=normlfp(j,:);
-0402         randcross{j}=randsample(samples,ncross(j)); <span class="comment">% random samples</span>
-0403         
-0404         <span class="keyword">for</span> k=1:length(randcross{j})
-0405 
-0406             lfpcenter=round((randcross{j}(k)/ifr_fs)*lfp_fs);
-0407 
-0408             startidx=lfpcenter-lfp_winextract(1);
-0409             stopidx=lfpcenter+lfp_winextract(2);
-0410 
-0411             <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
-0412                 counter=counter+1;
-0413                 <span class="comment">%rand_waveforms=[rand_waveforms currlfp(startidx:stopidx)'];</span>
-0414             <span class="keyword">end</span>
-0415 
-0416         <span class="keyword">end</span>
-0417 
-0418     <span class="keyword">end</span>
-0419 
-0420     rand_waveforms=zeros(winlength,counter);
-0421 
-0422     counter=1;
-0423     <span class="keyword">for</span> j=1:ntrials
-0424 
-0425         currlfp=normlfp(j,:);
-0426         
-0427         <span class="keyword">for</span> k=1:length(randcross{j})
-0428 
-0429             lfpcenter=round((randcross{j}(k)/ifr_fs)*lfp_fs);
-0430 
-0431             startidx=lfpcenter-lfp_winextract(1);
-0432             stopidx=lfpcenter+lfp_winextract(2);
-0433 
-0434             <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
-0435                 rand_waveforms(1:winlength,counter)=currlfp(startidx:stopidx);
-0436                 counter=counter+1;
-0437                 <span class="comment">%rand_waveforms=[rand_waveforms currlfp(startidx:stopidx)'];</span>
-0438             <span class="keyword">end</span>
-0439 
-0440         <span class="keyword">end</span>
-0441 
-0442     <span class="keyword">end</span>
-0443 
-0444     mean_rand(i,:)=mean(rand_waveforms,2);
-0445 
-0446 <span class="keyword">end</span>
-0447 
-0448 <span class="comment">% also let's plot some trials at random, take the spikes, IFR and LFP, plot using subaxis</span>
+0387 <span class="comment">% take random positions in each trial for significance evaluation</span>
+0388 
+0389 disp(<span class="string">'Computing random repetitions'</span>)
+0390 mean_rand=zeros(randreps,winlength);
+0391 
+0392 parfor i=1:randreps
+0393 
+0394     randcross={};
+0395     currlfp=[];
+0396 
+0397     counter=0;
+0398     <span class="keyword">for</span> j=1:ntrials
+0399         
+0400         currlfp=normlfp(j,:);
+0401         randcross{j}=randsample(samples,ncross(j)); <span class="comment">% random samples</span>
+0402         
+0403         <span class="keyword">for</span> k=1:length(randcross{j})
+0404 
+0405             lfpcenter=round((randcross{j}(k)/ifr_fs)*lfp_fs);
+0406 
+0407             startidx=lfpcenter-lfp_winextract(1);
+0408             stopidx=lfpcenter+lfp_winextract(2);
+0409 
+0410             <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
+0411                 counter=counter+1;
+0412                 <span class="comment">%rand_waveforms=[rand_waveforms currlfp(startidx:stopidx)'];</span>
+0413             <span class="keyword">end</span>
+0414 
+0415         <span class="keyword">end</span>
+0416 
+0417     <span class="keyword">end</span>
+0418 
+0419     rand_waveforms=zeros(winlength,counter);
+0420 
+0421     counter=1;
+0422     <span class="keyword">for</span> j=1:ntrials
+0423 
+0424         currlfp=normlfp(j,:);
+0425         
+0426         <span class="keyword">for</span> k=1:length(randcross{j})
+0427 
+0428             lfpcenter=round((randcross{j}(k)/ifr_fs)*lfp_fs);
+0429 
+0430             startidx=lfpcenter-lfp_winextract(1);
+0431             stopidx=lfpcenter+lfp_winextract(2);
+0432 
+0433             <span class="keyword">if</span> startidx&gt;0 &amp; stopidx&lt;length(currlfp)
+0434                 rand_waveforms(1:winlength,counter)=currlfp(startidx:stopidx);
+0435                 counter=counter+1;
+0436                 <span class="comment">%rand_waveforms=[rand_waveforms currlfp(startidx:stopidx)'];</span>
+0437             <span class="keyword">end</span>
+0438 
+0439         <span class="keyword">end</span>
+0440 
+0441     <span class="keyword">end</span>
+0442 
+0443     mean_rand(i,:)=mean(rand_waveforms,2);
+0444 
+0445 <span class="keyword">end</span>
+0446 
+0447 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
+0448 
 0449 
-0450 
-0451 <span class="comment">% also plot the mean lfp and the mean IFR (should look good after trial averaging)</span>
-0452 <span class="comment">% jacknife the SEM again</span>
+0450 [lfptrials,lfpsample]=size(lfp_data);
+0451 
+0452 <span class="comment">% plot the mean spike triggered lfp</span>
 0453 
-0454 [lfptrials,lfpsample]=size(lfp_data);
+0454 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PLOTTING CODE %%%%%%%%%%%%%%%%%%%%%%</span>
 0455 
-0456 <span class="comment">% plot the mean spike triggered lfp</span>
-0457 
-0458 timevec=[-lfp_winextract(1):lfp_winextract(2)]./lfp_fs*1e3;
-0459 
-0460 mean_lfp_peak=mean(LFPWINS_PEAK.waveforms,2);
-0461 
-0462 stalfp_fig=figure(<span class="string">'Position'</span>,[0 0 800 600],<span class="string">'Visible'</span>,<span class="string">'off'</span>);
-0463 <span class="keyword">if</span> isempty(savedir)
-0464     set(stalfp_fig,<span class="string">'Visible'</span>,<span class="string">'on'</span>);
-0465 <span class="keyword">end</span>
-0466 
-0467 <span class="comment">% 99 % confidence interval</span>
+0456 timevec=[-lfp_winextract(1):lfp_winextract(2)]./lfp_fs*1e3;
+0457 mean_lfp_peak=mean(LFPWINS_PEAK.waveforms,2);
+0458 
+0459 stalfp_fig=figure(<span class="string">'Position'</span>,[0 0 800 600],<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+0460 <span class="keyword">if</span> isempty(savedir)
+0461     set(stalfp_fig,<span class="string">'Visible'</span>,<span class="string">'on'</span>);
+0462 <span class="keyword">end</span>
+0463 
+0464 <span class="comment">% 99 % confidence interval</span>
+0465 
+0466 conf_upper=ones(size(timevec)).*prctile(mean_rand(:),99.5);
+0467 conf_lower=ones(size(timevec)).*prctile(mean_rand(:),.5);
 0468 
-0469 conf_upper=ones(size(timevec)).*prctile(mean_rand(:),99.5);
-0470 conf_lower=ones(size(timevec)).*prctile(mean_rand(:),.5);
-0471 
-0472 fill([timevec fliplr(timevec)],[conf_upper fliplr(conf_lower)],<span class="string">'k'</span>,<span class="string">'FaceColor'</span>,[.8 .8 .8],<span class="string">'EdgeColor'</span>,<span class="string">'none'</span>);
-0473 
-0474 set(gca,<span class="string">'Layer'</span>,<span class="string">'Top'</span>)
-0475 h=[];
-0476 hold on
-0477 
-0478 [samples,trials]=size(LFPWINS_PEAK.waveforms);
-0479 
-0480 <span class="keyword">if</span> trials&gt;trial_min
+0469 fill([timevec fliplr(timevec)],[conf_upper fliplr(conf_lower)],<span class="string">'k'</span>,<span class="string">'FaceColor'</span>,[.8 .8 .8],<span class="string">'EdgeColor'</span>,<span class="string">'none'</span>);
+0470 
+0471 set(gca,<span class="string">'Layer'</span>,<span class="string">'Top'</span>)
+0472 h=[];
+0473 hold on
+0474 
+0475 [samples,trials]=size(LFPWINS_PEAK.waveforms);
+0476 
+0477 <span class="keyword">if</span> trials&gt;trial_min
+0478 
+0479     h(end+1)=plot(timevec,mean_lfp_peak,<span class="string">'m-'</span>,<span class="string">'linewidth'</span>,2);
+0480 
 0481 
-0482     h(end+1)=plot(timevec,mean_lfp_peak,<span class="string">'m-'</span>,<span class="string">'linewidth'</span>,2);
+0482     <span class="comment">% jackknife the standard error, sqrt(n-1/n*SIGMA[mean_j - mean_sample]^2)</span>
 0483 
-0484 
-0485     <span class="comment">% jackknife the standard error, sqrt(n-1/n*SIGMA[mean_j - mean_sample]^2)</span>
+0484     <span class="comment">% tranpose the matrix since the jackknife function assumes each row is a sample</span>
+0485 
 0486 
-0487     <span class="comment">% tranpose the matrix since the jackknife function assumes each row is a sample</span>
+0487     disp(<span class="string">'Jackknifing the mean...'</span>);
 0488 
-0489 
-0490     disp(<span class="string">'Jackknifing the mean...'</span>);
-0491 
-0492     <span class="comment">%jackknife_mat=jackknife(@mean,LFPWINS_PEAK.waveforms','Options',options);</span>
-0493 
-0494     <span class="comment">% then use the standard formula</span>
+0489     <span class="comment">%jackknife_mat=jackknife(@mean,LFPWINS_PEAK.waveforms','Options',options);</span>
+0490 
+0491     <span class="comment">% then use the standard formula</span>
+0492 
+0493     <span class="comment">%LFPWINS_PEAK.jackknife_sem=sqrt(((trials-1)/trials).*sum((jackknife_mat-repmat(mean_lfp_peak',trials,1)).^2))';</span>
+0494     LFPWINS_PEAK.sem=[std(LFPWINS_PEAK.waveforms')./sqrt(trials)]';
 0495 
-0496     <span class="comment">%LFPWINS_PEAK.jackknife_sem=sqrt(((trials-1)/trials).*sum((jackknife_mat-repmat(mean_lfp_peak',trials,1)).^2))';</span>
-0497     LFPWINS_PEAK.sem=[std(LFPWINS_PEAK.waveforms')./sqrt(trials)]';
-0498 
-0499     plot(timevec,mean_lfp_peak-LFPWINS_PEAK.sem,<span class="string">'m--'</span>);
-0500     plot(timevec,mean_lfp_peak+LFPWINS_PEAK.sem,<span class="string">'m--'</span>);
-0501     axis tight;
-0502 
-0503 <span class="keyword">end</span>
-0504 
-0505 <span class="comment">% label with N, need a statistical test here...</span>
+0496     plot(timevec,mean_lfp_peak-LFPWINS_PEAK.sem,<span class="string">'m--'</span>);
+0497     plot(timevec,mean_lfp_peak+LFPWINS_PEAK.sem,<span class="string">'m--'</span>);
+0498     axis tight;
+0499 
+0500 <span class="keyword">end</span>
+0501 
+0502 <span class="comment">% label with N, need a statistical test here...</span>
+0503 
+0504 mean_lfp_trough=mean(LFPWINS_TROUGH.waveforms,2);
+0505 [samples,trials]=size(LFPWINS_TROUGH.waveforms);
 0506 
-0507 mean_lfp_trough=mean(LFPWINS_TROUGH.waveforms,2);
-0508 [samples,trials]=size(LFPWINS_TROUGH.waveforms);
-0509 
-0510 <span class="keyword">if</span> trials&gt;trial_min
-0511 
-0512     h(end+1)=plot(timevec,mean_lfp_trough,<span class="string">'g-'</span>,<span class="string">'linewidth'</span>,2);
-0513 
-0514     disp(<span class="string">'Jackknifing the mean...'</span>);
-0515 
-0516     <span class="comment">%jackknife_mat=jackknife(@mean,LFPWINS_TROUGH.waveforms','Options',options);</span>
-0517     <span class="comment">%LFPWINS_TROUGH.jackknife_sem=sqrt(((trials-1)/trials).*sum((jackknife_mat-repmat(mean_lfp_trough',trials,1)).^2))';</span>
-0518     LFPWINS_TROUGH.sem=[std(LFPWINS_TROUGH.waveforms')./sqrt(trials)]';
-0519 
-0520     plot(timevec,mean_lfp_trough-LFPWINS_TROUGH.sem,<span class="string">'g--'</span>);
-0521     plot(timevec,mean_lfp_trough+LFPWINS_TROUGH.sem,<span class="string">'g--'</span>);
-0522     axis tight;
-0523 
-0524 <span class="keyword">end</span>
-0525 
-0526 <span class="comment">%h(3)=plot(timevec,ones(size(timevec)).*prctile(mean_rand(:),97.5),'--','color',[.7 .7 .7],'linewidth',2);</span>
-0527 <span class="comment">%plot(timevec,ones(size(timevec)).*prctile(mean_rand(:),2.5),'--','color',[.7 .7 .7],'linewidth',2);</span>
-0528 set(gca,<span class="string">'TickDir'</span>,<span class="string">'out'</span>,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'linewidth'</span>,1.25,<span class="string">'TickLength'</span>,[.025 .025])
-0529 box off
-0530 ylabel(<span class="string">'STA-LFP (zscore)'</span>,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'FontSize'</span>,20);
-0531 xlabel(<span class="string">'Time (ms)'</span>,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'FontSize'</span>,20);
-0532 title([<span class="string">'LFP (channel '</span> num2str(LFPCHANNEL) <span class="string">') SU (channel '</span> num2str(SUCHANNEL) <span class="string">' cluster '</span> num2str(SUCLUSTER) <span class="string">')'</span>]);
-0533 <span class="comment">% include channel, bird ID</span>
-0534 
-0535 L=legend(h,<span class="string">'FR Peak'</span>,<span class="string">'FR Trough'</span>);
-0536 set(L,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'FontSize'</span>,15,<span class="string">'Location'</span>,<span class="string">'NorthWest'</span>)
-0537 legend boxoff
-0538 
-0539 <span class="keyword">if</span> ~isempty(savedir)
-0540     <a href="../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(stalfp_fig,savedir,[ savename <span class="string">'_spect'</span> ],<span class="string">'eps,png'</span>);
-0541     close([stalfp_fig]);
-0542 <span class="keyword">end</span>
+0507 <span class="keyword">if</span> trials&gt;trial_min
+0508 
+0509     h(end+1)=plot(timevec,mean_lfp_trough,<span class="string">'g-'</span>,<span class="string">'linewidth'</span>,2);
+0510 
+0511     disp(<span class="string">'Jackknifing the mean...'</span>);
+0512 
+0513     <span class="comment">%jackknife_mat=jackknife(@mean,LFPWINS_TROUGH.waveforms','Options',options);</span>
+0514     <span class="comment">%LFPWINS_TROUGH.jackknife_sem=sqrt(((trials-1)/trials).*sum((jackknife_mat-repmat(mean_lfp_trough',trials,1)).^2))';</span>
+0515     LFPWINS_TROUGH.sem=[std(LFPWINS_TROUGH.waveforms')./sqrt(trials)]';
+0516 
+0517     plot(timevec,mean_lfp_trough-LFPWINS_TROUGH.sem,<span class="string">'g--'</span>);
+0518     plot(timevec,mean_lfp_trough+LFPWINS_TROUGH.sem,<span class="string">'g--'</span>);
+0519     axis tight;
+0520 
+0521 <span class="keyword">end</span>
+0522 
+0523 <span class="comment">%h(3)=plot(timevec,ones(size(timevec)).*prctile(mean_rand(:),97.5),'--','color',[.7 .7 .7],'linewidth',2);</span>
+0524 <span class="comment">%plot(timevec,ones(size(timevec)).*prctile(mean_rand(:),2.5),'--','color',[.7 .7 .7],'linewidth',2);</span>
+0525 set(gca,<span class="string">'TickDir'</span>,<span class="string">'out'</span>,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'linewidth'</span>,1.25,<span class="string">'TickLength'</span>,[.025 .025])
+0526 box off
+0527 ylabel(<span class="string">'STA-LFP (zscore)'</span>,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'FontSize'</span>,20);
+0528 xlabel(<span class="string">'Time (ms)'</span>,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'FontSize'</span>,20);
+0529 title([<span class="string">'LFP (channel '</span> num2str(LFPCHANNEL) <span class="string">') SU (channel '</span> num2str(SUCHANNEL) <span class="string">' cluster '</span> num2str(SUCLUSTER) <span class="string">')'</span>]);
+0530 <span class="comment">% include channel, bird ID</span>
+0531 
+0532 L=legend(h,<span class="string">'FR Peak'</span>,<span class="string">'FR Trough'</span>);
+0533 set(L,<span class="string">'FontName'</span>,<span class="string">'Helvetica'</span>,<span class="string">'FontSize'</span>,15,<span class="string">'Location'</span>,<span class="string">'NorthWest'</span>)
+0534 legend boxoff
+0535 
+0536 <span class="keyword">if</span> ~isempty(savedir)
+0537     <a href="../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(stalfp_fig,savedir,[ savename <span class="string">'_spect'</span> ],<span class="string">'eps,png'</span>);
+0538     close([stalfp_fig]);
+0539 <span class="keyword">end</span>
+0540 
+0541 <span class="comment">% include statistical tests and polar histograms of phase values!, that should be it...</span>
+0542 <span class="comment">% now compute polar histograms of the phase angles at the peaks and troughs</span>
 0543 
-0544 <span class="comment">% include statistical tests and polar histograms of phase values!, that should be it...</span>
-0545 <span class="comment">% now compute polar histograms of the phase angles at the peaks and troughs</span>
-0546 
-0547 <span class="keyword">if</span> length(LFPWINS_PEAK.phaseangle)&gt;0
-0548     [rtest_p.peak]=circ_rtest(LFPWINS_PEAK.phaseangle);
-0549 <span class="keyword">else</span>
-0550     rtest_p.peak=NaN;
-0551 <span class="keyword">end</span>
-0552 
-0553 <span class="keyword">if</span> length(LFPWINS_TROUGH.phaseangle)&gt;0
-0554     [rtest_p.trough]=circ_rtest(LFPWINS_TROUGH.phaseangle);
-0555 <span class="keyword">else</span>
-0556     rtest_p.trough=NaN;
-0557 <span class="keyword">end</span>
-0558 
-0559 <span class="keyword">if</span> length(LFPWINS_RAND.phaseangle)&gt;0
-0560     [rtest_p.rand]=circ_rtest(LFPWINS_RAND.phaseangle);
-0561 <span class="keyword">else</span>
-0562     rtest_p.trough=NaN;
-0563 <span class="keyword">end</span>
-0564 
-0565 
-0566 stats_fig=figure(<span class="string">'Position'</span>,[0 0 800 600],<span class="string">'Visible'</span>,<span class="string">'off'</span>);
-0567 <span class="keyword">if</span> isempty(savedir)
-0568     set(stats_fig,<span class="string">'Visible'</span>,<span class="string">'on'</span>);
-0569 <span class="keyword">end</span>
-0570 
-0571 subplot(1,3,1);
-0572 <a href="../ephys/helpers/visualization/pretty_polar.html" class="code" title="function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)">pretty_polar</a>(LFPWINS_PEAK.phaseangle,15,<span class="string">'x_label'</span>,{<span class="string">'FR Peak'</span>;[<span class="string">'Rayleigh test: p '</span> sprintf(<span class="string">'%.3f'</span>,rtest_p.peak)]},<span class="string">'fignum'</span>,stats_fig);
-0573 subplot(1,3,2);
-0574 <a href="../ephys/helpers/visualization/pretty_polar.html" class="code" title="function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)">pretty_polar</a>(LFPWINS_TROUGH.phaseangle,15,<span class="string">'x_label'</span>,{<span class="string">'FR Trough'</span>,[<span class="string">'Rayleigh test: p '</span> sprintf(<span class="string">'%.3f'</span>,rtest_p.trough)]},<span class="string">'fignum'</span>,stats_fig,<span class="string">'labels'</span>,{<span class="string">''</span>,<span class="string">''</span>,<span class="string">''</span>,<span class="string">''</span>});
-0575 subplot(1,3,3);
-0576 <a href="../ephys/helpers/visualization/pretty_polar.html" class="code" title="function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)">pretty_polar</a>(LFPWINS_RAND.phaseangle,15,<span class="string">'x_label'</span>,{<span class="string">'Random'</span>,[<span class="string">'Rayleigh test: p '</span> sprintf(<span class="string">'%.3f'</span>,rtest_p.rand)]},<span class="string">'fignum'</span>,stats_fig,<span class="string">'labels'</span>,{<span class="string">''</span>,<span class="string">''</span>,<span class="string">''</span>,<span class="string">''</span>});
-0577 
-0578 <span class="keyword">if</span> ~isempty(savedir)
-0579     <a href="../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(stats_fig,savedir,<span class="keyword">...</span>
-0580         [ savename <span class="string">'_circstats'</span> ],<span class="string">'eps,png'</span>);
-0581     close([stats_fig]);
-0582     save(fullfile(savedir,[savename <span class="string">'.mat'</span>]),<span class="string">'LFPWINS_PEAK'</span>,<span class="string">'LFPWINS_TROUGH'</span>,<span class="string">'LFPWINS_RAND'</span>,<span class="keyword">...</span>
-0583         <span class="string">'rtest_p'</span>);
-0584 
-0585 <span class="keyword">end</span>
-0586</pre></div>
-<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+0544 <span class="keyword">if</span> length(LFPWINS_PEAK.phaseangle)&gt;0
+0545     [rtest_p.peak]=circ_rtest(LFPWINS_PEAK.phaseangle);
+0546 <span class="keyword">else</span>
+0547     rtest_p.peak=NaN;
+0548 <span class="keyword">end</span>
+0549 
+0550 <span class="keyword">if</span> length(LFPWINS_TROUGH.phaseangle)&gt;0
+0551     [rtest_p.trough]=circ_rtest(LFPWINS_TROUGH.phaseangle);
+0552 <span class="keyword">else</span>
+0553     rtest_p.trough=NaN;
+0554 <span class="keyword">end</span>
+0555 
+0556 <span class="keyword">if</span> length(LFPWINS_RAND.phaseangle)&gt;0
+0557     [rtest_p.rand]=circ_rtest(LFPWINS_RAND.phaseangle);
+0558 <span class="keyword">else</span>
+0559     rtest_p.trough=NaN;
+0560 <span class="keyword">end</span>
+0561 
+0562 
+0563 stats_fig=figure(<span class="string">'Position'</span>,[0 0 800 600],<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+0564 <span class="keyword">if</span> isempty(savedir)
+0565     set(stats_fig,<span class="string">'Visible'</span>,<span class="string">'on'</span>);
+0566 <span class="keyword">end</span>
+0567 
+0568 subplot(1,3,1);
+0569 <a href="../ephys/helpers/visualization/pretty_polar.html" class="code" title="function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)">pretty_polar</a>(LFPWINS_PEAK.phaseangle,15,<span class="string">'x_label'</span>,{<span class="string">'FR Peak'</span>;[<span class="string">'Rayleigh test: p '</span> sprintf(<span class="string">'%.3f'</span>,rtest_p.peak)]},<span class="string">'fignum'</span>,stats_fig);
+0570 subplot(1,3,2);
+0571 <a href="../ephys/helpers/visualization/pretty_polar.html" class="code" title="function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)">pretty_polar</a>(LFPWINS_TROUGH.phaseangle,15,<span class="string">'x_label'</span>,{<span class="string">'FR Trough'</span>,[<span class="string">'Rayleigh test: p '</span> sprintf(<span class="string">'%.3f'</span>,rtest_p.trough)]},<span class="string">'fignum'</span>,stats_fig,<span class="string">'labels'</span>,{<span class="string">''</span>,<span class="string">''</span>,<span class="string">''</span>,<span class="string">''</span>});
+0572 subplot(1,3,3);
+0573 <a href="../ephys/helpers/visualization/pretty_polar.html" class="code" title="function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)">pretty_polar</a>(LFPWINS_RAND.phaseangle,15,<span class="string">'x_label'</span>,{<span class="string">'Random'</span>,[<span class="string">'Rayleigh test: p '</span> sprintf(<span class="string">'%.3f'</span>,rtest_p.rand)]},<span class="string">'fignum'</span>,stats_fig,<span class="string">'labels'</span>,{<span class="string">''</span>,<span class="string">''</span>,<span class="string">''</span>,<span class="string">''</span>});
+0574 
+0575 <span class="keyword">if</span> ~isempty(savedir)
+0576     <a href="../ephys/helpers/visualization/multi_fig_save.html" class="code" title="function multi_fig_save(fighandle,save_dir,filename,formats,varargin)">multi_fig_save</a>(stats_fig,savedir,<span class="keyword">...</span>
+0577         [ savename <span class="string">'_circstats'</span> ],<span class="string">'eps,png'</span>);
+0578     close([stats_fig]);
+0579     save(fullfile(savedir,[savename <span class="string">'.mat'</span>]),<span class="string">'LFPWINS_PEAK'</span>,<span class="string">'LFPWINS_TROUGH'</span>,<span class="string">'LFPWINS_RAND'</span>,<span class="keyword">...</span>
+0580         <span class="string">'rtest_p'</span>);
+0581 
+0582 <span class="keyword">end</span>
+0583 
+0584 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
+0585</pre></div>
+<hr><address>Generated on Sun 22-Jul-2012 12:37:58 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

@@ -1,14 +1,10 @@
 /* Created by mdot for Matlab */
 digraph m2html {
-  intan_align_playback -> read_intan_data_cli;
-  intan_songdet -> read_intan_data_cli;
   intan_songdet -> song_det;
-  intan_songdet_intmic -> read_intan_data_cli;
   intan_songdet_intmic -> song_det;
 
   intan_align_playback [URL="intan_align_playback.html"];
   intan_songdet [URL="intan_songdet.html"];
   intan_songdet_intmic [URL="intan_songdet_intmic.html"];
-  read_intan_data_cli [URL="read_intan_data_cli.html"];
   song_det [URL="song_det.html"];
 }

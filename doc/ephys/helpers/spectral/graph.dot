@@ -5,5 +5,4 @@ digraph m2html {
   contour_approx [URL="contour_approx.html"];
   contour_histogram [URL="contour_histogram.html"];
   ephys_pipeline_smscore [URL="ephys_pipeline_smscore.html"];
-  phase_scramble_1d [URL="phase_scramble_1d.html"];
 }

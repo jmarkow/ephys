@@ -1,7 +1,6 @@
 /* Created by mdot for Matlab */
 digraph m2html {
 
-  cohave_test [URL="cohave_test.html"];
   greg_proc_data [URL="greg_proc_data.html"];
   yoonseob_iccns_figure [URL="yoonseob_iccns_figure.html"];
 }

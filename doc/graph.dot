@@ -1,7 +1,6 @@
 /* Created by mdot for Matlab */
 digraph m2html {
   greg_proc_data -> ephys_spike_detect;
-  greg_proc_data -> read_intan_data_cli;
   greg_proc_data -> multi_fig_save;
   yoonseob_iccns_figure -> multi_fig_save;
   ephys_cluster -> ephys_pipeline_smscore;
@@ -13,6 +12,8 @@ digraph m2html {
   ephys_pipeline_quicklook -> ephys_condition_signal;
   ephys_pipeline_quicklook -> ephys_denoise_signal;
   ephys_pipeline_quicklook -> pretty_sonogram;
+  ephys_su_lfp_coherence_ifr -> ephys_condition_signal;
+  ephys_su_lfp_coherence_ifr -> ephys_denoise_signal;
   ephys_su_lfp_coherence_ifr -> multi_fig_save;
   ephys_su_lfp_coherence_ifr -> pretty_polar;
   ephys_su_lfp_coherence_spect -> ephys_condition_signal;
@@ -54,12 +55,10 @@ digraph m2html {
   ephys_visual_sua -> ephys_spike_detect;
   ephys_visual_sua -> ephys_visual_spikestats;
   ephys_visual_sua -> multi_fig_save;
+  ephys_spike_cluster_auto -> get_wavelet_coefficients;
   ephys_spike_clustergui_tetrode -> get_wavelet_coefficients;
-  intan_align_playback -> read_intan_data_cli;
   intan_align_playback -> spectro_navigate;
-  intan_songdet -> read_intan_data_cli;
   intan_songdet -> song_det;
-  intan_songdet_intmic -> read_intan_data_cli;
   intan_songdet_intmic -> song_det;
   intan_songdet_intmic -> pretty_sonogram;
   contour_histogram -> contour_approx;
@@ -85,7 +84,6 @@ digraph m2html {
   ephys_pipeline_sua_standalone -> ephys_pipeline_candidate_su;
   ephys_pipeline_sua_standalone -> ephys_pipeline_readconfig;
 
-  cohave_test [URL="ephys/analysis_scripts/cohave_test.html"];
   greg_proc_data [URL="ephys/analysis_scripts/greg_proc_data.html"];
   yoonseob_iccns_figure [URL="ephys/analysis_scripts/yoonseob_iccns_figure.html"];
   ephys_cluster [URL="ephys/ephys_cluster.html"];
@@ -115,12 +113,10 @@ digraph m2html {
   intan_align_playback [URL="ephys/helpers/intan/intan_align_playback.html"];
   intan_songdet [URL="ephys/helpers/intan/intan_songdet.html"];
   intan_songdet_intmic [URL="ephys/helpers/intan/intan_songdet_intmic.html"];
-  read_intan_data_cli [URL="ephys/helpers/intan/read_intan_data_cli.html"];
   song_det [URL="ephys/helpers/intan/song_det.html"];
   contour_approx [URL="ephys/helpers/spectral/contour_approx.html"];
   contour_histogram [URL="ephys/helpers/spectral/contour_histogram.html"];
   ephys_pipeline_smscore [URL="ephys/helpers/spectral/ephys_pipeline_smscore.html"];
-  phase_scramble_1d [URL="ephys/helpers/spectral/phase_scramble_1d.html"];
   ephys_su_lfp_coherence_quickplots [URL="ephys/helpers/stats/ephys_su_lfp_coherence_quickplots.html"];
   spect_ztrans [URL="ephys/helpers/stats/spect_ztrans.html"];
   ephys_visual_spike_lfp [URL="ephys/helpers/visualization/ephys_visual_spike_lfp.html"];

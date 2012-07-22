@@ -4,7 +4,7 @@
 <head>
   <title>Description of ephys_pipeline_intmic_daemon</title>
   <meta name="keywords" content="ephys_pipeline_intmic_daemon">
-  <meta name="description" content="intan_songdet_intmic_daemon.m runs the Intan detection indefinitely,">
+  <meta name="description" content="runs Intan song detection indefinitely">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,18 +21,31 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="box"><strong>intan_songdet_intmic_daemon.m runs the Intan detection indefinitely,</strong></div>
+<div class="box"><strong>runs Intan song detection indefinitely</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="box"><strong>function intan_songdet_intmic_daemon(DIR,varargin) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="fragment"><pre class="comment">intan_songdet_intmic_daemon.m runs the Intan detection indefinitely,
-Intan files must obey the following convention:
+<div class="fragment"><pre class="comment">runs Intan song detection indefinitely
+
+    intan_songdet_intmic_daemon(DIR);
+
+    DIR
+    directory that contains files for processing
+
+
+Before running, make sure you have created the appropriate directory structure
+using ephys_pipeline_mkdirs.m.  Also, be sure to use the following file naming
+convention:
 
 BIRDID_RECORDINGID_mic#
 
-e.g. LPur35_hvc_mic12</pre></div>
+e.g. lpur35_hvc_mic12
+
+the Intan demo software automatically appends a timestamp
+
+see also ephys_pipeline_mkdir.m,intan_songdet_intmic.m</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
@@ -48,23 +61,42 @@ This function is called by:
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function intan_songdet_intmic_daemon(DIR,varargin)</a>
-0002 <span class="comment">%intan_songdet_intmic_daemon.m runs the Intan detection indefinitely,</span>
-0003 <span class="comment">%Intan files must obey the following convention:</span>
-0004 <span class="comment">%</span>
-0005 <span class="comment">%BIRDID_RECORDINGID_mic#</span>
-0006 <span class="comment">%</span>
-0007 <span class="comment">%e.g. LPur35_hvc_mic12</span>
+0002 <span class="comment">%runs Intan song detection indefinitely</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">%    intan_songdet_intmic_daemon(DIR);</span>
+0005 <span class="comment">%</span>
+0006 <span class="comment">%    DIR</span>
+0007 <span class="comment">%    directory that contains files for processing</span>
 0008 <span class="comment">%</span>
 0009 <span class="comment">%</span>
-0010 <span class="comment">%</span>
-0011 
-0012 <span class="comment">% simply loops intan_songdet_intmic in the current directory</span>
-0013 
-0014 <span class="keyword">while</span> 1==1
-0015     <a href="../ephys/helpers/intan/intan_songdet_intmic.html" class="code" title="function intan_songdet_intmic(DIR,varargin)">intan_songdet_intmic</a>(DIR);
-0016     disp(<span class="string">'Pausing for 10 seconds'</span>);
-0017     pause(10);
-0018 <span class="keyword">end</span></pre></div>
-<hr><address>Generated on Thu 19-Jul-2012 21:29:37 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+0010 <span class="comment">%Before running, make sure you have created the appropriate directory structure</span>
+0011 <span class="comment">%using ephys_pipeline_mkdirs.m.  Also, be sure to use the following file naming</span>
+0012 <span class="comment">%convention:</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">%BIRDID_RECORDINGID_mic#</span>
+0015 <span class="comment">%</span>
+0016 <span class="comment">%e.g. lpur35_hvc_mic12</span>
+0017 <span class="comment">%</span>
+0018 <span class="comment">%the Intan demo software automatically appends a timestamp</span>
+0019 <span class="comment">%</span>
+0020 <span class="comment">%see also ephys_pipeline_mkdir.m,intan_songdet_intmic.m</span>
+0021 <span class="comment">%</span>
+0022 
+0023 <span class="comment">%</span>
+0024 <span class="comment">%</span>
+0025 <span class="comment">%</span>
+0026 
+0027 <span class="comment">% simply loops intan_songdet_intmic in the current directory</span>
+0028 
+0029 <span class="keyword">if</span> nargin&lt;1
+0030     DIR=pwd;
+0031 <span class="keyword">end</span>
+0032 
+0033 <span class="keyword">while</span> 1==1
+0034     <a href="../ephys/helpers/intan/intan_songdet_intmic.html" class="code" title="function intan_songdet_intmic(DIR,varargin)">intan_songdet_intmic</a>(DIR);
+0035     disp(<span class="string">'Pausing for 10 seconds'</span>);
+0036     pause(10);
+0037 <span class="keyword">end</span></pre></div>
+<hr><address>Generated on Sun 22-Jul-2012 12:37:58 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>
