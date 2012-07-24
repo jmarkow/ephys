@@ -66,6 +66,9 @@ function [abscoh,t,f]=ephys_su_lfp_coherence_tf(LFPCHANNEL,SUCHANNEL,SUCLUSTER,H
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
+if nargin<4
+	error('Four arguments to continue, see documentation...');
+end
 
 nparams=length(varargin);
 
@@ -81,7 +84,7 @@ overlap=6000;
 min_f=15;
 max_f=100;
 w=2.5;
-alpha=.001;
+alpha=[.001 .01 .05];
 
 ntapers=[];
 beta=1.5; % parameter for z-transforming coherence
@@ -127,6 +130,8 @@ for i=1:2:nparams
 			nullrate=varargin{i+1};
 		case 'clim'
 			clim=varargin{i+1};
+		case 'overlap'
+			overlap=varargin{i+1};
 
 	end
 end
@@ -165,6 +170,20 @@ lfp_data=lfp_data(:,subtrials);
 
 [nsamples,ntrials]=size(lfp_data);
 [path,name,ext]=fileparts(savedir);
+
+
+savedir=fullfile(savedir,'coherence',[ num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER)]);
+
+if ~exist(savedir,'dir')
+	mkdir(savedir);
+end
+
+savefilename=[ name '_tfcoherence_lfpch'...
+       	num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_cl ' num2str(SUCLUSTER)];
+
+
+fig_title=['LFPCH' num2str(LFPCHANNEL) ' SUCH' num2str(SUCHANNEL)...
+       	' SUCL' num2str(SUCLUSTER) ' NTAP' num2str(ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
 
 dt=1/lfp_fs;
 
@@ -206,7 +225,7 @@ switch lower(null)
 
 	case 'wn'
 
-		disp('Wn randomization');
+		disp('LFP white noise randomization');
 
 		peak_value=max(abs(lfp_data(:)));
 		lfp_data=randn(nsamples,ntrials).*peak_value;
@@ -302,6 +321,26 @@ if isempty(startidx)
 end
 
 stopidx=min([find(f>=max_f)]);
+
+% print out coherence cutoff for chosen alpha values
+
+fid=fopen(fullfile(savedir,'alpha_log.log'),'w');
+
+for i=1:length(alpha)
+	
+	% number of comparisons fbins*tbins
+
+	ncomp=length(t)*length(f);
+
+	% account for DOF and ncomparisons
+
+	null=sqrt(1-(alpha(i)/ncomp)^(1/(dof/2-1)));
+
+	fprintf(fid,'For alpha %g coherence cutoff:\t%g\n',alpha(i),null);
+
+end
+
+fclose(fid);
 
 % pre-allocate matrices
 
@@ -406,18 +445,6 @@ zabscoh=spect_ztrans(abscoh,beta,dof);
 
 % we can indicate significant points using the asymptotic values per Jarvis and Mitra (2001)
 
-savedir=fullfile(savedir,'coherence',[ num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER)]);
-
-if ~exist(savedir,'dir')
-	mkdir(savedir);
-end
-
-savefilename=[ name '_tfcoherence_lfpch'...
-       	num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_cl ' num2str(SUCLUSTER)];
-
-
-fig_title=['LFPCH' num2str(LFPCHANNEL) ' SUCH' num2str(SUCHANNEL)...
-       	' SUCL' num2str(SUCLUSTER) ' NTAP' num2str(ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
 
 % spike spectrogram
 

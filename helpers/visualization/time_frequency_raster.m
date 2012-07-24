@@ -25,7 +25,6 @@ scale='log';
 scalelabel=[];
 colorbarsize=.02; % normalized units, height of the colorbar
 
-
 for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'sr'
