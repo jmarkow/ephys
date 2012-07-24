@@ -90,6 +90,12 @@ lfp_fs=25e3; % default Intan sampling rate
 trial_range=[];
 medfilt_scale=1.5; % median filter scale (in ms)
 nphasebins=50;
+null=''; % can be inpoiss (for inhomogeneous Poisson based on IFR)
+	 % poiss (homogeneous based on mean FR)
+	 % wn (for white noise LFP, keep same spikes)
+nullrate=[]; % for inpoiss should be a vector of firing rates computed from average IFR
+	     % for poiss a scalar with average firing rate
+clim=[];
 
 if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
@@ -115,6 +121,12 @@ for i=1:2:nparams
 			trial_range=varargin{i+1};
 		case 'nphasebins'
 			nphasebins=varargin{i+1};
+		case 'null'
+			null=varargin{i+1};
+		case 'nullrate'
+			nullrate=varargin{i+1};
+		case 'clim'
+			clim=varargin{i+1};
 
 	end
 end
@@ -129,29 +141,105 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA COLLECTION %%%%%%%%%%%%%%%%%%%%
 
+% TODO SHOW LFP AND SPIKE SPECTROGRAMS
+% also generate null cases: (1) white noise LFP (2) poisson spikes (3) rate-varying poisson spikes
+
 resolution=w*1/(n/lfp_fs);
 disp(['Resolution:  ' num2str(resolution)  ' Hz']);
 disp(['NFFT:  ' num2str(nfft)]);
 
 % where to grab the files from?
 
-savename=[ fig_title '_lfpch_' num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_clust' num2str(SUCLUSTER)];
 sua_mat=fullfile(filedir,'sua',['sua_channels ' num2str(SUCHANNEL) '.mat']);
-
-load(fullfile(filedir,'aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
 load(sua_mat,'smooth_spikes','clust_spike_vec','subtrials'); % smooth spikes
 
-%lfp_data=double(EPHYS_DATA(:,:,CHANNELS==LFPCHANNEL));
+load(fullfile(filedir,'aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
+
+% filter the LFP data
 
 lfp_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,LFPCHANNEL);
 clear EPHYS_DATA;
 lfp_data=ephys_condition_signal(lfp_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale);
 lfp_data=squeeze(lfp_data);
+lfp_data=lfp_data(:,subtrials);
+
+[nsamples,ntrials]=size(lfp_data);
+[path,name,ext]=fileparts(savedir);
+
+dt=1/lfp_fs;
+
+% use null spikes or white noise fields if the user desires
+
+switch lower(null)
+	
+	case 'inpoiss'
+
+		% rate-varying Poisson process
+
+		disp('Inhomogeneous poisson randomization');
+
+		if length(nullrate)~=nsamples
+			error('For null option inpoiss nullrate must be the same length as nsamples in lfp_data');
+		end
+
+		for i=1:ntrials
+			spike_data{i}=find(poissrnd(nullrate.*dt))./lfp_fs;
+		end
+
+		name=[name '_inpoiss'];
+
+	case 'poiss'
+
+		% homogeneous Poisson process
+
+		disp('Homogeneous poisson randomization');
+	
+		if length(nullrate)>1
+			error('For null option poiss nullrate must be a scalar');
+		end
+
+		for i=1:ntrials
+			spike_data{i}=find(poissrnd(nullrate(ones(1,nsamples)).*dt))./lfp_fs;
+		end
+
+		name=[name '_poiss_fr' num2str(nullrate)];
+
+	case 'wn'
+
+		disp('Wn randomization');
+
+		peak_value=max(abs(lfp_data(:)));
+		lfp_data=randn(nsamples,ntrials).*peak_value;
+		spike_data=clust_spike_vec{1}{SUCLUSTER}; 
+
+		name=[name '_lfpwn'];
+
+	case 'poiss+wn'
+
+		% homogeneous Poisson process
+
+		disp('Poiss+wn randomization');
+	
+		if length(nullrate)>1
+			error('For null option poiss nullrate must be a scalar');
+		end
+
+		for i=1:ntrials
+			spike_data{i}=find(poissrnd(nullrate(ones(1,nsamples)).*dt))./lfp_fs;
+		end
+
+		peak_value=max(abs(lfp_data(:)));
+		lfp_data=randn(nsamples,ntrials).*peak_value;
+
+		name=[name '_lfpwn+poiss_fr' num2str(nullrate)];
+
+	otherwise
+
+		spike_data=clust_spike_vec{1}{SUCLUSTER}; 
+end
+
 
 % need to account for subset of trials if used in single unit data 
-
-lfp_data=lfp_data(:,subtrials);
-spike_data=clust_spike_vec{1}{SUCLUSTER}; 
 
 if ~isempty(trial_range)
 	disp(['Truncating trials to ' num2str([trial_range(1) trial_range(end)])]);
@@ -170,8 +258,6 @@ if n>nsamples
 	disp(['Window size:  ' num2str(n) ' samples']);
 	disp(['Overlap:  ' num2str(overlap) ' samples']);
 end
-
-% filter the lfp_data
 
 % pre-allocate the binned spike matrix, specify at a high enough
 % fs so that we don't add multiple spikes to a given bin, sampling
@@ -270,12 +356,14 @@ parfor i=1:ntrials
 		% take absolute value of the cross power after trial and taper
 		% averaging
 
-		cross_power=(spectlfp.*conj(spectspikes))./(nsamples*lfp_fs);
+		% don't need the normalizations
+
+		cross_power=(spectlfp.*conj(spectspikes));
 
 		% take power of the field and spikes
 
-		lfp_power=(abs(spectlfp).^2)./(nsamples*lfp_fs);
-		spike_power=(abs(spectspikes).^2)./(nsamples*lfp_fs);
+		lfp_power=(abs(spectlfp).^2);
+		spike_power=(abs(spectspikes).^2);
 
 		% average across tapers
 
@@ -300,6 +388,8 @@ end
 % coherence is the absolute value of the cross spectrum over the power of the
 % the two spectra
 
+% take spectra of fields and spikes, plot along with everything else
+
 coh=cross_spect_mean./sqrt(lfp_spect_mean.*spike_spect_mean);
 
 % coherency
@@ -316,9 +406,7 @@ zabscoh=spect_ztrans(abscoh,beta,dof);
 
 % we can indicate significant points using the asymptotic values per Jarvis and Mitra (2001)
 
-[path,name,ext]=fileparts(savedir);
-
-savedir=fullfile(savedir,'coherence');
+savedir=fullfile(savedir,'coherence',[ num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER)]);
 
 if ~exist(savedir,'dir')
 	mkdir(savedir);
@@ -327,17 +415,50 @@ end
 savefilename=[ name '_tfcoherence_lfpch'...
        	num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_cl ' num2str(SUCLUSTER)];
 
+
+fig_title=['LFPCH' num2str(LFPCHANNEL) ' SUCH' num2str(SUCHANNEL)...
+       	' SUCL' num2str(SUCLUSTER) ' NTAP' num2str(ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
+
+% spike spectrogram
+
+spike_fig=figure('Visible','off','position',[0 0 round(600*nsamples/lfp_fs) 800]);
+
+spike_spect.image=spike_spect_mean./max(spike_spect_mean(:));
+spike_spect.t=t;
+spike_spect.f=f;
+
+time_frequency_raster(HISTOGRAM,spike_spect,'tf_min_f',min_f,'tf_max_f',max_f,'scale','log',...
+	'fig_num',spike_fig,'scalelabel','dB','fig_title',fig_title,'tfimage_colors',colors);
+
+multi_fig_save(spike_fig,savedir,[savefilename '_spikespectrogram' ],'eps,png');
+
+close([spike_fig]);
+
+% lfp spectrogram
+
+lfp_fig=figure('Visible','off','position',[0 0 round(600*nsamples/lfp_fs) 800]);
+
+lfp_spect.image=lfp_spect_mean./max(lfp_spect_mean(:));
+lfp_spect.t=t;
+lfp_spect.f=f;
+
+time_frequency_raster(HISTOGRAM,lfp_spect,'tf_min_f',min_f,'tf_max_f',max_f,'scale','log',...
+	'fig_num',lfp_fig,'scalelabel','dB','fig_title',fig_title,'tfimage_colors',colors);
+
+multi_fig_save(lfp_fig,savedir,[savefilename '_lfpspectrogram' ],'eps,png');
+
+close([lfp_fig]);
+
+% coherogram
+
 spect_fig=figure('Visible','off','position',[0 0 round(600*nsamples/lfp_fs) 800]);
 
 plotabscoh.image=abscoh;
 plotabscoh.t=t;
 plotabscoh.f=f;
 
-fig_title=['LFPCH' num2str(LFPCHANNEL) ' SUCH' num2str(SUCHANNEL)...
-       	' SUCL' num2str(SUCLUSTER) ' NTAP' num2str(ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
-
 time_frequency_raster(HISTOGRAM,plotabscoh,'tf_min_f',min_f,'tf_max_f',max_f,'scale','linear',...
-	'fig_num',spect_fig,'scalelabel','Coherence','fig_title',fig_title,'tfimage_colors',colors);
+	'fig_num',spect_fig,'scalelabel','Coherence','fig_title',fig_title,'tfimage_colors',colors,'tf_clim',clim);
 
 set(spect_fig,'PaperPositionMode','auto');
 multi_fig_save(spect_fig,savedir,savefilename,'eps,png','renderer','painters');

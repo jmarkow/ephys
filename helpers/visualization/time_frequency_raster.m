@@ -18,11 +18,13 @@ tf_min_f=1;
 tf_max_f=100;
 hist_colors='jet';
 tfimage_colors='jet';
+tf_clim=[];
 fig_num=[];
 fig_title=[];
 scale='log';
 scalelabel=[];
 colorbarsize=.02; % normalized units, height of the colorbar
+
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -50,6 +52,8 @@ for i=1:2:nparams
 			scale=varargin{i+1};
 		case 'scalelabel'
 			scalelabel=varargin{i+1};
+		case 'tf_clim'
+			tf_clim=varargin{i+1};
 	end
 end
 
@@ -102,7 +106,7 @@ switch lower(scale)
 	case 'log'
 		disp('Log scale');
 		imagesc(TFIMAGE.t,TFIMAGE.f(tf_startidx:tf_stopidx),...
-			20*log10(TFIMAGE.image(tf_startidx:tf_stopidx,:)));
+			20*log10(TFIMAGE.image(tf_startidx:tf_stopidx,:)+eps));
 	case 'linear'
 		disp('Linear scale');
 		imagesc(TFIMAGE.t,TFIMAGE.f(tf_startidx:tf_stopidx),...
@@ -113,6 +117,9 @@ end
 		
 axis tight;
 colormap(tfimage_colors);
+if ~isempty(tf_clim)
+	caxis([tf_clim]);
+end
 freezeColors;
 xlabel('Time (in s)','FontSize',15,'FontName','Helvetica');
 ylabel('Fs (Hz)','FontSize',15,'FontName','Helvetica');

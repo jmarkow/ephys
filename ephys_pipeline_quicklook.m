@@ -73,6 +73,7 @@ freq_range=[];
 n=800;
 overlap=750;
 nfft=1024;
+type='s';
 
 % high pass the mic trace
 

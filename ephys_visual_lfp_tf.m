@@ -301,7 +301,7 @@ for i=1:length(channels)
 			for k=1:lfp_ntapers
 
 				spect_tmp=spectrogram(currdata,tapers(:,k),lfp_overlap,lfp_nfft);
-				spect_tmp=abs(spect_tmp);
+				spect_tmp=abs(spect_tmp).^2;
 
 				% reduce instead to save memory
 
@@ -326,7 +326,7 @@ for i=1:length(channels)
 				case 'linear'
 					imagesc(t,f(lfp_startidx:lfp_stopidx),spect(lfp_startidx:lfp_stopidx,:));
 				case 'log'
-					imagesc(t,f(lfp_startidx:lfp_stopidx),20*log10(spect(lfp_startidx:lfp_stopidx,:)));
+					imagesc(t,f(lfp_startidx:lfp_stopidx),20*log10(spect(lfp_startidx:lfp_stopidx,:)+eps));
 				otherwise
 					error('Did not understand scale, must be log or linear!');
 			end
