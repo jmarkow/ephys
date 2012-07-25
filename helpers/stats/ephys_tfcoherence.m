@@ -15,6 +15,7 @@ w=2;
 
 ntapers=[];
 freq_range=[300]; % let's just refilter
+alpha=[.001 .01 .05];
 
 min_f=15;
 max_f=100;
@@ -89,16 +90,17 @@ F=((1:rows)./rows).*(sr/2);
 col_idx=1+(0:(columns-1))*(n-overlap);
 T=((col_idx-1)+((n/2)'))/sr;
 
+
 cross_spect_mean=zeros(rows,columns);
 spect1_mean=zeros(rows,columns);
 spect2_mean=zeros(rows,columns);
 
-parfor i=1:ntrials
+for i=1:ntrials
 
 	disp(['Trial ' num2str(i)]);
 
-	curr1=SIGNAL1(i,:);
-	curr2=SIGNAL2(i,:);
+	curr1=SIGNAL1(i,:)-mean(SIGNAL1(1,:));
+	curr2=SIGNAL2(i,:)-mean(SIGNAL2(2,:));
 
 	% spectra
 
@@ -120,12 +122,12 @@ parfor i=1:ntrials
 
 		% don't need the normalizations
 
-		cross=(spect1.*conj(spect2));
+		cross=spect1.*conj(spect2);
 
 		% take power of two signals
 
-		power1=(abs(spect1).^2);
-		power2=(abs(spect2).^2);
+		power1=spect1.*conj(spect1);
+		power2=spect2.*conj(spect2);
 
 		% average across tapers
 

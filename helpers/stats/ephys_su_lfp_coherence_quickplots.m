@@ -153,7 +153,7 @@ ydata=[lowerconf fliplr(upperconf)];
 ax(2)=axes('Yaxislocation','right','xtick',[],'color','none');
 %patch(xdata,ydata,1,'facecolor',[1 .71 .76],'edgecolor','none');
 hold on;
-plot(timevec_ifr,ifr_mean,'m-','linewidth',1.25);
+plot(timevec_ifr,ifr_mean,'m-','linewidth',1);
 set(ax(2),'YTick',[ymin ymax],'TickDir','out','TickLength',[.02 .02],'layer','top','ycolor','m',...
 	'linewidth',2,'fontsize',12,'fontname','helvetica');
 ylim([ymin-eps ymax+eps]);

@@ -178,8 +178,6 @@ if ~exist(savedir,'dir')
 	mkdir(savedir);
 end
 
-savefilename=[ name '_tfcoherence_lfpch'...
-       	num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_cl ' num2str(SUCLUSTER)];
 
 
 fig_title=['LFPCH' num2str(LFPCHANNEL) ' SUCH' num2str(SUCHANNEL)...
@@ -257,6 +255,9 @@ switch lower(null)
 		spike_data=clust_spike_vec{1}{SUCLUSTER}; 
 end
 
+savefilename=[ name '_tfcoherence_lfpch'...
+       	num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_cl ' num2str(SUCLUSTER)];
+
 
 % need to account for subset of trials if used in single unit data 
 
@@ -330,16 +331,18 @@ for i=1:length(alpha)
 	
 	% number of comparisons fbins*tbins
 
-	ncomp=length(t)*length(f);
+	%ncomp=length(t)*length(f);
 
 	% account for DOF and ncomparisons
 
-	null=sqrt(1-(alpha(i)/ncomp)^(1/(dof/2-1)));
+	null=sqrt(1-(alpha(i))^(1/(dof/2-1)));
 
 	fprintf(fid,'For alpha %g coherence cutoff:\t%g\n',alpha(i),null);
-
 end
 
+conf=1.96./(sqrt(dof));
+
+fprintf(fid,'Variance:\t%g',conf);
 fclose(fid);
 
 % pre-allocate matrices

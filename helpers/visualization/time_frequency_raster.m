@@ -12,7 +12,7 @@ if mod(nparams,2)>0
 end
 
 SR=25e3;
-hist_min_f=1e3;
+hist_min_f=1;
 hist_max_f=10e3;
 tf_min_f=1;
 tf_max_f=100;
