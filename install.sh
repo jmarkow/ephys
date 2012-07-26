@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# REQUIREMENTS:  Mac OS X 10.6+, Matlab 2010a or later
+# MATLAB Toolboxes:  Bioinformatics (SVM), Statistics (GMM), Wavelet (Spike sorting)
+
 # RUN WITH SUDO!
 
 # this install script will configure everything up to the point of installing
@@ -26,7 +29,9 @@ SOURCE=$BASE/pipeline/bash
 
 cd -- "$SOURCE"
 
-find . -type f -maxdepth 1 -exec ln -sf -- "$SOURCE"/{} "$DEST"/{} \;
+# changed to interactive to not overwrite important files
+
+find . -type f -maxdepth 1 -exec ln -si -- "$SOURCE"/{} "$DEST"/{} \;
 
 # source 2
 
@@ -34,7 +39,7 @@ SOURCE=$BASE/pipeline/bash/binscripts
 
 cd -- "$SOURCE"
 
-find . -type f -maxdepth 1 -exec ln -sf -- "$SOURCE"/{} "$DEST"/{} \;
+find . -type f -maxdepth 1 -exec ln -si -- "$SOURCE"/{} "$DEST"/{} \;
 
 # inform user to add /usr/local/bin/ to PATH
 

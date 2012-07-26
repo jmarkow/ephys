@@ -42,8 +42,8 @@ function ephys_cluster(DIR,varargin)
 spect_thresh=.1; % deprecated, this parameter is no longer used
 SR=25e3; % sampling
 colors='hot';
-min_f=1e3;
-max_f=16e3;
+min_f=1;
+max_f=10e3;
 time_range=[0 inf];
 subset='';
 
@@ -197,7 +197,16 @@ template_fig=figure('Visible','off');
 [template_image,f,t]=pretty_sonogram(TEMPLATE,SR,'N',1024,'overlap',1000);
 
 startidx=max([find(f<=min_f);1]);
+
+if isempty(startidx)
+	startidx=1;
+end
+
 stopidx=min([find(f>=max_f);length(f)]);
+
+if isempty(stopidx)
+	stopidx=length(f);
+end
 
 imagesc(t,f(startidx:stopidx),template_image(startidx:stopidx,:));
 set(gca,'ydir','normal');

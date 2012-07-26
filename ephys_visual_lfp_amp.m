@@ -73,7 +73,7 @@ SR=25e3;
 noise='none'; 
 car_exclude=[];
 savedir=pwd;
-min_f=1e3;
+min_f=1;
 max_f=10e3;
 hist_colors='jet';
 mua_colors='hot';
@@ -137,13 +137,6 @@ TIME=[1:nsamples]./SR;
 proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
 clear EPHYS_DATA;
 proc_data=single(ephys_condition_signal(proc_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale));
-
-
-
-% find subsection of histogram image to plot
-
-startidx=max([find(HISTOGRAM.f<=min_f)]); 
-stopidx=min([find(HISTOGRAM.f>=max_f)]);
 
 % are we downsampling
 % downsampling is done by skipping samples, straightforward

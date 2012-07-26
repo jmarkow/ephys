@@ -282,7 +282,9 @@ end
 %bayesobject=NaiveBayes.fit(syllable_data(:,[1:6]),cluster.labels);
 disp('Training classifier on your selection...');
 
-classobject=svmtrain(syllable_data(:,[1:6]),cluster.labels);
+% fix for MATLAB 2010a complaining about too many iterations...enforce that method=smo
+
+classobject=svmtrain(syllable_data(:,[1:6]),cluster.labels,'method','smo');
 
 [path,file,ext]=fileparts(SAVEFILE);
 cluster_choice=cluster.choice;

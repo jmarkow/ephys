@@ -1,4 +1,4 @@
-function [COH,T,F,SPECT1,SPECT2]=ephys_tfcoherence(SIGNAL1,SIGNAL2,varargin)
+function [COH,T,F,SPECT1,SPECT2,STATS]=ephys_tfcoherence(SIGNAL1,SIGNAL2,varargin)
 %
 %
 %
@@ -9,16 +9,10 @@ nparams=length(varargin);
 nfft=10000;
 n=6250;
 overlap=6000;
-min_f=15;
-max_f=100;
 w=2;
 
 ntapers=[];
-freq_range=[300]; % let's just refilter
-alpha=[.001 .01 .05];
-
-min_f=15;
-max_f=100;
+alpha=[.0001 .001 .01 .05];
 
 sr=25e3;
 
@@ -34,6 +28,10 @@ for i=1:2:nparams
 			ntapers=varargin{i+1};
 		case 'sr'
 			sr=varargin{i+1};
+		case 'alpha'
+			alpha=varargin{i+1};
+		case 'w'
+			w=varargin{i+1};
 	end
 end
 
@@ -50,6 +48,24 @@ end
 
 nsamples=samples1;
 ntrials=trials1;
+
+% set up spectrogram parameters
+
+if n>nsamples
+	difference=n-overlap;
+	n=round(nsamples/5);
+	overlap=n-difference;
+	disp('Reset window size and overlap, longer than nsamples');
+	disp(['Window size:  ' num2str(n) ' samples']);
+	disp(['Overlap:  ' num2str(overlap) ' samples']);
+end
+
+if isempty(ntapers)
+    ntapers=2*(w)-1;
+end
+
+STATS.dof=ntapers*ntrials;
+[tapers,lambda]=dpss(n,w,ntapers);
 
 if isempty(nfft)
 	nfft=max([n 2^nextpow2(n)]);
@@ -70,34 +86,43 @@ if n>nsamples
 	disp(['Overlap:  ' num2str(overlap) ' samples']);
 end
 
-if isempty(ntapers)
-    ntapers=2*(w)-1;
-end
+[T,F]=getspecgram_dim(nsamples,n,overlap,nfft,sr);
 
-[tapers,lambda]=dpss(n,w,ntapers);
+rows=length(F);
+columns=length(T);
 
-if mod(nfft,2)==0
-	rows=(nfft/2+1);
-else
-	rows=(nfft+1)/2;
-end
+% compute any statistics necessary for interpreting the results
 
-columns=fix((nsamples-overlap)/(n-overlap));
+STATS.ncomp=length(T)*length(F);
 
-% axes
+STATS.alpha=alpha;
 
-F=((1:rows)./rows).*(sr/2);
-col_idx=1+(0:(columns-1))*(n-overlap);
-T=((col_idx-1)+((n/2)'))/sr;
+% compute the null distribution cutoffs for particular alpha values
 
+STATS.null=sqrt(1-(alpha).^(1/(STATS.dof/2-1)));
+
+% bonferonni corrected values
+
+STATS.null_boncorrected=sqrt(1-(alpha./STATS.ncomp).^2).^(1/(STATS.dof/2-1));
+
+% compute the variance according to the asymptotic measure
+
+STATS.var=1.96/(sqrt(STATS.dof));
+STATS.tapers=tapers;
+STATS.lambda=lambda;
+STATS.ntapers=ntapers;
+
+% pre-allocate our reduction matrices
 
 cross_spect_mean=zeros(rows,columns);
 spect1_mean=zeros(rows,columns);
 spect2_mean=zeros(rows,columns);
 
-for i=1:ntrials
+parfor i=1:ntrials
 
 	disp(['Trial ' num2str(i)]);
+
+	% should be zero mean in the first place
 
 	curr1=SIGNAL1(i,:)-mean(SIGNAL1(1,:));
 	curr2=SIGNAL2(i,:)-mean(SIGNAL2(2,:));
@@ -116,12 +141,9 @@ for i=1:ntrials
 
 		spect1=spectrogram(curr1,tapers(:,j)',overlap,nfft);
 		spect2=spectrogram(curr2,tapers(:,j)',overlap,nfft);
-
-		% take absolute value of the cross power after trial and taper
-		% averaging
-
-		% don't need the normalizations
-
+		
+		% cross spectrum
+		
 		cross=spect1.*conj(spect2);
 
 		% take power of two signals
@@ -146,6 +168,9 @@ end
 
 SPECT1=spect1_mean;
 SPECT2=spect2_mean;
+
+% z-transform as well
+
 COH=cross_spect_mean./sqrt(spect1_mean.*spect2_mean);
 
 % display is user selects to display

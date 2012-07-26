@@ -101,9 +101,9 @@ hist_colors='jet';
 lfp_colors='jet';
 lfp_min_f=1; % bring down to 1
 lfp_max_f=100;
-lfp_n=6250;
-lfp_overlap=6000;
-lfp_nfft=10000; % we want bins on the order 
+lfp_n=4000; % defined frequency resolution
+lfp_overlap=3750;
+lfp_nfft=8000; % superficial, makes the spectrogram smoother
 lfp_w=2; % time bandwidth product if using multi-taper
 lfp_ntapers=[]; % number of tapers, leave blank to use 2*nw-1
 
@@ -185,14 +185,14 @@ end
 % if nfft is empty set to nextpow2
 
 if isempty(lfp_nfft)
-	lfp_nfft=2^nextpow2(lfp_n);
+	lfp_nfft=max([n 2^nextpow2(lfp_n)]);
+else
+	lfp_nfft=2^nextpow2(lfp_nfft);
 end
-
 
 % check if we're using multi-taper
 
 if lower(method(1))=='m'
-
 	resolution=lfp_w*1/(lfp_n/SR);
 	
 	if isempty(lfp_ntapers)
@@ -211,27 +211,11 @@ disp(['NFFT:  ' num2str(lfp_nfft)]);
 
 % get rows and columns
 
-if mod(lfp_nfft,2)==0
-	rows=(lfp_nfft/2+1);
-else
-	rows=(lfp_nfft+1)/2;
-end
 
-columns=fix((nsamples-lfp_overlap)/(lfp_n-lfp_overlap));
+[t,f,lfp_startidx,lfp_stopidx]=getspecgram_dim(nsamples,lfp_n,lfp_overlap,lfp_nfft,SR,lfp_min_f,lfp_max_f);
 
-f=((1:rows)./rows).*(SR/2);
-col_idx=1+(0:(columns-1))*(lfp_n-lfp_overlap);
-t=((col_idx-1)+((lfp_n/2)'))/SR;
-%t=(col_idx)/SR;
-
-lfp_startidx=max([find(f<=lfp_min_f)]);
-
-if isempty(lfp_startidx)
-	lfp_startidx=1;
-end
-
-lfp_stopidx=min([find(f>=lfp_max_f)]);
-
+rows=length(f);
+columns=length(t);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -301,7 +285,7 @@ for i=1:length(channels)
 			for k=1:lfp_ntapers
 
 				spect_tmp=spectrogram(currdata,tapers(:,k),lfp_overlap,lfp_nfft);
-				spect_tmp=abs(spect_tmp).^2;
+				spect_tmp=spect_tmp.*conj(spect_tmp);
 
 				% reduce instead to save memory
 
@@ -351,11 +335,11 @@ for i=1:length(channels)
 	end
 
 	SPECT_AVE.image(:,:,i)=single(spect_ave_tmp); % for saving
-	spect_ave_plot.image=spect_ave_tmp./max(max(spect_ave_tmp)); % normalize so max is 0 db
+	spect_ave_plot.image=spect_ave_tmp./max(spect_ave_tmp(:)); % normalize so max is 0 db
 	spect_ave_plot.t=SPECT_AVE.t;
 	spect_ave_plot.f=SPECT_AVE.f;
 
-	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(600*nsamples/SR) 800]);
+	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(800*nsamples/SR) 800]);
 	
 	fig_title=['CH' num2str(channels(i)) ' NTAP' num2str(lfp_ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
 

@@ -104,9 +104,9 @@ songduration=.8;
 low=5;
 high=10;
 colors=hot;
-disp_minfs=1e3;
-disp_maxfs=7e3;
-filtering=700;
+disp_minfs=1;
+disp_maxfs=10e3;
+filtering=100; % changed to 100 from 700 as a more sensible default
 intan_fs=25e3;
 audio_pad=.2;
 config_file='';
@@ -267,12 +267,9 @@ parfor i=1:length(proc_files)
 	end
 
 	if ~isempty(filtering)
-		% common average re-reference for mic channel
-		%conditioned_data=data(:,find(amps==mic_trace))-mean(data(:,ephys_channels),2)
-
-		conditioned_data=filtfilt(b,a,data(:,find(amps==mic_trace)));
+		conditioned_data=filtfilt(b,a,data(:,mic_channel));
 	else
-		conditioned_data=data(:,mic_trace);
+		conditioned_data=data(:,mic_channel);
 	end
 
 	conditioned_data=conditioned_data./max(abs(conditioned_data));
@@ -292,7 +289,17 @@ parfor i=1:length(proc_files)
 	[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(conditioned_data,intan_fs,'n',500,'overlap',350,'low',3.5);
 
 	startidx=max([find(sonogram_f<=disp_minfs)]);
+
+	if isempty(startidx)
+		startidx=1;
+	end
+
 	stopidx=min([find(sonogram_f>=disp_maxfs)]);
+
+	if isempty(stopidx)
+		stopidx=length(sonogram_f);
+	end
+
 	sonogram_im=sonogram_im(startidx:stopidx,:);
 	sonogram_im=flipdim(sonogram_im,1);
 

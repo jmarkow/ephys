@@ -63,7 +63,7 @@ noise='none'; % common-average reference for noise removal, none to skip digital
 	      % re-referencing
 car_exclude=[];
 savedir=pwd;
-min_f=1e3;
+min_f=1;
 max_f=10e3;
 hist_colors='jet';
 mua_colors='hot';

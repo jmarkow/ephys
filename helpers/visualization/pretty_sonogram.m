@@ -5,6 +5,11 @@ function [IMAGE,F,T]=pretty_sonogram(SIGNAL,SR,varargin)
 %
 %
 
+if nargin<2 | isempty(SR)
+	disp('Setting SR to default: 48e3');
+	SR=48e3;
+end
+
 overlap=2000;
 tscale=2;
 N=2048;
@@ -28,12 +33,12 @@ for i=1:2:nparams
 			tscale=varargin{i+1};
 		case 'postproc'
 			postproc=varargin{i+1};
-        case 'nfft'
-            nfft=varargin{i+1};
-        case 'low'
-            low=varargin{i+1};
-        case 'high'
-            high=varargin{i+1};
+		case 'nfft'
+			nfft=varargin{i+1};
+		case 'low'
+			low=varargin{i+1};
+		case 'high'
+			high=varargin{i+1};
 		otherwise
 	end
 end

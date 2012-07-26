@@ -77,6 +77,10 @@ end
 
 hist_stopidx=min([find(HISTOGRAM.f>=hist_max_f)]);
 
+if isempty(hist_stopidx)
+	hist_stopidx=length(HISTOGRAM.f);
+end
+
 tf_startidx=max([find(TFIMAGE.f<=tf_min_f)]);
 
 if isempty(tf_startidx)
@@ -84,6 +88,10 @@ if isempty(tf_startidx)
 end
 
 tf_stopidx=min([find(TFIMAGE.f>=tf_max_f)]);
+
+if isempty(tf_stopidx)
+	tf_stopidx=length(TFIMAGE.f);
+end
 
 time=[1:length(HISTOGRAM.mean_osc)]./SR;
 

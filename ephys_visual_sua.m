@@ -57,7 +57,7 @@ function ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %		vector of trials to include in the analysis (default: all trials)
 %
 %
-% see also ephys_visual_mua.m,ephys_visual_lfp_amp.m,ephys_visual_lfp_tf.m,ephys_cluster_auto.m,ephys_clustergui_tetrode.m,ephys_spike_detect.m
+% see also ephys_visual_mua.m,ephys_visual_lfp_amp.m,ephys_visual_lfp_tf.m,ephys_spike_cluster_auto.m,ephys_spike_clustergui_tetrode.m,ephys_spike_detect.m
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
@@ -74,7 +74,7 @@ SR=25e3;
 noise='none'; % common-average reference for noise removal
 car_exclude=[];
 savedir=pwd;
-min_f=1e3;
+min_f=1;
 max_f=10e3;
 hist_colors='jet';
 figtitle='';
@@ -137,7 +137,16 @@ end
 
 
 startidx=max([find(HISTOGRAM.f<=min_f)]);
+
+if isempty(startidx)
+	startidx=1;
+end
+
 stopidx=min([find(HISTOGRAM.f>=max_f)]);
+
+if isempty(stopidx)
+	stopidx=length(HISTOGRAM.f);
+end
 
 if max_f>SR/2
 	disp('Maximum Fs must be less than Nyquist!');

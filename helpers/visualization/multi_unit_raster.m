@@ -13,7 +13,7 @@ end
 
 
 SR=25e3;
-min_f=1e3;
+min_f=1;
 max_f=10e3;
 hist_colors='jet';
 raster_colors='hot';
@@ -45,7 +45,16 @@ if isempty(fig_num)
 end
 
 startidx=max([find(HISTOGRAM.f<=min_f)]);
+
+if isempty(startidx)
+	startidx=1;
+end
+
 stopidx=min([find(HISTOGRAM.f>=max_f)]);
+
+if isempty(stopidx)
+	stopidx=length(HISTOGRAM.f);
+end
 
 time=[1:length(HISTOGRAM.mean_osc)]./SR;
 

@@ -171,7 +171,6 @@ lfp_data=lfp_data(:,subtrials);
 [nsamples,ntrials]=size(lfp_data);
 [path,name,ext]=fileparts(savedir);
 
-
 savedir=fullfile(savedir,'coherence',[ num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER)]);
 
 if ~exist(savedir,'dir')
@@ -179,9 +178,6 @@ if ~exist(savedir,'dir')
 end
 
 
-
-fig_title=['LFPCH' num2str(LFPCHANNEL) ' SUCH' num2str(SUCHANNEL)...
-       	' SUCL' num2str(SUCLUSTER) ' NTAP' num2str(ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
 
 dt=1/lfp_fs;
 
@@ -270,88 +266,15 @@ end
 [nsamples,ntrials]=size(lfp_data);
 lfp_data=lfp_data';
 
-if n>nsamples
-	difference=n-overlap;
-	n=round(nsamples/5);
-	overlap=n-difference;
-	disp('Reset window size and overlap, longer than nsamples');
-	disp(['Window size:  ' num2str(n) ' samples']);
-	disp(['Overlap:  ' num2str(overlap) ' samples']);
-end
-
 % pre-allocate the binned spike matrix, specify at a high enough
 % fs so that we don't add multiple spikes to a given bin, sampling
 % rate of LFP should be more than sufficient (25e3 for Intan)
 
 binspike_data=zeros(ntrials,nsamples,'double');
 
-% smooth with multi-taper
-
-if isempty(ntapers)
-    ntapers=2*(w)-1;
-end
-
-% the degrees of freedom for determining significance, tapers*trials
-
-dof=ntapers*ntrials;
-[tapers,lambda]=dpss(n,w,ntapers);
-
-%figure();plot(tapers);
-% pre allocate cell arrays to store taper and trial estimates
-
 % number of rows and columns in the spectrogram
 
-if mod(nfft,2)==0
-	rows=(nfft/2+1);
-else
-	rows=(nfft+1)/2;
-end
-
-columns=fix((nsamples-overlap)/(n-overlap));
-
-% axes
-
-f=((1:rows)./rows).*(lfp_fs/2);
-col_idx=1+(0:(columns-1))*(n-overlap);
-t=((col_idx-1)+((n/2)'))/lfp_fs;
-
-startidx=max([find(f<=min_f)]);
-
-if isempty(startidx)
-	startidx=1;
-end
-
-stopidx=min([find(f>=max_f)]);
-
-% print out coherence cutoff for chosen alpha values
-
-fid=fopen(fullfile(savedir,'alpha_log.log'),'w');
-
-for i=1:length(alpha)
-	
-	% number of comparisons fbins*tbins
-
-	%ncomp=length(t)*length(f);
-
-	% account for DOF and ncomparisons
-
-	null=sqrt(1-(alpha(i))^(1/(dof/2-1)));
-
-	fprintf(fid,'For alpha %g coherence cutoff:\t%g\n',alpha(i),null);
-end
-
-conf=1.96./(sqrt(dof));
-
-fprintf(fid,'Variance:\t%g',conf);
-fclose(fid);
-
-% pre-allocate matrices
-
-cross_spect_mean=zeros(rows,columns);
-lfp_spect_mean=zeros(rows,columns);
-spike_spect_mean=zeros(rows,columns);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+[t,f,startidx,stopidx]=getspecgram_dim(nsamples,n,overlap,nfft,lfp_fs,min_f,max_f);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AVERAGE SPECTRA %%%%%%%%%%%%%%%%%%%%
 
@@ -371,56 +294,30 @@ for i=1:ntrials
 
 end
 
-disp('Computing spectra');
+disp('Computing spectra and coherence');
 
-parfor i=1:ntrials
+[coh,t,f,lfp_spect_mean,spike_spect_mean,stats]=ephys_tfcoherence(lfp_data,binspike_data,'sr',lfp_fs,...
+	'nfft',nfft,'n',n,'overlap',overlap,'ntapers',ntapers,'alpha',alpha);
 
-	disp(['Trial ' num2str(i)]);
+fig_title=['LFPCH' num2str(LFPCHANNEL) ' SUCH' num2str(SUCHANNEL)...
+       	' SUCL' num2str(SUCLUSTER) ' NTAP' num2str(stats.ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
 
-	currlfp=lfp_data(i,:);
-	currspikes=binspike_data(i,:)-mean(binspike_data(i,:));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-	% spectra
+% print out coherence cutoff for chosen alpha values
 
-	% multi-taper estimate
+fid=fopen(fullfile(savedir,'alpha_log.log'),'w');
 
-	% accumulate across tapers to cut down compt time, then we can use parfor
-
-	cross_spect_tmp=zeros(rows,columns);
-	lfp_spect_tmp=zeros(rows,columns);
-	spike_spect_tmp=zeros(rows,columns);
-
-	for j=1:ntapers
-
-		spectlfp=spectrogram(currlfp,tapers(:,j)',overlap,nfft);
-		spectspikes=spectrogram(currspikes,tapers(:,j)',overlap,nfft);
-
-		% take absolute value of the cross power after trial and taper
-		% averaging
-
-		% don't need the normalizations
-
-		cross_power=(spectlfp.*conj(spectspikes));
-
-		% take power of the field and spikes
-
-		lfp_power=(abs(spectlfp).^2);
-		spike_power=(abs(spectspikes).^2);
-
-		% average across tapers
-
-		cross_spect_tmp=cross_spect_tmp+cross_power./(ntapers);
-		lfp_spect_tmp=lfp_spect_tmp+lfp_power./(ntapers);
-		spike_spect_tmp=spike_spect_tmp+spike_power./(ntapers);
-	end
-
-	% average across trials
-
-	cross_spect_mean=cross_spect_mean+cross_spect_tmp./ntrials;
-	lfp_spect_mean=lfp_spect_mean+lfp_spect_tmp./ntrials;
-	spike_spect_mean=spike_spect_mean+spike_spect_tmp./ntrials;
-
+for i=1:length(stats.null)
+	
+	fprintf(fid,'For alpha %g coherence cutoff:\t%g\t%g (Bonferroni corr.)\n',...
+		stats.alpha(i),stats.null(i),stats.null_boncorrected(i));
 end
+
+fprintf(fid,'Variance:\t%g',stats.var);
+fclose(fid);
+
+% pre-allocate matrices
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -430,12 +327,6 @@ end
 % coherence is the absolute value of the cross spectrum over the power of the
 % the two spectra
 
-% take spectra of fields and spikes, plot along with everything else
-
-coh=cross_spect_mean./sqrt(lfp_spect_mean.*spike_spect_mean);
-
-% coherency
-
 abscoh=abs(coh);
 
 % phase, could plot over the abs value as quivers per Pesaran et al.
@@ -444,11 +335,9 @@ phasecoh=angle(coh);
 
 % z-transformed coherence
 
-zabscoh=spect_ztrans(abscoh,beta,dof);
+zabscoh=spect_ztrans(abscoh,beta,stats.dof);
 
 % we can indicate significant points using the asymptotic values per Jarvis and Mitra (2001)
-
-
 % spike spectrogram
 
 spike_fig=figure('Visible','off','position',[0 0 round(600*nsamples/lfp_fs) 800]);
@@ -567,8 +456,8 @@ close([amp_fig]);
 % plot the tapers as well
 
 tapers_fig=figure('Visible','off','position',[0 0 800 600]);
-plot([1:n]./lfp_fs,tapers,'linewidth',1.25);
-title(['Tapers, n ' num2str(ntapers) ' w ' num2str(w)])
+plot([1:n]./lfp_fs,stats.tapers,'linewidth',1.25);
+title(['Tapers, n ' num2str(stats.ntapers) ' w ' num2str(w)])
 xlabel('Time (s)');
 prettify_axislabels(tapers_fig,'fontsize',15,'font','Helvetica');
 prettify_axis(tapers_fig,'ticklength',[.02 .02],'fontsize',14,'font','helvetica','linewidth',3);
@@ -578,7 +467,9 @@ box off
 multi_fig_save(tapers_fig,savedir,[savefilename '_tapers' ],'eps,png');
 close([tapers_fig]);
 
-save(fullfile(savedir,[savefilename '.mat']),'coh','t','f','fvec','phase_edges','tapers','w','ntapers','n','nfft','overlap','lfp_data','binspike_data','amp_weighted_histogram');
+save(fullfile(savedir,[savefilename '.mat']),...
+	'coh','t','f','fvec','phase_edges','w','n','nfft','overlap',...
+	'lfp_data','binspike_data','amp_weighted_histogram','stats');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

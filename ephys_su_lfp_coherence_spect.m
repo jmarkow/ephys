@@ -254,6 +254,10 @@ end
 
 stopidx=min([find(freqs>=max_f)]);
 
+if isempty(stopidx)
+	stopidx=length(freqs);
+end
+
 abscoh=abscoh(startidx:stopidx);
 freqs=freqs(startidx:stopidx);
 
