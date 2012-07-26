@@ -1,3 +1,6 @@
+REQUIREMENTS:  Mac OS X 10.6+, Matlab 2010a or later and Matlab Compiler Runtime for Matlab 2011b
+MATLAB Toolboxes:  Bioinformatics (SVM), Statistics (GMM), Wavelet (Spike sorting)
+
 1) To install the package, first run the install.sh bash script with super user access:
 
 sudo ./install.sh
