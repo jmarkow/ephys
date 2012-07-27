@@ -1,26 +1,31 @@
-function cluster_standalone(TEMPLATEFILE,DATAFILE,CLASSIFYFILE)
+function ephys_pipeline_cluster_standalone(TEMPLATEFILE,DATAFILE,CLASSIFYFILE,CONFIG)
 %
 %
 %
 %
+
+
+parameters=ephys_pipeline_readconfig(CONFIG);
 
 % TODO update to allow padding
 
 colors=hot(63); % uint8 colormap
 
-disp_minfs=1e3;
-disp_maxfs=7.5e3;
-NW=1024;
-SR=25e3;
-
+disp_minfs=1;
+disp_maxfs=10e3;
+parameters.smscore_n=1024;
+parameters.fs=25e3;
+padding=[];
 % takes the classifier object, template features and data features and extracts any instances
 % of the template as determined by the classifier 
 
-load(TEMPLATEFILE,'template_features','TEMPLATE');
+load(TEMPLATEFILE,'template_features','TEMPLATE','padding'); % we'll get warnings if padding DNE
 load(DATAFILE,'features');
 load(CLASSIFYFILE,'cluster_choice','classobject');
 
-% ANNOYING we have to train the classifier each time in the compiled version since objects are not supported...
+if length(padding)==2
+	disp(['Will pad extractions using the following pads:  ' num2str(padding)]);
+end
 
 [junk,templength]=size(template_features{1});
 templength=templength-1;
@@ -136,10 +141,9 @@ if isempty(hits)
 	return;
 end
 
-
 % else, extract
 
-templength=templength+NW;
+templength=templength+parameters.smscore_n;
 data=load(rawfile,'mic_data','ephys_data','channels','fs');
 
 % write images to 'gif', wav to 'wav' and 'mat' to mat again
@@ -157,8 +161,13 @@ for i=1:length(hits)
 
 	hitloc=peak_locs(hits(i));
 
-	startpoint=(hitloc*(NW-1e3)*5);
+	startpoint=(hitloc*(parameters.smscore_n-parameters.smscore_overlap)*parameters.smscore_downsampling);
 	endpoint=startpoint+fulltemplength;
+
+	if length(padding)==2
+		startpoint=startpoint-floor(padding(1)*parameters.fs);
+		endpoint=endpoint+ceil(padding(2)*parameters.fs);
+	end
 
 	if length(data.mic_data)>endpoint && startpoint>0	
 

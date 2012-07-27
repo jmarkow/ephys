@@ -223,6 +223,26 @@ parfor i=1:length(proc_files)
 
 		foldername=fullfile(root_dir,birdid,recid,datestr(file_datenum,folder_format));	
 
+		% create the bird directory
+
+		if ~exist(fullfile(root_dir,birdid))
+			mkdir(fullfile(root_dir,birdid));
+		end
+
+		% create the template directory and a little readme
+
+		if ~exist(fullfile(root_dir,birdid,'templates'))
+			mkdir(fullfile(root_dir,birdid,'templates'));
+			fid=fopen(fullfile(root_dir,birdid,'templates','README.txt'),'w');
+			fprintf(fid,'Templates are stored in this directory, follow these steps:\n\n');
+			fprintf(fid,'1) Create a directory within this directory (templates) with' ... 
+				'the name of the template (e.g. motif1)\n']);
+			fprintf(fid,['2) Place template_data.mat,classify_data.mat and template.png' ... 
+				'from a folder created by ephys_cluster in the subdirectory\n']);
+			fprintf(fid,['3) When the pipeline is active, it will automatically' ...
+			       'extract examples of the template from ALL the data for a given bird']);
+			fclose(fid);
+		end
 	end
 
 	try

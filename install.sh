@@ -24,8 +24,12 @@ echo 'Creating symlinks in ' $DEST
 # source 1
 
 BASE=$PWD
+COMPILED=$PWD/pipeline/compiled/
+
+echo "COMPILED=$COMPILED" > /usr/local/bin/ephys_pipeline_compiled_dir
 
 SOURCE=$BASE/pipeline/bash
+
 
 cd -- "$SOURCE"
 

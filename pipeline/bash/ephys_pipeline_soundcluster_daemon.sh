@@ -76,7 +76,7 @@ while true; do
 
 						# specify template_data file, spectral feature data file then classification object file
 
-						$EXEC_CLUSTER "$TEMPLATE" "$FILE" "$TEMPLATEDIRNAME/classify_data.mat" >> $1 &
+						$EXEC_CLUSTER "$TEMPLATE" "$FILE" "$TEMPLATEDIRNAME/classify_data.mat" $CONFIG >> $1 &
 
 						let COUNTER+=1
 

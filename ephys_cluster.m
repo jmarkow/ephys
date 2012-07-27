@@ -35,7 +35,7 @@ function ephys_cluster(DIR,varargin)
 %		colors
 %		colormap for template spectrogram
 %
-%see also nidaq_songdet.m,ephys_visual_mua.m,ephys_visual_sua.m
+%see also songdet.m,ephys_visual_mua.m,ephys_visual_sua.m,ephys_pipeline_smscore.m
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -46,6 +46,10 @@ min_f=1;
 max_f=10e3;
 time_range=[0 inf];
 subset='';
+padding=[]; % padding that will be saved with the template, in seconds (relevant for the pipeline only)
+   	    % two elements vector, both specify in seconds how much time before and after to extract
+	    % e.g. [.2 .2] will extract 200 msec before and after the extraction point when clustering
+	    % sounds through the pipeline
 
 % smscore parameters, THESE MUST MATCH THE PIPELINE PARAMETERS IN EPHYS_PIPELINE.CFG, OTHERWISE
 % THE FEATURE COMPUTATION BETWEEN THE TEMPLATE AND CANDIDATE SOUNDS WILL NOT
@@ -59,8 +63,6 @@ filter_scale=10;
 downsampling=5;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION  %%%%%%%%%%%%%%
 
 nparams=length(varargin);
@@ -83,6 +85,8 @@ for i=1:2:nparams
 			time_range=varargin{i+1};
 		case 'subset'
 			subset=varargin{i+1};
+		case 'padding'
+			padding=varargin{i+1};
 	end
 end
 
@@ -161,8 +165,6 @@ if isempty(proc_dir)
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TEMPLATE CHECK %%%%%%%%%%%%%%%%%%%%%
 
 
@@ -178,7 +180,7 @@ if ~exist(fullfile(proc_dir,'template_data.mat'),'file')
 	disp('Computing the spectral features of the template');
 	template_features=ephys_pipeline_smscore(TEMPLATE,SR,...
 		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling);
-	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features');
+	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features','padding');
 
 else
 	disp('Loading stored template...');
@@ -187,7 +189,7 @@ else
 	disp('Computing the spectral features of the template');
 	template_features=ephys_pipeline_smscore(TEMPLATE,SR,...
 		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling);
-	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features');
+	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features','padding');
 
 end
 
@@ -224,11 +226,7 @@ close([template_fig]);
 templength=templength-1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% GET DIFFERENCE SCORES %%%%%%%%%%%%%%
-
-
 
 % have we computed the difference between the template and the sound data?
 
@@ -295,8 +293,6 @@ if ~skip
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLUSTERING GUI %%%%%%%%%%%%%%%%%%%%%
 
 % TODO update cluster gui so that it has parity with the spike sorting GUI (more advanced)
@@ -336,7 +332,6 @@ load(fullfile(proc_dir,'cluster_data.mat'),'filenames');
 act_templatesize=length(TEMPLATE);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% HIT EXTRACTION %%%%%%%%%%%%%%%%%%%%%
 
 
