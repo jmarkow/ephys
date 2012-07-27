@@ -78,29 +78,22 @@ function intan_songdet_intmic(DIR,varargin)
 %		subdir
 %		subdir if nosort==1 (default: 'pretty bird')
 %
+% see also ephys_pipeline_intmic_daemon.m, song_det.m, im_reformat.m, ephys_pipeline_mkdirs.m
 %
-
-% wrap with a bash script to run whenever files appear
-
-% detect song, place into a directory sorted by BIRD ID then DATE (two directories!), get from filename
-% if we can't parse a bird id then place into bird # (iterate until non-overlapping), if song is not
-% detected then junk the file, otherwise place the detected song into BIRDID/DATE/MAT
-
-% this way we can collect all raw data into a single directory, sort into new directories and delete the rest
-% should save lots of space
-
-% add song detection parameters as well
+%
+% To run this in daemon mode, run ephys_pipeline_intmic_daemon.m in the directory with unprocessed Intan
+% files.  Be sure to create the appropriate directory structure using epys_pipeline_mkdirs.m first.
 
 % while running the daemon this can be changed 
 
 mic_pre=12;
-minfs=2e3;
-maxfs=6e3;
-ratio_thresh=4;
-window=250;
-noverlap=0;
-song_thresh=.27; % between .2 and .3 seems to work best (higher is more exlusive)
-songduration=.8;
+minfs=2e3; % the song 'band'
+maxfs=6e3; % the song 'band'
+ratio_thresh=4; % power ratio between song and non-song band
+window=250; % window to calculate ratio in (samples)
+noverlap=0; % just do no overlap, faster
+song_thresh=.3; % between .2 and .3 seems to work best (higher is more exlusive)
+songduration=.8; % moving average of ratio
 low=5;
 high=10;
 colors=hot;
@@ -108,8 +101,10 @@ disp_minfs=1;
 disp_maxfs=10e3;
 filtering=100; % changed to 100 from 700 as a more sensible default
 intan_fs=25e3;
-audio_pad=.2;
-config_file='';
+audio_pad=.2; % pad on either side of the extraction
+
+% parameters for folder creation
+
 folder_format='yyyy-mm-dd';
 image_pre='gif';
 wav_pre='wav';
@@ -118,11 +113,11 @@ delimiter='\_';
 nosort=0;
 subdir='pretty_bird';
 
-%logname='song_det.log';
 % where to place the parsed files
 
 root_dir=fullfile(pwd,'..','..','data','intan_data'); % where will the detected files go
-proc_dir=fullfile(pwd,'..','processed'); % where do we put the files after processing
+proc_dir=fullfile(pwd,'..','processed'); % where do we put the files after processing, maybe auto-delete
+					 % after we're confident in the operation of the pipeline
 unorganized_dir=fullfile(pwd,'..','unorganized');
 
 if ~exist(root_dir,'dir')
@@ -174,9 +169,6 @@ end
 if ~isempty(filtering)
 	[b,a]=butter(3,[filtering/(intan_fs/2)],'high');
 end
-
-
-% embed in infinite loop
 
 intlisting=dir(fullfile(DIR,'*.int'));
 
@@ -398,6 +390,6 @@ end
 
 function parsave(file,ephys_data,mic_data,fs,channels)
 
-	save(file,'ephys_data','mic_data','fs','channels');
+save(file,'ephys_data','mic_data','fs','channels');
 
 end

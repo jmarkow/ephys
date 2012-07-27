@@ -55,7 +55,7 @@ function [LFPWINS_PEAK,LFPWINS_TROUGH,LFPWINS_RAND]=ephys_su_lfp_coherence_ifr(L
 
 % TODO finish documentation
 % TODO comment thoroughly
-%
+% TODO pare down to compute IFR triggered fields
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION  %%%%%%%%%%%%%%
@@ -112,10 +112,7 @@ for i=1:2:nparams
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA COLLECTION %%%%%%%%%%%%%%%%%%%%
-
 
 % where to grab the files from?
 
@@ -128,7 +125,6 @@ sua_mat=fullfile(filedir,'sua',['sua_channels ' num2str(SUCHANNEL) '.mat']);
 load(sua_mat,'smooth_spikes','IFR','TIME','clust_spike_vec','subtrials'); % smooth spikes
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
 
@@ -197,10 +193,6 @@ for i=1:ntrials
 	currifr=normifr(i,:);
 	currlfp=normlfp(i,:);
 
-	%randifr=zscore(ifr_data(randtrial,:));
-
-	% find zero crossings where IFR > 3*Std and next point < 0
-	
 	zerocross{i}=find(currifr(indx)>troughedges(1) & currifr(indx+1)<troughedges(2))+1; 
 	poscross{i}=find(currifr(indx)<peakedges(1) & currifr(indx+1)>peakedges(2))+1;
 
@@ -311,7 +303,6 @@ poscount=1;
 randcount=1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% WINDOW EXTRACTION %%%%%%%%%%%%%%%%%%
 
 
@@ -380,7 +371,6 @@ for i=1:ntrials
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% RANDOM POINT WINDOW EXTRACTION %%%%%
 
 

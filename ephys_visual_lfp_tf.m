@@ -92,7 +92,6 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
 end
 
-
 SR=25e3;
 noise='none'; % common-average reference for noise removal
 car_exclude=[];
@@ -105,9 +104,9 @@ lfp_n=4000; % defined frequency resolution
 lfp_overlap=3750;
 lfp_nfft=8000; % superficial, makes the spectrogram smoother
 lfp_w=2; % time bandwidth product if using multi-taper
-lfp_ntapers=[]; % number of tapers, leave blank to use 2*nw-1
+lfp_ntapers=[]; % number of tapers, leave blank to use 2*w-1
 
-hist_min_f=1e3;
+hist_min_f=1;
 hist_max_f=10e3;
 
 figtitle=[];

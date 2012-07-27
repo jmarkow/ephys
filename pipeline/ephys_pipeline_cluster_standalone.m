@@ -4,6 +4,8 @@ function cluster_standalone(TEMPLATEFILE,DATAFILE,CLASSIFYFILE)
 %
 %
 
+% TODO update to allow padding
+
 colors=hot(63); % uint8 colormap
 
 disp_minfs=1e3;

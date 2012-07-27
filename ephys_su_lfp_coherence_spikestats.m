@@ -1,4 +1,4 @@
-function ephys_su_lfp_coherence_quickplots(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)
+function ephys_su_lfp_coherence_spikestats(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)
 %generates plots with aligned fields, spikes and IFR
 %
 %
@@ -14,9 +14,9 @@ savedir=pwd;
 lfp_fs=25e3;
 fig_title=[];
 medfilt_scale=1.5; % median filter scale (in ms)
-freq_range=[25 100];
-singletrialplots=20;
-
+freq_range=[25 100]
+singletrials=1:10; % default to 1-201singletrials=1:20; % default to 1-20
+time_range=[]; % if defined only visualize data in this subregion
 if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
 end
@@ -33,17 +33,17 @@ for i=1:2:nparams
 			freq_range=varargin{i+1};
 		case 'median_scale'
 			median_scale=varargin{i+1};
-		case 'singletrialplots'
-			singletrialplots=varargin{i+1};
+		case 'singletrials'
+			singletrials=varargin{i+1};
 		case 'medfilt_scale'
 			medfilt_scale=varargin{i+1};
+		case 'time_range'
+			time_range=varargin{i+1};
 	end
 end
 
 [path,name,ext]=fileparts(filedir);
 savename=[ name '_lfpch_' num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_clust' num2str(SUCLUSTER) '_freqs' num2str(freq_range)];
-
-
 
 load(fullfile(filedir,'aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
 
@@ -51,6 +51,10 @@ load(fullfile(filedir,'aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the
 
 sua_mat=fullfile(filedir,'sua',['sua_channels ' num2str(SUCHANNEL) '.mat']);
 load(sua_mat,'smooth_spikes','IFR','TIME','clust_spike_vec','subtrials'); % smooth spikes
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
+
 
 % filter the lfp_data
 
@@ -72,32 +76,59 @@ if isempty(fig_title)
 		' SUCL' num2str(SUCLUSTER) ' FILT ' num2str(freq_range) ' NTRIALS' num2str(trials)];
 end
 
+
+% single trials
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SINGLE TRIALS %%%%%%%%%%%%%%%%%%%%%%
+
 trialvec=1:trials;
 trialperm=trialvec(randperm(trials));
 
-if ~isempty(savedir)
+% add an options to isolate a given time region and color code according to phase if the user wants
 
-	savedir=fullfile(savedir,'coherence','quickplots');
-	if ~exist(savedir,'dir')
-		mkdir(savedir);
-	end
+savedir=fullfile(savedir,'coherence','spikestats',[ num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER)]);
 
-	if singletrialplots>trials
-		singletrialplots=trials;
-	end
-
-	for i=1:singletrialplots
-		singletrialfig=figure('Position',[0 0 800 600],'Visible','off');
-		currtrial=trialperm(i);
-		currlfp=lfp_data(currtrial,:);
-		currifr=ifr_data(currtrial,:);
-		currspike=spike_data{currtrial}*ifr_fs;	
-		ephys_visual_spike_lfp(currlfp,currspike,currifr,'fignum',singletrialfig,'lfp_fs',lfp_fs,'ifr_fs',ifr_fs);
-		set(singletrialfig,'paperpositionmode','auto');
-		multi_fig_save(singletrialfig,savedir,[ savename '_singletrial' num2str(currtrial) ],'eps,png');
-		close([singletrialfig]);
-	end
+if ~exist(savedir,'dir')
+	mkdir(savedir);
 end
+
+singletrialsavedir=fullfile(savedir,'singletrials');
+
+if ~exist(singletrialsavedir,'dir')
+	mkdir(singletrialsavedir);
+end
+
+% remove any trials if we exceed the number of actual trials in the data
+
+singletrials(singletrials>trials)=[];
+
+for i=singletrials
+	
+	% collect what we need for plotting
+
+	currlfp=lfp_data(i,:);
+	currifr=ifr_data(i,:);
+	currspike=spike_data{i}*ifr_fs;	
+	currphase=angle(hilbert(lfp_data));
+
+	singletrialfig=figure('Position',[0 0 800 600],'Visible','off');
+	ephys_visual_spike_lfp(currlfp,currspike,currifr,'fignum',singletrialfig,...
+		'lfp_fs',lfp_fs,'ifr_fs',ifr_fs,'spikevis','ifr','time_range',time_range);
+	set(singletrialfig,'paperpositionmode','auto');
+	multi_fig_save(singletrialfig,singletrialsavedir,[ savename '_IFRsingletrial' num2str(i) ],'eps,png');
+	close([singletrialfig]);
+
+	singletrialfig=figure('Position',[0 0 800 600],'Visible','off');
+	ephys_visual_spike_lfp(currlfp,currspike,currifr,'fignum',singletrialfig,...
+		'lfp_fs',lfp_fs,'ifr_fs',ifr_fs,'spikevis','ticks','time_range',time_range);
+	set(singletrialfig,'paperpositionmode','auto');
+	multi_fig_save(singletrialfig,singletrialsavedir,[ savename '_SPIKESsingletrial' num2str(i) ],'eps,png');
+	close([singletrialfig]);
+
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MEAN PLOTTING %%%%%%%%%%%%%%%%%%%%%%
 
 lfp_mean=mean(lfp_data);
 lfp_sem=std(lfp_data)./sqrt(trials);
@@ -170,4 +201,7 @@ if ~isempty(savedir)
 	save(fullfile(savedir,[savename '.mat']),'ifr_mean','lfp_mean','ifr_sem','lfp_sem');
 	close([mean_fig]);
 end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
