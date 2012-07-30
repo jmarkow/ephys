@@ -13,7 +13,7 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs!');
 end
 
-method='negentropy';
+method='bimodal';
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -25,8 +25,10 @@ end
 
 [samples,trials]=size(WAVEFORMS);
 
+% may want to consider a new family here, perhaps coiflet instead of Haar
+
 parfor i=1:trials
-	[wavecoef(:,i),l]=wavedec(WAVEFORMS(:,i),4,'haar'); % 4-level wavelet decomposition
+	[wavecoef(:,i),l]=wavedec(WAVEFORMS(:,i),4,'coif1'); % 4-level wavelet decomposition
 end
 
 [coeffs,trials]=size(wavecoef);

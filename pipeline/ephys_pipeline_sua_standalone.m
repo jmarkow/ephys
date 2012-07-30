@@ -7,8 +7,8 @@ function ephys_lfp_standalone(PROCDIR,CONFIG)
 
 parameters=ephys_pipeline_readconfig(CONFIG);
 
-fprintf('Parameters\n\n%-10s%-10s%-10s\n\n','Sigma_t','Align','FS');
-fprintf('%-10d%-10s%-10d\n\n\n',parameters.sigma_t,parameters.spike_align,parameters.fs);
+fprintf('Parameters\n\n%-10s%-10s%-10s%-10s\n\n','Sigma_t','Align','FS','Jitter');
+fprintf('%-10d%-10s%-10d%-10d\n\n\n',parameters.sigma_t,parameters.spike_align,parameters.fs,parameters.jitter);
 
 % load in agg data and histogram
 
@@ -50,7 +50,8 @@ candidate_channels=CHANNELS(SNR>=parameters.snr_cutoff); % channels with average
 for i=1:length(candidate_channels)
 	ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,...
 		'channels',candidate_channels(i),'sort',1,'auto_clust',1,...
-		'savedir',PROCDIR,'align',parameters.spike_align,'sigma_t',parameters.sigma_t,'sr',parameters.fs);
+		'savedir',PROCDIR,'align',parameters.spike_align,'sigma_t',parameters.sigma_t,'sr',parameters.fs,...
+		'jitter',parameters.jitter);
 end
 
 

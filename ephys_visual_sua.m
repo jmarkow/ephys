@@ -83,10 +83,11 @@ sort=1; % do we want to sort?
 auto_clust=0;
 tetrode_channels=[];
 sigma_t=4;
+jitter=4;
 singletrials=10; % number of random single trials to plot per cluster
 subtrials=[];
 align='com'; % how to align spike waveforms can be min for minimum peak or COM
-
+	     % COM seems a bit sloppy, may move to MIN
 % parameter for smooth density estimate
 
 smooth_rate=1e3;
@@ -132,6 +133,8 @@ for i=1:2:nparams
 			subtrials=varargin{i+1};
 		case 'align'
 			align=varargin{i+1};
+		case 'jitter'
+			jitter=varargin{i+1};
 	end
 end
 
@@ -231,7 +234,7 @@ for i=1:length(channels)
 
 		threshold=sigma_t*median(abs(proc_data(:,j,i))/.6745);
 		%disp([num2str(threshold)]);
-		spike_pp=ephys_spike_detect(sort_data(:,j,:),threshold,'sr',SR,'visualize','n','align',align);
+		spike_pp=ephys_spike_detect(sort_data(:,j,:),threshold,'sr',SR,'visualize','n','align',align,'jitter',jitter);
 
 		% after spike detect also collect trace without spikes
 

@@ -75,14 +75,15 @@ end
 
 shadow=.75e-3; % minimum time between spikes, i.e. censor period
 	       % per Hill, Mehta and Kleinfeld (2011), 750 microseconds
-window=[.0005 .0005]; % how large of a window to grab, seconds before and after spike
+window=[.0006 .0006]; % how large of a window to grab, seconds before and after spike
 method='b';
 visualize='y';
 sr=25e3;
 realign='y';
 interpolate='y'; % do we want to interpolate for realignment (default 'y');
-interpolate_fs=50e3; % what fs should we intepolate to? (50e3 has worked in my experience)
-align='min';
+interpolate_fs=50e3; % what fs should we intepolate to? (50e3 has worked in my hands, consider going higher for low SNR)
+align='com'; % you'll want to use COM here, others seem a bit unreliable
+jitter=4; % how much jitter do we allow before tossing out a spike (in samples of original sr)?
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -112,6 +113,8 @@ for i=1:2:nparams
 			interpolate_fs=varargin{i+1};
 		case 'align'
 			align=varargin{i+1};
+		case 'jitter'
+			jitter=varargin{i+1};
 		case 'tetrode_data'
 			tetrode_data=varargin{i+1};
 	end
@@ -141,6 +144,7 @@ end
 
 spike_window=round(window.*sr);
 spike_window_length=length(-spike_window(1):spike_window(2));
+spike_window_center=floor(median([1:spike_window_length]));
 
 if lower(interpolate(1))=='y'
 	expansion=interpolate_fs/sr;
@@ -190,8 +194,11 @@ if lower(method(1))=='p' || lower(method(1))=='a'
 
 				% sinc interpolation
 
-				interp_window=sinc(newtimepoints(:,ones(size(timepoints)))-...
-					timepoints(:,ones(size(newtimepoints)))')*tmp_window(:);
+				%interp_window=sinc(newtimepoints(:,ones(size(timepoints)))-...
+				%	timepoints(:,ones(size(newtimepoints)))')*tmp_window(:);
+
+				interp_window=spline(timepoints,tmp_window,newtimepoints);
+
 			else
 				newtimepoints=timepoints;
 				interp_window=tmp_window;
@@ -204,21 +211,37 @@ if lower(method(1))=='p' || lower(method(1))=='a'
 			switch lower(align)
 
 				case 'com'
-					[val loc]=min(interp_window);
+
+					[val loc]=max(abs(interp_window));
 
 					% take the samples around the min peak and compute the
 					% COM
 
-					compoints=[-4:4]';
+					% per logothetis and mahani, take continuous region > 50% of peak value
 
-					if loc-4<1 | loc+4>length(interp_window)
-						alignpoint=round(newtimepoints(loc));
-						continue;
+					compoints=find(abs(interp_window)>.5*val);
+					
+					% get the continuous region
+
+					compoints=compoints(diff(compoints)==1);
+					
+					% any breakpoints between continuous regions, take the first region
+					
+					breakpoints=find(diff(compoints)>1);
+					
+					if ~isempty(breakpoints)
+						compoints=compoints(1:breakpoints(1));
 					end
 
-					com=sum(compoints.*abs(interp_window(loc-4:loc+4)))/sum(abs(interp_window(loc-4:loc+4)));
-					alignpoint=round(newtimepoints(round(loc+com)));
+					% toss out any points where alignment>jitter	
+			
+					com=sum(compoints.*abs(interp_window(compoints)))/sum(abs(interp_window(compoints)));
+					alignpoint=round(newtimepoints(round(com)));
 
+					if abs(alignpoint-spike_window_center)>jitter
+						continue;
+					end
+				
 				case 'min'
 					[val loc]=min(interp_window);
 					alignpoint=round(newtimepoints(loc));
@@ -304,8 +327,11 @@ if lower(method(1))=='n' || lower(method(1))=='a'
 
 				% sinc interpolation
 
-				interp_window=sinc(newtimepoints(:,ones(size(timepoints)))-...
-					timepoints(:,ones(size(newtimepoints)))')*tmp_window(:);
+				%interp_window=sinc(newtimepoints(:,ones(size(timepoints)))-...
+				%	timepoints(:,ones(size(newtimepoints)))')*tmp_window(:);
+
+				interp_window=spline(timepoints,tmp_window,newtimepoints);
+
 			else
 				newtimepoints=timepoints;
 				interp_window=tmp_window;
@@ -319,20 +345,35 @@ if lower(method(1))=='n' || lower(method(1))=='a'
 
 				case 'com'
 
-					[val loc]=min(interp_window);
+					[val loc]=max(abs(interp_window));
 
 					% take the samples around the min peak and compute the
 					% COM
 
-					compoints=[-4:4]';
+					% per logothetis and mahani, take continuous region > 50% of peak value
 
-					if loc-4<1 | loc+4>length(interp_window)
-						alignpoint=round(newtimepoints(loc));
-						continue;
+					compoints=find(abs(interp_window)>.5*val);
+					
+					% get the continuous region
+
+					compoints=compoints(diff(compoints)==1);
+					
+					% any breakpoints between continuous regions, take the first region
+					
+					breakpoints=find(diff(compoints)>1);
+					
+					if ~isempty(breakpoints)
+						compoints=compoints(1:breakpoints(1));
 					end
 
-					com=sum(compoints.*abs(interp_window(loc-4:loc+4)))/sum(abs(interp_window(loc-4:loc+4)));
-					alignpoint=round(newtimepoints(round(loc+com)));
+					% toss out any points where alignment>jitter	
+			
+					com=sum(compoints.*abs(interp_window(compoints)))/sum(abs(interp_window(compoints)));
+					alignpoint=round(newtimepoints(round(com)));
+
+					if abs(alignpoint-spike_window_center)>jitter
+						continue;
+					end
 
 				case 'min'
 					[val loc]=min(interp_window);
@@ -416,36 +457,53 @@ if lower(method(1))=='b' || lower(method(1))=='a'
 
 				% sinc interpolation
 
-				interp_window=sinc(newtimepoints(:,ones(size(timepoints)))-...
-					timepoints(:,ones(size(newtimepoints)))')*tmp_window(:);
+				%interp_window=sinc(newtimepoints(:,ones(size(timepoints)))-...
+				%	timepoints(:,ones(size(newtimepoints)))')*tmp_window(:);
+
+				interp_window=spline(timepoints,tmp_window,newtimepoints);
+
 			else
 				newtimepoints=timepoints;
 				interp_window=tmp_window;
 			end
 
 			% need to add escape hatch with no interpolate
-
 			% align by com (center of mass), min or max
 
 			switch lower(align)
 
 				case 'com'
-					[val loc]=min(interp_window);
+
+					[val loc]=max(abs(interp_window));
 
 					% take the samples around the min peak and compute the
 					% COM
 
-					compoints=[-4:4]';
+					% per logothetis and mahani, take continuous region > 50% of peak value
 
-					if loc-4<1 | loc+4>length(interp_window)
-						alignpoint=round(newtimepoints(loc));
+					compoints=find(abs(interp_window)>.5*val);
+					
+					% get the continuous region
+
+					compoints=compoints(diff(compoints)==1);
+					
+					% any breakpoints between continuous regions, take the first region
+					
+					breakpoints=find(diff(compoints)>1);
+					
+					if ~isempty(breakpoints)
+						compoints=compoints(1:breakpoints(1));
+					end
+
+					% toss out any points where alignment>jitter	
+			
+					com=sum(compoints.*abs(interp_window(compoints)))/sum(abs(interp_window(compoints)));
+					alignpoint=round(newtimepoints(round(com)));
+
+					if abs(alignpoint-spike_window_center)>jitter
 						continue;
 					end
 
-					com=sum(compoints.*abs(interp_window(loc-4:loc+4)))/sum(abs(interp_window(loc-4:loc+4)));
-					alignpoint=round(newtimepoints(round(loc+com)));
-
-					%alignpoint=sum(newtimepoints.*abs(interp_window))/sum(abs(interp_window));
 				case 'min'
 					[val loc]=min(interp_window);
 					alignpoint=round(newtimepoints(loc));

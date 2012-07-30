@@ -114,8 +114,8 @@ newtimepoints=linspace(1,samples,expansion*samples)';
 % either sinc or spline interpolation
 
 parfor i=1:trials
-	interpspikes(:,i)=sinc(newtimepoints(:,ones(size(timepoints)))-timepoints(:,ones(size(newtimepoints)))')*spikewindows(:,i);
-	%interpspikes(:,i)=spline(timepoints,spikewindows(:,i),newtimepoints);
+	%interpspikes(:,i)=sinc(newtimepoints(:,ones(size(timepoints)))-timepoints(:,ones(size(newtimepoints)))')*spikewindows(:,i);
+	interpspikes(:,i)=spline(timepoints,spikewindows(:,i),newtimepoints);
 end
 
 % need to check for wavelet toolbox, otherwise we would need to use PCA or standard features
@@ -131,7 +131,7 @@ else
 
 	disp('Could not find the wavelet toolbox, falling back on PCA...');
 
-	[coef score variance t2]=princomp(interpspikes(:,i)');
+	[coef score]=princomp(interpspikes(:,i)');
 	spike_data=[spike_data score(:,1:2)];
 
 end
