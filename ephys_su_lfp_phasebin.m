@@ -1,16 +1,10 @@
-function [binned_phase,phase_mean]=ephys_su_lfp_phasebin(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)
+function [BINNED_PHASE,PHASE_MEAN]=ephys_su_lfp_phasebin(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)
 %computes coherograms between LFPs and single units
 %
-%	[abscoh,t,f]=ephys_su_lfp_coherence_tf(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)
+%	[BINNED_PHRASE PHASE_MEAN]=ephys_su_lfp_phasebin(LFPCHANNEL,HISTOGRAM,varargin)
 %	
 %	LFPCHANNEL
 %	LFPCHANNEL to use
-%
-%	SUCHANNEL
-%	channel with single units (already clustered and saved in 'sua')
-%
-%	SUCLUSTER
-%	number of cluster with single unit
 %
 %	HISTOGRAM
 %	time frequency histogram structure (result of ephys_visual_histogram or loading histogram.mat)
@@ -25,16 +19,7 @@ function [binned_phase,phase_mean]=ephys_su_lfp_phasebin(LFPCHANNEL,SUCHANNEL,SU
 %
 %		colors
 %		colormap for coherence graph (default: 'jet')
-%		
-%		n
-%		spectrogram window length (default: 6.25e3 samples)
-%		
-%		nfft
-%		spectrogram nfft (default: 10e3 samples)
 %
-%		overlap
-%		spectrogram overlap (default: 6e3 samples)
-%		
 %		min_f
 %		minimum frequency to display (default: 10)
 %		
@@ -101,7 +86,6 @@ for i=1:2:nparams
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA COLLECTION %%%%%%%%%%%%%%%%%%%%
 
 % where to grab the files from?
@@ -110,7 +94,6 @@ savename=[ fig_title '_lfpch_' num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_
 sua_mat=fullfile(filedir,'sua',['sua_channels ' num2str(SUCHANNEL) '.mat']);
 
 load(fullfile(filedir,'aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
-load(sua_mat,'smooth_spikes','clust_spike_vec','subtrials'); % smooth spikes
 
 % frequency range, may need to add Kaiser to condition_signal for tighter filter cutoffs
 
@@ -122,7 +105,6 @@ lfp_data=squeeze(lfp_data);
 % need to account for subset of trials if used in single unit data 
 
 lfp_data=lfp_data(:,subtrials);
-spike_data=clust_spike_vec{1}{SUCLUSTER}; % spike times (in ms)
 
 if ~isempty(trial_range)
 	disp(['Truncating trials to ' num2str([trial_range(1) trial_range(end)])]);
@@ -150,18 +132,16 @@ for i=1:trials
 
 	for j=1:length(indxs)-1
 		phase_win=currphase(indxs(j):indxs(j+1));
-		phase_mean(i,j)=mean(phase_win);
+		PHASE_MEAN(i,j)=mean(phase_win);
 	end
 
-	[density binned_phase(i,:)]=histc(phase_mean(i,:),phase_bins);
+	[density BINNED_PHASE(i,:)]=histc(PHASE_MEAN(i,:),phase_bins);
 
 end
 
+% image with the histogram
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 

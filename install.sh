@@ -30,7 +30,6 @@ echo "COMPILED=$COMPILED" > /usr/local/bin/ephys_pipeline_compiled_dir
 
 SOURCE=$BASE/pipeline/bash
 
-
 cd -- "$SOURCE"
 
 # changed to interactive to not overwrite important files

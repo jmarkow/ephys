@@ -59,21 +59,20 @@ voltmin=inf;
 voltmax=-inf;
 
 timevec=([1:samples]./spike_SR)*1e3;
-timevec_mat=[1:samples];
+timevec_mat=[1:samples]';
 coordmat=[];
 
 % slows down to a CRAWL with many spikes!
+% TODO re-implement with reshape and repmat
 
-for i=1:trials
+% reshape takes elements columnwise, so should simply have samples*trials values
 
-	currwin=SPIKEWINDOWS(:,i);
+spikevalues=reshape(SPIKEWINDOWS,[samples*trials 1]);
 
-	% form matrix with spike x y pairings
+% simply repeat the time vector
 
-	coordmat_tmp=[timevec_mat(:) currwin(:)];
-	coordmat=[coordmat;coordmat_tmp];
-
-end
+samplemat=repmat(timevec_mat,[trials 1]);
+coordmat=[samplemat spikevalues];
 
 % construct 2D histogram
 % for voltmin and voltmax cover 99% of voltage values
@@ -84,7 +83,6 @@ voltmax=prctile(coordmat(:,2),99)+10;
 edges{1}=.5:1:samples+.5;
 edges{2}=linspace(voltmin,voltmax,y_res);
 density=hist3(coordmat,'Edges',edges);
-
 imagesc(timevec(1:end-1),edges{2},density(1:length(timevec)-1,:)');
 colormap(hot);
 

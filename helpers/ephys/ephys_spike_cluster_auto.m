@@ -20,7 +20,7 @@ interpolate=1;
 interpolate_fs=50e3;
 use_spiketime=0; % use spiketime as a clustering feature (usually helps if SNR is low)
 nparams=length(varargin);
-maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
+maxcoeffs=5; % number of wavelet coefficients to use (sorted by KS statistic)
 outlier_cutoff=.5; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
 
 if mod(nparams,2)>0
@@ -106,7 +106,7 @@ TRIALS=trialnum;
 expansion=interpolate_fs/sr;
 interpspikes=zeros(samples*expansion,trials);
 
-% take the time vector and expand to 2*fs (from 25k to 50k)
+% take the time vector and expand to interpolated fs
 
 timepoints=[1:samples]';
 newtimepoints=linspace(1,samples,expansion*samples)';
@@ -122,7 +122,7 @@ end
 
 if license('test','Wavelet_Toolbox')
 
-	[coeffs]=get_wavelet_coefficients(interpspikes,maxcoeffs,'method','bimodal');
+	[coeffs]=get_wavelet_coefficients(interpspikes,maxcoeffs,'method','bimodal'); % use bimodality coefficient to pick relevant dimensions
 	spike_data=[spike_data coeffs];
 	
 else
@@ -248,10 +248,10 @@ for i=1:length(clusters)
 
 		currtrial=currtrial(currlabels==clusters(i));
 
-		currisi=(diff(currtrial)); % isi in msec
+		currisi=(diff(currtrial)); 
 		spikeisitmp=[spikeisitmp;currisi(:)];
 	end
 
 
-	ISI{i}=spikeisitmp; % convert to msec
+	ISI{i}=spikeisitmp; 
 end

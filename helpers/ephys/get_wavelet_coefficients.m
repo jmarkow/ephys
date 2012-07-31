@@ -28,7 +28,7 @@ end
 % may want to consider a new family here, perhaps coiflet instead of Haar
 
 parfor i=1:trials
-	[wavecoef(:,i),l]=wavedec(WAVEFORMS(:,i),4,'coif1'); % 4-level wavelet decomposition
+	[wavecoef(:,i),l]=wavedec(WAVEFORMS(:,i),5,'haar'); % 4-level wavelet decomposition
 end
 
 [coeffs,trials]=size(wavecoef);
@@ -96,11 +96,11 @@ elseif strcmp(lower(method),'neg')
 	[val,loc]=sort(negentropy,'descend');
 else
 
-	[val,loc]=sort(coeffbimodal,'descend');
+	[val,loc]=sort(coeffbimodal,'descend')
 
-	% strip anything below .333
+	% strip anything below .3
 
-	cutoff=find(val<.333);
+	cutoff=find(val<.3);
 
 	% if everything is below .333 then include it all
 

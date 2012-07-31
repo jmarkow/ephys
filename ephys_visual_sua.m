@@ -549,16 +549,21 @@ for i=1:length(channels)
 
 		% generate single trial plots, simply the spikes marked along with the filtered traces
 
-		population=[1:ntrials];
-		randtrials=population(randsample(ntrials,singletrials));
+		randpopulation=randperm(ntrials);
+
+		if singletrials<=ntrials
+			randtrials=randpopulation(1:singletrials);
+		else
+			randtrials=randpopulation(1:ntrials);
+		end
 
 		singletrialdir=fullfile(savedir,'singletrials',['ch' num2str(channels(i)) ],[ 'clust' num2str(j)]);
 
-		if ~exist(fullfile(singletrialdir),'dir');
-			mkdir(singletrialdir);
-		end
-
 		if ~isempty(clusterid)
+
+			if ~exist(fullfile(singletrialdir),'dir');
+				mkdir(singletrialdir);
+			end
 
 			disp('Plotting single trials');
 
