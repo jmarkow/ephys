@@ -269,7 +269,7 @@ if ~skip
 
 	sound_file_features(DIR,files_to_proc,n,overlap,filter_scale,downsampling);
 
-	disp('Comparing sound files to the template...');
+	disp('Comparing sound files to the template (this may take a minute)...');
 
 	% take a subset if the user has passed the option
 	%
@@ -357,6 +357,9 @@ end
 if ~skip
 	[mic_data ephys_data channels used_filenames]=extract_hits(sorted_syllable,filenames,...
 		act_templatesize,spect_thresh,time_range,SR,n,overlap,downsampling);
+
+	disp(['Saving data to ' fullfile(proc_dir,'extracted_data.mat')]);
+
 	save(fullfile(proc_dir,'extracted_data.mat'),'used_filenames','mic_data','ephys_data','time_range','channels','-v7.3');
 end
 
@@ -478,6 +481,7 @@ function template_match(TEMPLATE,TARGET_FILES,SAVEFILE,TEMPLATESIZE)
 
 %disp('Comparing the target sounds to the template...');
 
+
 parfor i=1:length(TARGET_FILES)
 
 	% load the features of the sound data
@@ -524,9 +528,11 @@ parfor i=1:length(TARGET_FILES)
 		peakLocation{i}=[];
 		continue;
 	end
-
+	
+	warning('off','signal:findpeaks:largeMinPeakHeight');
 	[pks,locs]=findpeaks(product_score,'MINPEAKHEIGHT',.005);
-
+	warning('on','signal:findpeaks:largeMinPeakHeight');
+	
 	if isempty(locs)
 		variableCellArray{i}=temp_mat;
 		peakLocation{i}=[];
@@ -545,6 +551,7 @@ parfor i=1:length(TARGET_FILES)
 
 end
 
+warning('on','signal:findpeaks:largeMinPeakHeight');
 filenames=TARGET_FILES;
 
 empty_coords=find(cellfun(@isempty,variableCellArray));
@@ -590,10 +597,40 @@ else
 end
 
 disp(['Extracting cluster (' num2str(length(SELECTED_PEAKS)) ' peaks):   ']);
-disp('Preallocating matrices...');
+disp('Preallocating matrices (this may take a minute)...');
 
-formatstring=progressbar(length(SELECTED_PEAKS));
+[nblanks formatstring]=progressbar(100);
 counter=0;
+
+% check for all possible channels across the whole day, a matrix will be filled with zeros if the channel
+% gets knocked out somehow...
+
+channel_labels=[];
+
+for i=1:length(SELECTED_PEAKS)
+	data=load(FILENAMES{i});
+
+	if ~isfield(data,'ephys_data')
+		ephys_data=data.intan_data;
+	else
+		ephys_data=data.ephys_data;
+    	end
+    
+    	channels=data.channels;
+
+	for j=1:length(channels)
+
+		% loop and if any channels are not included in the channel_label vector, include!
+
+		if ~any(channels(j)==channel_labels)
+			channel_labels=[channel_labels channels(j)];
+		end
+	end
+
+end
+
+channel_labels=sort(channel_labels);
+disp(['Found channels ' num2str(channel_labels)]);
 
 parfor i=1:length(SELECTED_PEAKS)
 
@@ -609,15 +646,7 @@ parfor i=1:length(SELECTED_PEAKS)
 	else
 		ephys_data=data.ephys_data;
     	end
-    
-    	channels=data.channels;
-
-    	if ~isempty(setdiff(CHANNELS,channels)) || ~isempty(setdiff(channels,CHANNELS))
-		disp(['Channel mismatch ' FILENAMES{i}]);
-	    	continue;
-    	end
-    
-	
+        	
 	fs=data.fs;
 	for j=1:length(SELECTED_PEAKS{i})
 		
@@ -642,20 +671,19 @@ parfor i=1:length(SELECTED_PEAKS)
 end
 
 disp(['Found ' num2str(counter) ' trials ']);
-fprintf(1,'\n');
 
 %%%%
 
-EPHYS_DATA=zeros(TEMPLATESIZE+1,counter,length(CHANNELS),'single');
+EPHYS_DATA=zeros(TEMPLATESIZE+1,counter,length(channel_labels),'single');
 MIC_DATA=zeros(TEMPLATESIZE+1,counter,'single');
 
 disp('Extracting data');
-fprintf(1,'\n\n\n\n\n\n');
+fprintf(1,['Progress:  ' blanks(nblanks)]);
 
 trial=1;
 for i=1:length(SELECTED_PEAKS)
 
-	fprintf(1,formatstring,i);
+	fprintf(1,formatstring,round((i/length(SELECTED_PEAKS))*100));
 
 	if length(SELECTED_PEAKS{i})<1
 		continue;
@@ -671,6 +699,8 @@ for i=1:length(SELECTED_PEAKS)
     	end
 	 
 	fs=data.fs;
+	channels=data.channels;
+
 	for j=1:length(SELECTED_PEAKS{i})
 		
 		peakLoc=SELECTED_PEAKS{i}(j);
@@ -690,9 +720,10 @@ for i=1:length(SELECTED_PEAKS)
                 
 				% if we have differences in channel number, how to resolve?
 
-				for k=1:length(CHANNELS)
+				for k=1:length(channels)
                     
-					EPHYS_DATA(:,trial,k)=single(ephys_data(startpoint:endpoint,k));
+					ch_idx=find(channels(k)==channel_labels);
+					EPHYS_DATA(:,trial,ch_idx)=single(ephys_data(startpoint:endpoint,k));
 
 				end
 
@@ -703,6 +734,8 @@ for i=1:length(SELECTED_PEAKS)
 		end
 	end
 end
+
+CHANNELS=channel_labels;
 
 fprintf('\n');
 

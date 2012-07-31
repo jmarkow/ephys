@@ -170,6 +170,7 @@ parfor i=1:length(clustnum)
 
 	AIC(i)=testobj.AIC;
 	logl(i)=testobj.NlogL;
+	BIC(i)=testobj.BIC;
 	disp([ num2str(clustnum(i)) ' clusters']);
 
 	%disp(['Partition coefficient ' num2str(partition_coef(i))]);
@@ -185,13 +186,17 @@ end
 %[val,loc]=max(AIC);
 %[val,loc]=max(partition_coef);
 
+% second derivative is defined over 2:length-1
+
 for i=1:length(logl)-2
 	secondderiv(i)=logl(i+2)+logl(i)-2*logl(i+1);
 end
-x=clustnum(2:end-1);
 
+% AIC and BIC have worked miserably here, simply using the elbow of the log-likelihood
+
+x=clustnum(2:end-1);
 [val,loc]=max(secondderiv); % maximum derivative in log-likelihood over k
-nclust=x(loc);
+nclust=x(loc(1));
 
 disp(['Will use ' num2str(nclust) ' clusters']);
 
