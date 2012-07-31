@@ -41,7 +41,7 @@ if mod(nparams,2)>0
 end
 
 SR=25e3;
-noise='car'; % common-average reference for noise removal
+noise='none'; % common-average reference for noise removal
 car_exclude=[];
 filtering='y'; % if defined then filtering filter the traces
 savedir=pwd;
@@ -49,8 +49,6 @@ freq_range=[500 8e3]; % frequency range for filtering
 snr_threshold=1.1;
 exclude_channels=[];
 channels=CHANNELS;
-
-colors={'b','r','g','c','m','y','k','r','g','b'};
 
 for i=1:2:nparams
 	switch lower(varargin{i})

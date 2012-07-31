@@ -22,7 +22,6 @@ for i=1:2:nparams
 	end
 end
 
-
 [samples,trials]=size(WAVEFORMS);
 
 % may want to consider a new family here, perhaps coiflet instead of Haar
@@ -96,7 +95,7 @@ elseif strcmp(lower(method),'neg')
 	[val,loc]=sort(negentropy,'descend');
 else
 
-	[val,loc]=sort(coeffbimodal,'descend')
+	[val,loc]=sort(coeffbimodal,'descend');
 
 	% strip anything below .3
 

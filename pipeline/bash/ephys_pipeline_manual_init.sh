@@ -5,7 +5,15 @@ IFS=$'\n'
 
 #source intan_songdet.cfg
 
-EXTRACTLIST=( `find $PWD -type f -name ".songextraction"` )
+if [ $# == 1 ]; then
+	EXTRACTLIST=( `find $PWD -type f -name ".songextraction"` )
+elif [ $# == 2 ]; then
+	EXTRACTLIST=( `find $PWD -type f -name ".songextraction" | grep "$2"` )
+else
+	echo 'Did not understand command line options'
+	echo 'Standard usage: ' $0 ' mua|lfp|sua extraction_name '
+	exit 1
+fi
 
 case "$1" in
 	"sua" ) REPLACEFILE="mat/ephys/.sua_signal";;

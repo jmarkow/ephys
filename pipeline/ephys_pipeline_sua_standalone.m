@@ -42,7 +42,7 @@ end
 
 delete(fullfile(PROCDIR,'snr_channel_*'));
 disp('Computing SNR on all channels');
-SNR=ephys_pipeline_candidate_su(EPHYS_DATA,CHANNELS,'savedir',PROCDIR);
+SNR=ephys_pipeline_candidate_su(EPHYS_DATA,CHANNELS,'savedir',PROCDIR,'snr_threshold',parameters.snr_cutoff);
 
 candidate_channels=CHANNELS(SNR>=parameters.snr_cutoff); % channels with average SNR over cutoff for all trials
 %	get processed
