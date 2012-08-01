@@ -236,6 +236,11 @@ if lower(method(1))=='p' || lower(method(1))=='a'
 					% toss out any points where alignment>jitter	
 			
 					com=sum(compoints.*abs(interp_window(compoints)))/sum(abs(interp_window(compoints)));
+
+					if isnan(com)
+						continue;
+					end
+
 					alignpoint=round(newtimepoints(round(com)));
 
 					if abs(alignpoint-spike_window_center)>jitter
@@ -369,6 +374,11 @@ if lower(method(1))=='n' || lower(method(1))=='a'
 					% toss out any points where alignment>jitter	
 			
 					com=sum(compoints.*abs(interp_window(compoints)))/sum(abs(interp_window(compoints)));
+					
+					if isnan(com)
+						continue;
+					end
+					
 					alignpoint=round(newtimepoints(round(com)));
 
 					if abs(alignpoint-spike_window_center)>jitter
@@ -498,6 +508,11 @@ if lower(method(1))=='b' || lower(method(1))=='a'
 					% toss out any points where alignment>jitter	
 			
 					com=sum(compoints.*abs(interp_window(compoints)))/sum(abs(interp_window(compoints)));
+					
+					if isnan(com)
+						continue;
+					end
+
 					alignpoint=round(newtimepoints(round(com)));
 
 					if abs(alignpoint-spike_window_center)>jitter

@@ -555,6 +555,7 @@ for i=1:length(channels)
 			randtrials=randpopulation(1:singletrials);
 		else
 			randtrials=randpopulation(1:ntrials);
+			singletrials=ntrials;
 		end
 
 		singletrialdir=fullfile(savedir,'singletrials',['ch' num2str(channels(i)) ],[ 'clust' num2str(j)]);
