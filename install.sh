@@ -24,20 +24,24 @@ echo 'Creating symlinks in ' $DEST
 # source 1
 
 BASE=$PWD
-COMPILED=$PWD/pipeline/compiled/
+COMPILED=$BASE/pipeline/compiled/
 
 if [ -f $DEST/ephys_pipeline_dirs.cfg ];then
+	
 	source $DEST/ephys_pipeline_dirs.cfg
+	
 	echo "Local directory:  " $LOCAL
 	
-	for NETDIR in ${NETWORKDIR[@]}; do
+	for NETDIR in ${NETWORK[@]}; do
 		echo "Network directory:  " $NETDIR
 	done
 
 	echo "Compiled directory:  " $COMPILED
 
-	echo -n "Overwrite old directories [y/n]?  "
+	echo -n "Overwrite old directories [y/n] (compiled will be overwritten for y or n)?  "
 	read response
+
+	COMPILED=$BASE/pipeline/compiled/
 
 	case "$response" in
 	"y" | "Y" ) 
@@ -53,16 +57,21 @@ if [ -f $DEST/ephys_pipeline_dirs.cfg ];then
 
 		echo "LOCAL=$localdir" > $DEST/ephys_pipeline_dirs.cfg
 		echo "COMPILED=$COMPILED" >> $DEST/ephys_pipeline_dirs.cfg
-		echo "# set NETWORK to an array to sync multiple directories"
-		echo "# e.g. NETWORK[1]=/path/to/dir"
-		echo "# NETWORK[2]=/path/to/other/dir"
+		echo "# set NETWORK to an array to sync multiple directories" >> $DEST/ephys_pipeline_dirs.cfg
+		echo "# e.g. NETWORK[1]=/path/to/dir" >> $DEST/ephys_pipeline_dirs.cfg
+		echo "# NETWORK[2]=/path/to/other/dir" >> $DEST/ephys_pipeline_dirs.cfg
 		echo "NETWORK=$networkdir" >> $DEST/ephys_pipeline_dirs.cfg
 		;;
 	* ) 
 		echo "Not replacing directories..."
+		echo "LOCAL=$LOCAL" > $DEST/ephys_pipeline_dirs.cfg
+		echo "COMPILED=$COMPILED" >> $DEST/ephys_pipeline_dirs.cfg
+		echo "# set NETWORK to an array to sync multiple directories" >> $DEST/ephys_pipeline_dirs.cfg
+		echo "# e.g. NETWORK[1]=/path/to/dir" >> $DEST/ephys_pipeline_dirs.cfg
+		echo "# NETWORK[2]=/path/to/other/dir" >> $DEST/ephys_pipeline_dirs.cfg
+		echo "NETWORK=$NETWORK" >> $DEST/ephys_pipeline_dirs.cfg
 		;;
 	esac
-
 else
 
 	echo "Replacing directories..."
