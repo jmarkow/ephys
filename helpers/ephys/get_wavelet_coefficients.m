@@ -97,18 +97,17 @@ else
 
 	[val,loc]=sort(coeffbimodal,'descend');
 
-	% strip anything below .25 (.333 proved too stringent)
-
-	cutoff=find(val<.25);
+	% stripping away values degraded cluster quality, decided to keep everything 8/1/12
+	%cutoff=find(val<.15);
 
 	% if everything is below the cutoff, just use all coeffs
 
-	if length(cutoff)==length(val)
-		cutoff=[];
-	end
+	%if length(cutoff)==length(val)
+	%	cutoff=[];
+	%end
 
-	val(cutoff)=[];
-	loc(cutoff)=[];
+	%val(cutoff)=[];
+	%loc(cutoff)=[];
 
 end
 

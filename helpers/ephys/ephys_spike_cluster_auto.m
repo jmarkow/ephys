@@ -20,7 +20,7 @@ interpolate=1;
 interpolate_fs=50e3;
 use_spiketime=0; % use spiketime as a clustering feature (usually helps if SNR is low)
 nparams=length(varargin);
-maxcoeffs=5; % number of wavelet coefficients to use (sorted by KS statistic)
+maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
 outlier_cutoff=.5; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
 
 if mod(nparams,2)>0
@@ -121,17 +121,15 @@ end
 % need to check for wavelet toolbox, otherwise we would need to use PCA or standard features
 
 if license('test','Wavelet_Toolbox')
-
 	[coeffs]=get_wavelet_coefficients(interpspikes,maxcoeffs,'method','bimodal'); % use bimodality coefficient to pick relevant dimensions
 	spike_data=[spike_data coeffs];
-	
 else
 
 	% fall back on PCA if necessary, just first two components seem to be most useful
 
 	disp('Could not find the wavelet toolbox, falling back on PCA...');
 
-	[coef score]=princomp(interpspikes(:,i)');
+	[coef score]=princomp(interpspikes');
 	spike_data=[spike_data score(:,1:2)];
 
 end

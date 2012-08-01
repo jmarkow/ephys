@@ -32,9 +32,9 @@ hardstatus string "%{.bW}%-w%{.rW}%n %t%{-}%+w %=%{..G} %H %{..Y} %m/%d %C%a "
 screen bash
 
 
-screen -t MultiUnit 1 tail -f /Users/jmarkow/.ephys_pipeline_mua.log
-screen -t SingleUnit 2 tail -f /Users/jmarkow/.ephys_pipeline_sua.log
-screen -t LFP 3 tail -f /Users/jmarkow/.ephys_pipeline_lfp.log
-screen -t SpectralFeatures 4 tail -f /Users/jmarkow/.ephys_pipeline_smscore.log
-screen -t SoundClustering 5 tail -f /Users/jmarkow/.ephys_pipeline_cluster.log
-screen -t FileAggregating 6 tail -f /Users/jmarkow/.ephys_pipeline_aggregate.log
+screen -t MultiUnit 1 tail -f $HOME/.ephys_pipeline_mua.log
+screen -t SingleUnit 2 tail -f $HOME/.ephys_pipeline_sua.log
+screen -t LFP 3 tail -f $HOME/.ephys_pipeline_lfp.log
+screen -t SpectralFeatures 4 tail -f $HOME/.ephys_pipeline_smscore.log
+screen -t SoundClustering 5 tail -f $HOME/.ephys_pipeline_cluster.log
+screen -t FileAggregating 6 tail -f $HOME/.ephys_pipeline_aggregate.log

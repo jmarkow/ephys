@@ -43,9 +43,20 @@ for i=1:2:nparams
 	end
 end
 
+if length(SIGNAL)<=N
+	disp(['Length of signal longer than N, truncating N to ' num2str(floor(length(SIGNAL)/5))]);
+	difference=N-overlap;
+	N=floor(length(SIGNAL)/3);
+	overlap=N-difference;
+	nfft=[];
+end
+
 if isempty(nfft)
     nfft=2^nextpow2(N);
+else
+    nfft=2^nextpow2(nfft);
 end
+
 
 if any(SIGNAL>1)
     SIGNAL=SIGNAL./max(abs(SIGNAL));

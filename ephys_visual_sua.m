@@ -232,9 +232,9 @@ for i=1:length(channels)
 		spike_pp=[];
 		spikeless_data=[];
 
-		threshold=sigma_t*median(abs(proc_data(:,j,i))/.6745);
+		threshold=sigma_t*median(abs(proc_data(:,j,i))/.6745)
 		%disp([num2str(threshold)]);
-		spike_pp=ephys_spike_detect(sort_data(:,j,:),threshold,'sr',SR,'visualize','n','align',align,'jitter',jitter);
+		spike_pp=ephys_spike_detect(squeeze(sort_data(:,j,:)),threshold,'sr',SR,'visualize','n','align',align,'jitter',jitter);
 
 		% after spike detect also collect trace without spikes
 

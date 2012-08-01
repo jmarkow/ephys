@@ -26,7 +26,62 @@ echo 'Creating symlinks in ' $DEST
 BASE=$PWD
 COMPILED=$PWD/pipeline/compiled/
 
-echo "COMPILED=$COMPILED" > /usr/local/bin/ephys_pipeline_compiled_dir
+if [ -f $DEST/ephys_pipeline_dirs.cfg ];then
+	source $DEST/ephys_pipeline_dirs.cfg
+	echo "Local directory:  " $LOCAL
+	
+	for NETDIR in ${NETWORKDIR[@]}; do
+		echo "Network directory:  " $NETDIR
+	done
+
+	echo "Compiled directory:  " $COMPILED
+
+	echo -n "Overwrite old directories [y/n]?  "
+	read response
+
+	case "$response" in
+	"y" | "Y" ) 
+		echo "Replacing directories..."
+
+		echo -n "Enter network directory with Intan files and press [ENTER] (leave blank to set later or if you want to sync multiple directories):  "
+		read networkdir
+
+		# read out user directories
+
+		echo -n "Enter local directory where you would like to store the Intan files and press [ENTER] (leave blank to set later):  "
+		read localdir
+
+		echo "LOCAL=$localdir" > $DEST/ephys_pipeline_dirs.cfg
+		echo "COMPILED=$COMPILED" >> $DEST/ephys_pipeline_dirs.cfg
+		echo "# set NETWORK to an array to sync multiple directories"
+		echo "# e.g. NETWORK[1]=/path/to/dir"
+		echo "# NETWORK[2]=/path/to/other/dir"
+		echo "NETWORK=$networkdir" >> $DEST/ephys_pipeline_dirs.cfg
+		;;
+	* ) 
+		echo "Not replacing directories..."
+		;;
+	esac
+
+else
+
+	echo "Replacing directories..."
+
+	echo -n "Enter network directory with Intan files and press [ENTER] (leave blank to set later or if you want to sync multiple directories):  "
+	read networkdir
+
+	# read out user directories
+
+	echo -n "Enter local directory where you would like to store the Intan files and press [ENTER] (leave blank to set later):  "
+	read localdir
+
+	echo "LOCAL=$localdir" > $DEST/ephys_pipeline_dirs.cfg
+	echo "COMPILED=$COMPILED" >> $DEST/ephys_pipeline_dirs.cfg
+	echo "# set NETWORK to an array to sync multiple directories"
+	echo "# e.g. NETWORK[1]=/path/to/dir"
+	echo "# NETWORK[2]=/path/to/other/dir"
+	echo "NETWORK=$networkdir" >> $DEST/ephys_pipeline_dirs.cfg
+fi
 
 SOURCE=$BASE/pipeline/bash
 
@@ -34,7 +89,7 @@ cd -- "$SOURCE"
 
 # changed to interactive to not overwrite important files
 
-find . -type f -maxdepth 1 -exec ln -si -- "$SOURCE"/{} "$DEST"/{} \;
+find . -type f -maxdepth 1 -exec ln -sf -- "$SOURCE"/{} "$DEST"/{} \;
 
 # source 2
 
@@ -42,13 +97,45 @@ SOURCE=$BASE/pipeline/bash/binscripts
 
 cd -- "$SOURCE"
 
-find . -type f -maxdepth 1 -exec ln -si -- "$SOURCE"/{} "$DEST"/{} \;
+find . -type f -maxdepth 1 -exec ln -sf -- "$SOURCE"/{} "$DEST"/{} \;
+
+# query the user for updating the settings files, also for updating the extras
+
+echo -n "Do you want to replace your settings [y/n] (this will overwrite your old settings, enter y if installing for the first time)?  "
+read response
+
+case "$response" in
+	"y" | "Y" ) 
+		echo "Replacing settings..."
+		SOURCE=$BASE/pipeline/bash/settings
+		cd -- "$SOURCE"
+		find . -type f -maxdepth 1 -exec ln -sf -- "$SOURCE"/{} "$DEST"/{} \;
+		;;
+	* ) 
+		echo "Not replacing settings..."
+		;;
+esac
+
+echo -n "Do you want to overwrite the extras [y/n] (this will overwrite data_sync.sh and screenrc, enter y if installing for the first time)? "
+read response
+
+case "$response" in
+	"y" | "Y" ) 
+		echo "Replacing extras..."
+		SOURCE=$BASE/pipeline/bash/extras
+		cd -- "$SOURCE"
+		find . -type f -maxdepth 1 -exec ln -sf -- "$SOURCE"/{} "$DEST"/{} \;
+		;;
+	* ) 
+		echo "Not replacing extras..."
+		;;
+esac
 
 # inform user to add /usr/local/bin/ to PATH
 
 echo 'To finish the installation:  '
 echo '1) Add /usr/local/bin/ to your PATH in ~/.profile'
-echo '2) Change /usr/local/bin/ephys_pipeline_wrapper.cfg accordingly'
+echo '2) Change any settings in ephys_pipeline_wrapper.cfg or ephys_pipeline.cfg if they are not to your liking (in ' $DEST ')'
 echo '3) Install the Matlab 2011b MCR and add the environment variables to ~/.profile'
 echo '4) Run ephys_pipeline_wrapper.sh from the command line to start'
 echo '5) Add ephys and all subdirectories to your MATLAB path'
