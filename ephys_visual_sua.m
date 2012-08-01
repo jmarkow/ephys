@@ -138,7 +138,6 @@ for i=1:2:nparams
 	end
 end
 
-
 startidx=max([find(HISTOGRAM.f<=min_f)]);
 
 if isempty(startidx)
@@ -208,6 +207,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SPIKE DETECTION %%%%%%%%%%%%%%%%%%%%
 
 disp('Entering spike detection...');
+disp(['Alignment method:  ' align]);
 
 % need a noise cutoff...let's start with 3*std or Quiroga's measure
 

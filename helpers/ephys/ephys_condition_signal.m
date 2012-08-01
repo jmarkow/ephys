@@ -13,9 +13,10 @@ SR=25e3;
 medfilt_scale=1.5; % median filter scale (in ms)
 filt_order=2;
 sigma=.0025; % sigma for Gaussian smoothing kernel (in s)
-
-% for now simple butterworth filters, could add support for Kaiser filters
-% per Logothetis et al. 2001
+filt_name='butter'; % default to Butterworth, use a Kaiser filter if we need
+		    % sharp cutoffs, per Logothetis et al. 2001
+ripple=1; % Kaiser params, ripple in dB
+attenuation=.01; % Kaiser params, attenuation (not dB)
 
 % data type specific defaults
 
@@ -54,8 +55,6 @@ switch lower(DATA_TYPE)
 		rectify=1;
 		smoothdata=1;
 
-
-
 	case 'l'
 
 		% lfp
@@ -92,6 +91,8 @@ for i=1:2:nparams
 			filt_type=varargin{i+1};
 		case 'filt_order'
 			filt_order=varargin{i+1};
+		case 'filt_name'
+			filt_name=varargin{i+1};
 		case 'demean'
 			demean=varargin{i+1};
 		case 'detrenddata'
@@ -168,7 +169,7 @@ if detrenddata
 
 	disp('Detrending (removing linear trend across each trial)');
 
-	for i=nchannels
+	for i=1:nchannels
 		for j=1:ntrials
 			EPHYS_DATA(:,j,i)=detrend(EPHYS_DATA(:,j,i));
 		end
@@ -178,18 +179,61 @@ end
 % filtering
 
 if filtering
-	
-	disp(['Filter order ' num2str(filt_order)]);
-	disp(['Frequency range ' num2str(freq_range)]);
-	disp(['Filter type ' filt_type]);
 
-	[b,a]=butter(filt_order,[freq_range]/(SR/2),filt_type);
+	switch lower(filt_name(1))
 
-	% zero-phase filter here
+		case 'b'	
 
-	parfor i=1:nchannels
-		EPHYS_DATA(:,:,i)=filtfilt(b,a,squeeze(EPHYS_DATA(:,:,i)));
+			disp('Butterworth filter');
+			disp(['Filter order ' num2str(filt_order)]);
+			disp(['Frequency range ' num2str(freq_range)]);
+			disp(['Filter type ' filt_type]);
+
+			[b,a]=butter(filt_order,[freq_range]/(SR/2),filt_type);
+
+			% zero-phase filter here
+
+			for i=1:nchannels
+				EPHYS_DATA(:,:,i)=filtfilt(b,a,squeeze(EPHYS_DATA(:,:,i)));
+			end
+		
+		case 'k'
+		
+
+			disp('Kaiser filter');
+			disp(['Frequency cutoffs ' num2str(freq_range)]);
+			disp(['Ripple ' num2str(ripple) ' dB']);
+			disp(['Attenuation ' num2str(20*log10(attenuation)) ' dB']);
+		
+			switch lower(filt_type(1))
+				case 'l'
+					mags=[1 0];
+					dev=[ 10^(ripple/20)-1 attenuation ];
+				case 'h'
+					mags=[0 1];
+					dev=[ attenuation 10^(ripple/20)-1 ];
+				case 'b'
+					mags=[0 1 0];
+					dev=[ attenuation 10^(ripple/20)-1 attenuation];
+				otherwise
+					error('Did not understand filter type!');
+			end
+
+			[M,Wn,beta,typ]=kaiserord(freq_range,mags,dev,SR);
+			b=fir1(M,Wn,typ,kaiser(M+1,beta),'noscale');
+
+			disp(['Filter order ' num2str(length(b)) ]);
+
+			for i=1:nchannels
+				EPHYS_DATA(:,:,i)=filtfilt(b,1,squeeze(EPHYS_DATA(:,:,i)));
+			end
+		
+		otherwise
+		
+			error('Did not understand filter name (must be kaiser or butter)');
+		
 	end
+
 end
 
 % rectification

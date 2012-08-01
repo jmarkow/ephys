@@ -24,10 +24,10 @@ end
 
 [samples,trials]=size(WAVEFORMS);
 
-% may want to consider a new family here, perhaps coiflet instead of Haar
+% tried db8, sym7, and coif3, haar is still the most reliable!
 
 parfor i=1:trials
-	[wavecoef(:,i),l]=wavedec(WAVEFORMS(:,i),5,'haar'); % 4-level wavelet decomposition
+	[wavecoef(:,i),l]=wavedec(WAVEFORMS(:,i),4,'haar'); % 4-level wavelet decomposition
 end
 
 [coeffs,trials]=size(wavecoef);
@@ -97,11 +97,11 @@ else
 
 	[val,loc]=sort(coeffbimodal,'descend');
 
-	% strip anything below .3
+	% strip anything below .25 (.333 proved too stringent)
 
-	cutoff=find(val<.3);
+	cutoff=find(val<.25);
 
-	% if everything is below .333 then include it all
+	% if everything is below the cutoff, just use all coeffs
 
 	if length(cutoff)==length(val)
 		cutoff=[];
