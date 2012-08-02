@@ -6,8 +6,12 @@ function [LABELS TRIALS ISI WINDOWS]=ephys_spike_cluster_auto(SPIKEWINDOWS,SPIKE
 
 % spikewindows', rows x samples, each row is a windowed spike waveform
 
+if nargin<2
+	error('ephysPipeline:suavis:notenoughparams','Need 2 arguments to continue, see documentation');
+end
+
 if ~license('test','Statistics_Toolbox')
-	error('Need statistics toolbox for clustering!');
+	error('ephysPipeline:toolboxChk','Need statistics toolbox for clustering!');
 end
 
 LABELS=[];
@@ -24,7 +28,7 @@ maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
 outlier_cutoff=.5; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs!');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 for i=1:2:nparams
@@ -148,18 +152,19 @@ obj_fcn=[];
 clustnum=1:6;
 [datapoints,features]=size(spike_data);
 if datapoints<=features
-	disp('Too few spikes to fit');
+	warning('ephysPipeline:spikesort:toofewspikes','Too few spikes to fit');
 	return;
 end
 
 % gaussian mixture seems to work better than fcm
 % may also want to check for stats toolbox, fall back on kmeans perhaps
 
-
 parfor i=1:length(clustnum)
 
-	testobj=gmdistribution.fit(spike_data,clustnum(i),'Regularize',1,'Options',options);
-	
+	warning('off','stats:gmdistribution:FailedToConverge');
+	testobj=gmdistribution.fit(spike_data,clustnum(i),'Regularize',1,'Options',options,'replicates',2);
+	warning('on','stats:gmdistribution:FailedToConverge');
+
 	%[center,u,obj_fcn]=fcm(spike_data,clustnum(i),[NaN NaN NaN 0]);
 	
 	% compute the partition coefficient, simply all membership indices squared and summed
@@ -198,7 +203,10 @@ nclust=x(loc(1));
 
 disp(['Will use ' num2str(nclust) ' clusters']);
 
-testobj=gmdistribution.fit(spike_data,nclust,'Regularize',1,'Options',options);
+warning('off','stats:gmdistribution:FailedToConverge');
+testobj=gmdistribution.fit(spike_data,nclust,'Regularize',1,'Options',options,'replicates',5);
+warning('on','stats:gmdistribution:FailedToConverge');
+
 [idx,nlogl,P]=cluster(testobj,spike_data);
 
 %[center,u,obj_fcn]=fcm(spike_data,nclust,[NaN NaN NaN 0]);

@@ -47,12 +47,14 @@ function [MUA TIME LABEL HISTOGRAM]=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNE
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
-if nargin<3 | isempty(CHANNELS), CHANNELS=1:16; end
+if nargin<3
+	error('ephysPipeline:muavis:notenoughparams','Need 3 arguments to continue, see documentation');
+end
 
 nparams=length(varargin);
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 %%%
@@ -109,12 +111,6 @@ end
 % perhaps add a median filter here to remove spikes from the multi-unit trace
 
 % intan nearest neighbor mapping
-
-if max_f>SR/2
-	disp('Maximum Fs must be less than Nyquist!');
-	disp('Resetting max fs');
-	max_f==SR/2;
-end
 
 [nsamples,ntrials,nchannels]=size(EPHYS_DATA);
 TIME=[1:nsamples]./SR;

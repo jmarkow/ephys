@@ -58,6 +58,10 @@ function ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
+if nargin<3
+	error('ephysPipeline:spectcoherence:notenoughparams','Need 3 arguments to continue, see documentation');
+end
+
 nparams=length(varargin);
 
 filedir=pwd;
@@ -78,7 +82,7 @@ medfilt_scale=1.5; % median filter scale (in ms)
 alpha=.001; % alpha for null hypothesis line 
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 for i=1:2:nparams
@@ -181,7 +185,8 @@ for i=1:trials
 	spike_locs=round(spike_data{i}*lfp_fs);
 
 	if length(unique(spike_locs))<length(spike_locs)
-		error('Error, multiple spikes in a single bin, try increasing SR');
+		warning('ephysPipeline:spectcoherence:toomanyspikesperbin',...
+			'Multiple spikes in a single bin, try increasing SR');
 	end
 
 	binspike_data(i,spike_locs)=1;

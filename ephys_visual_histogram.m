@@ -21,10 +21,14 @@ function HISTOGRAM=ephys_visual_histogram(MIC_DATA,varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
+if nargin<1
+	error('ephysPipeline:tfhistogram:notenoughparams','Need 1 argument to continue, see documentation');
+end
+
 nparams=length(varargin);
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 SR=25e3;

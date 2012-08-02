@@ -67,7 +67,7 @@ function [abscoh,t,f]=ephys_su_lfp_coherence_tf(LFPCHANNEL,SUCHANNEL,SUCLUSTER,H
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
 if nargin<4
-	error('Four arguments to continue, see documentation...');
+	error('ephysPipeline:tfcoherence:notenoughparams','Four arguments to continue, see documentation...');
 end
 
 nparams=length(varargin);
@@ -101,7 +101,7 @@ nullrate=[]; % for inpoiss should be a vector of firing rates computed from aver
 clim=[];
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 for i=1:2:nparams
@@ -287,7 +287,8 @@ for i=1:ntrials
 	spike_locs=round(spike_data{i}*lfp_fs);
 
 	if length(unique(spike_locs))<length(spike_locs)
-		error('Error, multiple spikes in a single bin, try increasing SR');
+		warning('ephysPipeline:spectcoherence:toomanyspikesperbin',...
+			'Multiple spikes in a single bin, try increasing SR');
 	end
 
 	binspike_data(i,spike_locs)=1;

@@ -56,15 +56,15 @@ function [LFP_RASTER TIME LABEL HISTOGRAM]=ephys_lfp_amp(EPHYS_DATA,HISTOGRAM,CH
 %
 % see also ephys_visual_sua.m,ephys_visual_lfp_tf.m,ephys_visual_mua.m
 
+if nargin<3
+	error('ephysPipeline:lfpampvis:notenoughparams','Need 3 arguments to continue, see documentation');
+end
 
-
-
-if nargin<3 | isempty(CHANNELS), CHANNELS=1:16; end
 
 nparams=length(varargin);
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
@@ -117,12 +117,6 @@ for i=1:2:nparams
 		case 'hampel'
 			hampel=varargin{i+1};
 	end
-end
-
-if max_f>SR/2
-	disp('Maximum Fs must be less than Nyquist!');
-	disp('Resetting max fs');
-	max_f==SR/2;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

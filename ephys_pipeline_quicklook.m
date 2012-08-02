@@ -55,6 +55,9 @@ function ephys_quicklook(MIC_DATA,EPHYS_DATA,CHANNELS,varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION  %%%%%%%%%%%%%%
 
+if nargin<3
+	error('ephysPipeline:quicklook:notenoughparams','Need 3 arguments to continue, see documentation');
+end
 
 [samples,nchannels]=size(EPHYS_DATA);
 
@@ -83,7 +86,7 @@ MIC_DATA=filtfilt(b,a,MIC_DATA);
 nparams=length(varargin);
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 for i=1:2:nparams

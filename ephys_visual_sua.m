@@ -62,12 +62,14 @@ function ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
-if nargin<3 | isempty(CHANNELS), CHANNELS=1:16; end
+if nargin<3
+	error('ephysPipeline:suavis:notenoughparams','Need 3 arguments to continue, see documentation');
+end
 
 nparams=length(varargin);
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 SR=25e3;
@@ -90,6 +92,7 @@ align='com'; % how to align spike waveforms can be min for minimum peak or COM
 	     % COM seems a bit sloppy, may move to MIN
 % parameter for smooth density estimate
 
+channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
 
@@ -148,12 +151,6 @@ stopidx=min([find(HISTOGRAM.f>=max_f)]);
 
 if isempty(stopidx)
 	stopidx=length(HISTOGRAM.f);
-end
-
-if max_f>SR/2
-	disp('Maximum Fs must be less than Nyquist!');
-	disp('Resetting max fs');
-	max_f==SR/2;
 end
 
 [samples,ntrials,ncarelectrodes]=size(EPHYS_DATA);
@@ -595,7 +592,8 @@ end
 
 if sort 
 	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows',...
-		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','clust_spike_vec','smooth_spikes','spikeless','IFR','subtrials');else
+		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','clust_spike_vec','smooth_spikes','spikeless','IFR','subtrials');
+else
 	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'threshold','CHANNELS','channels','TIME','proc_data','freq_range');
 end
 

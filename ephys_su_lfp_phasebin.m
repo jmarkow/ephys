@@ -44,6 +44,9 @@ function [BINNED_PHASE,PHASE_MEAN]=ephys_su_lfp_phasebin(LFPCHANNEL,HISTOGRAM,va
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
+if nargin<2
+	error('ephysPipeline:phasebin:notenoughparams','Need 2 arguments to continue, see documentation');
+end
 
 nparams=length(varargin);
 
@@ -66,7 +69,7 @@ max_f=10e3;
 colorbarsize=.02; % normalized units, height of the colorbar
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 for i=1:2:nparams

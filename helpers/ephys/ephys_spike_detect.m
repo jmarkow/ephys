@@ -84,6 +84,8 @@ interpolate='y'; % do we want to interpolate for realignment (default 'y');
 interpolate_fs=50e3; % what fs should we intepolate to? (50e3 has worked in my hands, consider going higher for low SNR)
 align='com'; % you'll want to use COM here, others seem a bit unreliable
 jitter=4; % how much jitter do we allow before tossing out a spike (in samples of original sr)?
+peak_frac=.5; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
+peak_width=8; % how many samples about the peak to include in COM (interpolated space, 5-8 is reasonable here for 50e3 fs)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -192,7 +194,20 @@ for j=1:length(abs_times)
 		isneg=abs_isneg(j);
 		tmp_window=DATA(tmp_time-spike_window(1):tmp_time+spike_window(2),1);
 
-		% upsample the window with sinc interpolation
+		% find the absolute min in the window
+
+		[val loc]=min(tmp_window);
+		peak_time=tmp_time-spike_window(1)+(loc(1)-1);
+	
+		%figure();plot(tmp_window);
+
+		if peak_time-spike_window(1)>0 && peak_time+spike_window(2)<length(DATA(:,1))
+			tmp_window=DATA(peak_time-spike_window(1):peak_time+spike_window(2),1);
+		else
+			continue;
+		end
+		
+		% upsample the window with sinc interpolation, or spline
 
 		timepoints=[1:length(tmp_window)]';
 		samples=length(tmp_window);
@@ -214,38 +229,38 @@ for j=1:length(abs_times)
 
 		% need to add escape hatch with no interpolate
 		% align by com (center of mass), min or max
+		% first realign to min or max, whichever is more reliable
 
 		switch lower(align)
 
 			case 'com'
 
 				% threshold again and take the region around the +/- peak, whatever is higher
+				% perhaps restrict COM to pos or neg depending on user options
 
-				if ~isneg
-					[val loc]=max(interp_window);
-					compoints=find(interp_window>THRESH);
-				else
-					[val loc]=min(interp_window);
-					compoints=find(interp_window<-THRESH);
-				end
 
-				% take the samples around the min peak and compute the
-				% COM
+				% the negative-going peak has been the most reliable, use it to compute COM
 
-				% per logothetis and mahani, take continuous region > 50% of peak value
-				% get the continuous region
+				compointspos=[];
 
-				compoints=compoints(diff(compoints)==1);
+				% per sahani '99, try to capture the majority of the peak
 
-				% any breakpoints between continuous regions, take the first region
+				[val loc]=min(interp_window);
+				compointsneg=find(interp_window<=peak_frac*val(1));
+				compoints=sort([compointspos(:);compointsneg(:)]);
 
-				%breakpoints=find(diff(compoints)>1);
+				% find the continuous region
 
-				%if ~isempty(breakpoints)
-				%	compoints=compoints(1:breakpoints(1));
-				%end
+				% take only points about the peak
 
+				%compoints=compoints(diff(compoints)==1);
+				compoints((compoints>loc+(peak_width))|(compoints<(loc-peak_width)))=[];
+				
 				% toss out any points where alignment>jitter, assume to be outliers
+
+				if isempty(compoints)
+					continue;
+				end
 
 				com=sum(compoints.*abs(interp_window(compoints)))/sum(abs(interp_window(compoints)));
 
@@ -254,10 +269,11 @@ for j=1:length(abs_times)
 				end
 
 				alignpoint=round(newtimepoints(round(com)));
-
+				
 				if abs(alignpoint-spike_window_center)>jitter
 					continue;
 				end
+
 
 			case 'min'
 				[val loc]=min(interp_window);
@@ -269,7 +285,7 @@ for j=1:length(abs_times)
 		end
 
 		new_time=alignpoint;
-		new_time=abs_times(j)-spike_window(1)+(new_time-1);
+		new_time=peak_time-spike_window(1)+(new_time-1);
 
 		if new_time-spike_window(1)>0 && new_time+spike_window(2)<length(DATA(:,1))
 

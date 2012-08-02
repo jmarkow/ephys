@@ -60,6 +60,10 @@ function [LFPWINS_PEAK,LFPWINS_TROUGH,LFPWINS_RAND]=ephys_su_lfp_coherence_ifr(L
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION  %%%%%%%%%%%%%%
 
+if nargin<3
+	error('ephysPipeline:ifrcoherence:notenoughparams','Need 3 arguments to continue, see documentation');
+end
+
 nparams=length(varargin);
 filedir=pwd;
 savedir=[];
@@ -79,7 +83,7 @@ medfilt_scale=1.5; % median filter scale (in ms)
 lfp_fs=25e3;
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 for i=1:2:nparams

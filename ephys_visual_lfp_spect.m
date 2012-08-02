@@ -53,7 +53,7 @@ if nargin<2 | isempty(CHANNELS), CHANNELS=1:16; end
 nparams=length(varargin);
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 %%%

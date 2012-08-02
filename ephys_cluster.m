@@ -68,7 +68,7 @@ downsampling=5;
 nparams=length(varargin);
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 for i=1:2:nparams
@@ -153,7 +153,7 @@ if isempty(proc_dir)
 		dir_name=input('What would you like to name the new directory?  ','s');
 
 		if exist(fullfile(DIR,dir_name),'dir')
-			disp('Directory exists!');
+			warning('ephysPipeline:ephysCluster:direxist','Directory exists!');
 			dir_name=[];
 		end
 
@@ -441,8 +441,7 @@ parfor i=1:length(SOUND_FILES)
 
 	data=load(input_file,'mic_data','fs');
 	if ~isfield(data,'mic_data')
-		disp(['Problem encountered with ' input_file]);
-		disp('Skipping...');
+		warning('ephysPipeline:ephysCluster:errorsoundfile','Problem encountered with %s',input_file);
 		continue;
 	end
 	
@@ -450,8 +449,7 @@ parfor i=1:length(SOUND_FILES)
 	fs=data.fs;
 
 	if length(sound_data)<N
-		disp('Sound extraction too short, skipping...');
-		disp([input_file]);
+		warning('ephysPipeline:ephysCluster:shortsound','Sound extraction too short in %s, skipping...',input_file);
 		continue;
 	end
 
@@ -495,7 +493,7 @@ parfor i=1:length(TARGET_FILES)
 	try
 		target=getfield(load(input_file,'features'),'features');
 	catch
-		disp(['Troubling reading ' input_file]);
+		warning('ephysPipeline:ephysCluster:errortemplatefile','Troubling reading %s' input_file);
 		continue;
 	end
 

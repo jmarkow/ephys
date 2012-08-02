@@ -84,12 +84,15 @@ function [SPECT_AVE]=ephys_visual_lfp_tf(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
-if nargin<2 | isempty(CHANNELS), CHANNELS=1:16; end
+
+if nargin<3
+	error('ephysPipeline:lfptfvis:notenoughparams','Need 3 arguments to continue, see documentation');
+end
 
 nparams=length(varargin);
 
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 SR=25e3;
@@ -175,9 +178,8 @@ if lfp_n>nsamples
 	lfp_n=round(nsamples/5);
 	lfp_overlap=lfp_n-difference;
 
-	disp('Reset window size and overlap, longer than nsamples');
-	disp(['Window size:  ' num2str(lfp_n) ' samples']);
-	disp(['Overlap:  ' num2str(lfp_overlap) ' samples']);
+	warning('ephysPipeline:lfptf:notenoughsamples',...
+		'Window size larger than the number of samples, settings window size to %d and ond overlap to %d',lfp_n,lfp_overlap);
 
 end
 

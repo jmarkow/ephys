@@ -86,9 +86,9 @@ else
 
 	echo "LOCAL=$localdir" > $DEST/ephys_pipeline_dirs.cfg
 	echo "COMPILED=$COMPILED" >> $DEST/ephys_pipeline_dirs.cfg
-	echo "# set NETWORK to an array to sync multiple directories"
-	echo "# e.g. NETWORK[1]=/path/to/dir"
-	echo "# NETWORK[2]=/path/to/other/dir"
+	echo "# set NETWORK to an array to sync multiple directories" >> $DEST/ephys_pipeline_dirs.cfg
+	echo "# e.g. NETWORK[1]=/path/to/dir" >> $DEST/ephys_pipeline_dirs.cfg
+	echo "# NETWORK[2]=/path/to/other/dir" >> $DEST/ephys_pipeline_dirs.cfg
 	echo "NETWORK=$networkdir" >> $DEST/ephys_pipeline_dirs.cfg
 fi
 

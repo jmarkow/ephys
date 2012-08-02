@@ -7,6 +7,10 @@ function ephys_su_lfp_coherence_spikestats(LFPCHANNEL,SUCHANNEL,SUCLUSTER,vararg
 %
 %
 
+if nargin<3
+	error('ephysPipeline:spikestats:notenoughparams','Need 3 arguments to continue, see documentation');
+end
+
 nparams=length(varargin);
 
 filedir=pwd;
@@ -18,7 +22,7 @@ freq_range=[25 100]
 singletrials=1:10; % default to 1-201singletrials=1:20; % default to 1-20
 time_range=[]; % if defined only visualize data in this subregion
 if mod(nparams,2)>0
-	error('Parameters must be specified as parameter/value pairs');
+	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
 for i=1:2:nparams
