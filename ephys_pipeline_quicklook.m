@@ -77,6 +77,7 @@ n=800;
 overlap=750;
 nfft=1024;
 type='s';
+ylim_match=0;
 
 % high pass the mic trace
 
@@ -115,6 +116,8 @@ for i=1:2:nparams
 			freq_range=varargin{i+1};
 		case 'type'
 			type=varargin{i+1};
+		case 'ylim_match'
+			ylim_match=varargin{i+1};
 		otherwise
 	end
 end
@@ -158,10 +161,12 @@ startidx=max([find(f<=min_f)]);
 stopidx=min([find(f>=max_f)]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PLOTTING CODE  %%%%%%%%%%%%%%%%%%%%%
 
+% find min and max across channels
 
+totalmin=min(plot_data(:));
+totalmax=max(plot_data(:));
 
 % 3 plots for sound + n channels
 
@@ -213,6 +218,9 @@ for i=1:length(channels)
 	
 	%ylabel('V (in microvolts)');
 
+	if ylim_match
+		ylim([totalmin totalmax]);
+	end
 	rightax(i)=axes('position',get(gca,'Position'),'color','none',...
 		'xtick',[],'ytick',[],'yaxislocation','right','box','off');
 	ylabel(rightax(i),[ 'Channel ' num2str(channels(i))])
