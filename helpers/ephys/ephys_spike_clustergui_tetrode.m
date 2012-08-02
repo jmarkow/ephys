@@ -1,4 +1,4 @@
-function [LABELS TRIALS ISI WINDOWS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,varargin)
+function [LABELS TRIALS ISI WINDOWS FS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,varargin)
 %GUI for spike cluster cutting
 %
 %
@@ -44,6 +44,8 @@ for i=1:2:nparams
 			wavelets=varargin{i+1};
 	end
 end
+
+FS=interpolate_fs;
 
 % need to deal with cell input (multiple trials), convert input to big matrix
 % and spit out trial number

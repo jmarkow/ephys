@@ -343,9 +343,9 @@ for i=1:length(channels)
 
 	if sort
 		if auto_clust
-			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},'sr',SR);
+			[clusterid clustertrial clusterisi clusterwindows clusterfs]=ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},'sr',SR);
 		else
-			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},'sr',SR);
+			[clusterid clustertrial clusterisi clusterwindows clusterfs]=ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},'sr',SR);
 		end
 
 		if isempty(clusterid)
@@ -591,7 +591,7 @@ for i=1:length(channels)
 end
 
 if sort 
-	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows',...
+	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows','clusterfs',...
 		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','clust_spike_vec','smooth_spikes','spikeless','IFR','subtrials');
 else
 	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'threshold','CHANNELS','channels','TIME','proc_data','freq_range');
