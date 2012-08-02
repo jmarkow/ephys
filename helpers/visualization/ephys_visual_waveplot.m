@@ -44,6 +44,8 @@ spike_mean=mean(WINDOWS,2);
 spike_upper=prctile(WINDOWS,75,2);
 spike_lower=prctile(WINDOWS,25,2);
 
+spikefig=figure();
+
 plot(time,spike_mean,'k-','linewidth',1.3);
 hold on
 plot(time,spike_upper,'m--');

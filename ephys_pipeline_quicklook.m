@@ -218,9 +218,12 @@ for i=1:length(channels)
 	
 	%ylabel('V (in microvolts)');
 
-	if ylim_match
+	if length(ylim_match)>1
+		ylim([ylim_match(1) ylim_match(2)]);
+	elseif ylim_match
 		ylim([totalmin totalmax]);
 	end
+
 	rightax(i)=axes('position',get(gca,'Position'),'color','none',...
 		'xtick',[],'ytick',[],'yaxislocation','right','box','off');
 	ylabel(rightax(i),[ 'Channel ' num2str(channels(i))])
