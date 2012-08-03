@@ -1,4 +1,4 @@
-function [features]=ephys_pipeline_smscore(s,sr,varargin)
+function [features]=ephys_pipeline_smscore(s,fs,varargin)
 %computes spectral features of a given signal
 %
 %
@@ -36,7 +36,7 @@ end
 disp('Computing score');
 t=-n/2+1:n/2;
 
-sigma=(sigma/1000)*sr;
+sigma=(sigma/1000)*fs;
 
 %Gaussian and first derivative as windows.
 % let's remove redundant angles and gradients, maybe just cos

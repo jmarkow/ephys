@@ -13,7 +13,7 @@ if mod(nparams,2)>0
 end
 
 
-SR=50e3;
+fs=50e3;
 fig_num=[];
 patch_color=[1 .6 0];
 y_res=200;
@@ -21,8 +21,8 @@ noise_p2p=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'fig_num'
 			fig_num=varargin{i+1};
 		case 'noise_p2p'
@@ -34,7 +34,7 @@ end
 
 [samples,trials]=size(SPIKEWINDOWS);
 
-TIME=([1:samples]./SR)*1e3;
+TIME=([1:samples]./fs)*1e3;
 timevec_mat=[1:samples];
 coordmat=[];
 

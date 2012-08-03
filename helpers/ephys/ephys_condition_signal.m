@@ -9,7 +9,7 @@ function EPHYS_DATA=ephys_condition_signal(EPHYS_DATA,DATA_TYPE,varargin)
 
 % global defaults
 
-SR=25e3;
+fs=25e3;
 medfilt_scale=1.5; % median filter scale (in ms)
 filt_order=2;
 sigma=.0025; % sigma for Gaussian smoothing kernel (in s)
@@ -83,8 +83,8 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'freq_range'
 			freq_range=varargin{i+1};
 		case 'filt_type'
@@ -141,7 +141,7 @@ if medfilt
 
 	disp(['Median filtering, timescale:  ' num2str(medfilt_scale) ' ms']);
 
-	medfilt_order=round(medfilt_scale/1e3*SR);
+	medfilt_order=round(medfilt_scale/1e3*fs);
 
 	for i=1:nchannels
 		parfor j=1:ntrials
@@ -189,7 +189,7 @@ if filtering
 			disp(['Frequency range ' num2str(freq_range)]);
 			disp(['Filter type ' filt_type]);
 
-			[b,a]=butter(filt_order,[freq_range]/(SR/2),filt_type);
+			[b,a]=butter(filt_order,[freq_range]/(fs/2),filt_type);
 
 			% zero-phase filter here
 
@@ -219,7 +219,7 @@ if filtering
 					error('Did not understand filter type!');
 			end
 
-			[M,Wn,beta,typ]=kaiserord(freq_range,mags,dev,SR);
+			[M,Wn,beta,typ]=kaiserord(freq_range,mags,dev,fs);
 			b=fir1(M,Wn,typ,kaiser(M+1,beta),'noscale');
 
 			disp(['Filter order ' num2str(length(b)) ]);
@@ -254,7 +254,7 @@ if smoothdata
 	
 	disp(['Smoothing data with Gaussian kernel, sigma=' num2str(sigma*1e3) ' ms']);
 	
-	edges=[-3*sigma:1/SR:3*sigma];
+	edges=[-3*sigma:1/fs:3*sigma];
 	kernel=(1/(sigma*sqrt(2*pi)))*exp((-(edges-0).^2)./(2*sigma^2));
 	kernel=kernel./sum(kernel); % normalize to sum to 1
 

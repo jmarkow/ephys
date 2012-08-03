@@ -1,13 +1,13 @@
-function [IMAGE,F,T]=pretty_sonogram(SIGNAL,SR,varargin)
+function [IMAGE,F,T]=pretty_sonogram(SIGNAL,FS,varargin)
 %simple 2-taper histogram (Gauss and DGauss)
 %
 %
 %
 %
 
-if nargin<2 | isempty(SR)
-	disp('Setting SR to default: 48e3');
-	SR=48e3;
+if nargin<2 | isempty(FS)
+	disp('Setting FS to default: 48e3');
+	FS=48e3;
 end
 
 overlap=2000;
@@ -63,12 +63,12 @@ if any(SIGNAL>1)
 end
 
 t=-N/2+1:N/2;
-sigma=(tscale/1e3)*SR;
+sigma=(tscale/1e3)*FS;
 w = exp(-(t/sigma).^2);
 dw = -2*w.*(t/(sigma^2));
 
-[S,F,T]=spectrogram(SIGNAL,w,overlap,nfft,SR);
-[S2]=spectrogram(SIGNAL,dw,overlap,nfft,SR);
+[S,F,T]=spectrogram(SIGNAL,w,overlap,nfft,FS);
+[S2]=spectrogram(SIGNAL,dw,overlap,nfft,FS);
 
 if lower(postproc(1))=='y'
 	IMAGE=100*((abs(S)+abs(S2))/2);

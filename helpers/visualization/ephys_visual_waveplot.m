@@ -8,7 +8,7 @@ function ephys_visual_waveplot(WINDOWS,varargin)
 %
 %	the following may be passed as parameter/value pairs:
 %	
-%		sr
+%		fs
 %		sampling frequency of spikes (normally twice Intan sampling rate, spikes are interpolated by default)
 %
 %		snr
@@ -25,20 +25,20 @@ end
 
 %%%
 
-SR=50e3; % default interpolate fs
+fs=50e3; % default interpolate fs
 snr=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'snr'
 			snr=varargin{i+1};
 	end
 end
 
 [samples,trials]=size(WINDOWS);
-time=([1:samples]./SR)*1e3;
+time=([1:samples]./fs)*1e3;
 
 spike_mean=mean(WINDOWS,2);
 spike_upper=prctile(WINDOWS,75,2);

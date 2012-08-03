@@ -17,14 +17,14 @@ function [RMASK IMASK q]=contour_approx(SIGNAL,varargin)
 %		tscale
 %		timescale of filtering in ms (default: 1.5ms)
 %
-%		SR
+%		fs
 %		sampling rate (default: 48e3)
 %
 
 N=2048;
 overlap=2030;
 tscale=1.5;
-SR=48e3;
+fs=25e3;
 
 nparams=length(varargin);
 
@@ -40,15 +40,15 @@ for i=1:2:nparams
 			overlap=varargin{i+1};
 		case 'tscale'
 			tscale=varargin{i+1};
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		otherwise
 	end
 end
 
 t=-N/2+1:N/2;
 
-sigma=(tscale/1e3)*SR;
+sigma=(tscale/1e3)*fs;
 
 w = exp(-(t/sigma).^2);
 dw = -2*w.*(t/(sigma^2));

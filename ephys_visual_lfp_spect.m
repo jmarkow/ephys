@@ -24,7 +24,7 @@ function [LFP_RASTER TIME LABEL HISTOGRAM]=ephys_visual_lfp_spect(EPHYS_DATA,CHA
 %		smooth_window
 %		smoothing_window for multi-unit in seconds (default .005)
 %
-%		SR
+%		fs
 %		data sampling rate (default: 25e3)
 %
 %		noise
@@ -58,7 +58,7 @@ end
 
 %%%
 
-SR=25e3;
+fs=25e3;
 noise='none'; % common-average reference for noise removal
 exclude=[];
 filtering='y'; % if defined then filter the traces
@@ -72,8 +72,8 @@ method='raw'; % raw or mt for multi-taper
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'filtering'
 			filtering=varargin{i+1};
 		case 'dir'
@@ -115,7 +115,7 @@ end
 electrodes=setdiff(1:length(CHANNELS),exclude_channels); % which electrodes are good?
 
 [samples,ntrials,nelectrodes]=size(EPHYS_DATA);
-TIME=[1:samples]./SR;
+TIME=[1:samples]./fs;
 LABEL=CHANNELS;
 
 proc_data=zeros(samples,ntrials,length(channels));
@@ -165,7 +165,7 @@ for i=1:length(CHANNELS)
 
 		if lower(filtering(1))=='y'
 
-			[b,a]=butter(2,[freq_range]./(SR/2));
+			[b,a]=butter(2,[freq_range]./(fs/2));
 			proc_data(:,j,i)=single(filtfilt(b,a,double(proc_data(:,j,i)-mean(proc_data(:,j,i)))));
 		
 		end
@@ -227,15 +227,15 @@ for i=1:length(channels)
 	xlabel('Time (s)');
 
 	if lower(method(1))=='r'
-		[fftvec,fs]=ave_fft(proc_data(:,:,i),SR,'nfft',1e5,'freq_range',[25 100]);
+		[fftvec,fs]=ave_fft(proc_data(:,:,i),fs,'nfft',1e5,'freq_range',[25 100]);
 	else
-		[test,test2]=mt_spectrum(proc_data(:,1,i),SR,'nfft',1e5,'w',2);
+		[test,test2]=mt_spectrum(proc_data(:,1,i),fs,'nfft',1e5,'w',2);
 		[m,n]=size(test);
 		[m2,n2]=size(test2);
 		fftvec=zeros(ntrials,n);
 		fs=zeros(ntrials,n2);
 		parfor j=1:ntrials
-			[fftvec(j,:),fs(j,:)]=mt_spectrum(proc_data(:,j,i),SR,'nfft',1e5,'w',2);
+			[fftvec(j,:),fs(j,:)]=mt_spectrum(proc_data(:,j,i),fs,'nfft',1e5,'w',2);
 		end
 	end
 

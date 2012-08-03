@@ -1,4 +1,4 @@
-function [T,F,MINF,MAXF]=getspecgram_dim(NSAMPLES,N,NOVERLAP,NFFT,SR,MINF,MAXF)
+function [T,F,MINF,MAXF]=getspecgram_dim(NSAMPLES,N,NOVERLAP,NFFT,FS,MINF,MAXF)
 %
 %
 %
@@ -25,14 +25,14 @@ columns=fix((NSAMPLES-NOVERLAP)/(N-NOVERLAP));
 
 % frequency identities are linearly spaced to Nyquist
 
-F=((1:rows)./rows).*(SR/2);
+F=((1:rows)./rows).*(FS/2);
 
 colidx=1+(0:(columns-1))*(N-NOVERLAP);
 
 % frequency spacing starts at N/2, then continues by hop size
-% in samples, finally convert to time by /SR
+% in samples, finally convert to time by /FS
 
-T=((colidx-1)+((N/2)'))/SR;
+T=((colidx-1)+((N/2)'))/FS;
 
 % finally get the min and max frequency indices
 

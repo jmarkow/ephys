@@ -14,19 +14,19 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
 end
 
-SR=25e3;
+fs=25e3;
 fig_num=[];
 patch_color=[1 .6 0];
 noise_p2p=[];
 y_res=200;
-spike_SR=50e3;
+spike_fs=50e3;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
-		case 'spike_sr'
-			spike_SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
+		case 'spike_fs'
+			spike_fs=varargin{i+1};
 		case 'fig_num'
 			fig_num=varargin{i+1};
 		case 'patch_color'
@@ -58,7 +58,7 @@ subplot(2,1,1);
 voltmin=inf;
 voltmax=-inf;
 
-timevec=([1:samples]./spike_SR)*1e3;
+timevec=([1:samples]./spike_fs)*1e3;
 timevec_mat=[1:samples]';
 coordmat=[];
 
@@ -102,7 +102,7 @@ box off
 axis tight
 
 subplot(2,1,2);
-density=histc((SPIKEISI/SR)*1e3,isipoints);
+density=histc((SPIKEISI/fs)*1e3,isipoints);
 h=bar(isipoints,density,'histc');
 box off
 set(h,'FaceColor',[.7 .7 .7],'EdgeColor','k','LineWidth',1.5);

@@ -22,7 +22,7 @@ function ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %		car_exclude
 %		carelectrodes to exclude from noise estimate
 %
-%		SR
+%		fs
 %		data sampling rate (default: 25e3)
 %		
 %		noise
@@ -72,7 +72,7 @@ if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
-SR=25e3;
+fs=25e3;
 noise='none'; % common-average reference for noise removal
 car_exclude=[];
 savedir=pwd;
@@ -91,7 +91,7 @@ subtrials=[];
 align='com'; % how to align spike waveforms can be min for minimum peak or COM
 	     % COM seems a bit sloppy, may move to MIN
 % parameter for smooth density estimate
-
+interpolate_fs=50e3;
 channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
@@ -100,8 +100,8 @@ colors={'b','r','g','c','m','y','k','r','g','b'};
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'noise'
 			noise=varargin{i+1};
 		case 'sigma_t'
@@ -160,12 +160,12 @@ if isempty(subtrials)
 	subtrials=1:ntrials;
 end
 
-TIME=[1:samples]./SR; % time vector for plotting
+TIME=[1:samples]./fs; % time vector for plotting
 
 % kernel density estimate of smooth firing rate
 
 kernedges=[-3*sigma:1/smooth_rate:3*sigma];
-binedges=[0:(1/smooth_rate):samples/SR];
+binedges=[0:(1/smooth_rate):samples/fs];
 
 smooth_spikes.time=binedges;
 
@@ -231,11 +231,16 @@ for i=1:length(channels)
 
 		threshold=sigma_t*median(abs(proc_data(:,j,i))/.6745)
 		%disp([num2str(threshold)]);
-		spike_pp=ephys_spike_detect(squeeze(sort_data(:,j,:)),threshold,'sr',SR,'visualize','n','align',align,'jitter',jitter);
+		spike_pp=ephys_spike_detect(squeeze(sort_data(:,j,:)),threshold,'fs',fs,'visualize','n','align',align,...
+			'jitter',jitter,'interpolate_fs',interpolate_fs);
 
 		% after spike detect also collect trace without spikes
 
 		[winsamples,nspikes,tetrodes]=size(spike_pp.abs.windows);
+
+		% scale the window by our interpolation factor
+
+		winsamples=winsamples/(interpolate_fs/fs);
 
 		if nspikes<2
 			spikeless_data=NaN;
@@ -244,7 +249,7 @@ for i=1:length(channels)
 
 		% if tetrode then check each channel for significant spike
 
-		window=floor((winsamples-1)/2); % how many samples to the left and right of the spike
+		window=ceil((winsamples-1)/2); % how many samples to the left and right of the spike
 
 		% should we delete?
 
@@ -329,23 +334,15 @@ if ~exist(savedir,'dir')
 	mkdir(fullfile(savedir));
 end
 
-
-
-
-
 for i=1:length(channels)
-
-	% [time;time] [trial+.5;trial-.5]
-
-	
 
 	disp(['Channel ' num2str(channels(i))]);
 
 	if sort
 		if auto_clust
-			[clusterid clustertrial clusterisi clusterwindows clusterfs]=ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},'sr',SR);
+			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},'fs',fs);
 		else
-			[clusterid clustertrial clusterisi clusterwindows clusterfs]=ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},'sr',SR);
+			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},'fs',fs);
 		end
 
 		if isempty(clusterid)
@@ -391,9 +388,9 @@ for i=1:length(channels)
 				
 				% IFR will use the current sampling rate
 				
-				IFR{i}{j}(k,:)=ephys_ifr(round(clusterspikes),samples,SR);
+				IFR{i}{j}(k,:)=ephys_ifr(round(clusterspikes),samples,fs);
 
-				clusterspikes=clusterspikes./SR;
+				clusterspikes=clusterspikes./fs;
 				
 				tmp=repmat(clusterspikes,2,1);
 				spike_vec{j}=[spike_vec{j} tmp];
@@ -425,7 +422,7 @@ for i=1:length(channels)
 
 			% find command is already sorted, ascending
 
-			tmp=repmat(spiketimes{i}{j},2,1)./SR;
+			tmp=repmat(spiketimes{i}{j},2,1)./fs;
 			spike_vec{1}=[spike_vec{1} tmp];
 
 			tmp=[j+.3;j-.3];
@@ -480,7 +477,7 @@ for i=1:length(channels)
 			noise_p2p(isnan(noise_p2p))=[];
 			mean_noise_p2p=mean(noise_p2p);
 			stats_fig=ephys_visual_spikestats(clusterwindows{uniq_clusters(j)},clusterisi{uniq_clusters(j)},...
-				'noise_p2p',mean_noise_p2p,'sr',25e3,'spike_sr',50e3);
+				'noise_p2p',mean_noise_p2p,'fs',fs,'spike_fs',interpolate_fs);
 
 			multi_fig_save(stats_fig,savedir,...
 				[ savefilename_stats num2str(uniq_clusters(j))],'eps,png');
@@ -572,7 +569,7 @@ for i=1:length(channels)
 				currspikes=clust_spike_vec{i}{j}{idx};
 				plot(TIME,proc_data(:,idx,i),'k-');
 				hold on
-				plot(currspikes,proc_data(round(currspikes*SR),idx,i),'r*');
+				plot(currspikes,proc_data(round(currspikes*fs),idx,i),'r*');
 				set(gca,'TickDir','out','TickLength',[.02 .02],'FontName','Helvetica','FontSize',11);
 				xlabel('Time (s)','FontName','Helvetica','FontSize',13,'interpreter','latex');
 				ylabel('Voltage ($\mu$V)','FontName','Helvetica','FontSize',13,'interpreter','latex');
@@ -591,9 +588,9 @@ for i=1:length(channels)
 end
 
 if sort 
-	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows','clusterfs',...
+	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows','fs','interpolate_fs',...
 		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','clust_spike_vec','smooth_spikes','spikeless','IFR','subtrials');
 else
-	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'threshold','CHANNELS','channels','TIME','proc_data','freq_range');
+	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'threshold','CHANNELS','channels','TIME','proc_data','freq_range','fs');
 end
 

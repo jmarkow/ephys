@@ -14,7 +14,7 @@ w=2;
 ntapers=[];
 alpha=[.0001 .001 .01 .05];
 
-sr=25e3;
+fs=25e3;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -26,8 +26,8 @@ for i=1:2:nparams
 			overlap=varargin{i+1};
 		case 'ntapers'
 			ntapers=varargin{i+1};
-		case 'sr'
-			sr=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'alpha'
 			alpha=varargin{i+1};
 		case 'w'
@@ -73,7 +73,7 @@ else
 	nfft=2^nextpow2(nfft);
 end
 
-resolution=w*1/(n/sr);
+resolution=w*1/(n/fs);
 disp(['Resolution:  ' num2str(resolution)  ' Hz']);
 disp(['NFFT:  ' num2str(nfft)]);
 
@@ -86,7 +86,7 @@ if n>nsamples
 	disp(['Overlap:  ' num2str(overlap) ' samples']);
 end
 
-[T,F]=getspecgram_dim(nsamples,n,overlap,nfft,sr);
+[T,F]=getspecgram_dim(nsamples,n,overlap,nfft,fs);
 
 rows=length(F);
 columns=length(T);

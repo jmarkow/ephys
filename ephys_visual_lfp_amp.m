@@ -20,7 +20,7 @@ function [LFP_RASTER TIME LABEL HISTOGRAM]=ephys_lfp_amp(EPHYS_DATA,HISTOGRAM,CH
 %		car_exclude
 %		electrodes to exclude from noise estimate
 %
-%		SR
+%		fs
 %		data sampling rate (default: 25e3)
 %
 %		noise
@@ -69,7 +69,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
-SR=25e3;
+fs=25e3;
 noise='none'; 
 car_exclude=[];
 savedir=pwd;
@@ -88,8 +88,8 @@ hampel=3;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'noise'
 			noise=varargin{i+1};
 		case 'savedir'
@@ -122,7 +122,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 [nsamples,ntrials,nchannels]=size(EPHYS_DATA);
-TIME=[1:nsamples]./SR;
+TIME=[1:nsamples]./fs;
 
 % denoise and condition signal
 
@@ -203,7 +203,7 @@ for i=1:length(channels)
 	PLOTLFP.trials=PLOTLFP.trials(goodtrials);
 	PLOTLFP.image=PLOTLFP.image(goodtrials,:,i);
 
-	multi_unit_raster(HISTOGRAM,PLOTLFP,'sr',SR,...
+	multi_unit_raster(HISTOGRAM,PLOTLFP,'fs',fs,...
 		'fig_num',raster_fig,'fig_title',{[figtitle];[ 'Channel ' num2str(channels(i))]},...
 		'min_f',min_f,'max_f',max_f,'raster_colors',mua_colors,'hist_colors',hist_colors);
 

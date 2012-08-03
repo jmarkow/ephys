@@ -63,8 +63,8 @@ end
 
 channels=[1];
 colors='jet';
-sr=25e3;
-t=[1:length(MIC_DATA)]./sr;
+fs=25e3;
+t=[1:length(MIC_DATA)]./fs;
 min_f=1e3;
 max_f=8e3;
 exclude=[];
@@ -81,7 +81,7 @@ ylim_match=0;
 
 % high pass the mic trace
 
-[b,a]=butter(4,1e3/(sr/2),'high');
+[b,a]=butter(4,1e3/(fs/2),'high');
 MIC_DATA=filtfilt(b,a,MIC_DATA);
 
 nparams=length(varargin);
@@ -96,8 +96,8 @@ for i=1:2:nparams
 			channels=varargin{i+1};
 		case 'colors'
 			colors=varargin{i+1};
-		case 'sr'
-			sr=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'n'
 			n=varargin{i+1};
 		case 'overlap'
@@ -155,7 +155,7 @@ channels(todel)=[];
 
 % quick multi-taper spectrogram
 
-[spect,f,t2]=pretty_sonogram(MIC_DATA,sr,'n',n,'overlap',overlap,'nfft',nfft);
+[spect,f,t2]=pretty_sonogram(MIC_DATA,fs,'n',n,'overlap',overlap,'nfft',nfft);
 
 startidx=max([find(f<=min_f)]);
 stopidx=min([find(f>=max_f)]);
@@ -174,7 +174,7 @@ nplots=3+length(channels);
 
 quickfig=figure('Visible','off','Units','Pixels','Position',[0 0 800 1.2e3]);
 
-[spect,f,t2]=pretty_sonogram(MIC_DATA,sr,'n',n,'overlap',overlap,'nfft',nfft);
+[spect,f,t2]=pretty_sonogram(MIC_DATA,fs,'n',n,'overlap',overlap,'nfft',nfft);
 
 startidx=max([find(f<=min_f)]);
 stopidx=min([find(f>=max_f)]);

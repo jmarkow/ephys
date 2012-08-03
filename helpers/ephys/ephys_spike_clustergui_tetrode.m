@@ -6,7 +6,7 @@ function [LABELS TRIALS ISI WINDOWS FS]=ephys_spike_clustergui_tetrode(SPIKEWIND
 % spikewindows', rows x samples, each row is a windowed spike waveform
 
 TRIALS=[]; % by default we don't need this, unless input is over multiple trials
-sr=25e3;
+fs=25e3;
 interpolate=1; % do we want to interpolate the spikes for feature calculation?
 interpolate_fs=50e3; % interpolate 
 interpolate_method='sinc'; % sinc or spline?
@@ -30,8 +30,8 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			sr=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'interpolate'
 			interpolate=varargin{i+1};
 		case 'interpolate_fs'
@@ -80,7 +80,7 @@ if iscell(SPIKEWINDOWS)
 			curr_spike=padded_spikes(j);
 			next_spike=min(padded_spikes(padded_spikes>padded_spikes(j)))-curr_spike;
 			prev_spike=curr_spike-max(padded_spikes(padded_spikes<padded_spikes(j)));
-			isi_tmp(j-1)=1/(min(next_spike,prev_spike)/sr); % isi is the time from the closest spike
+			isi_tmp(j-1)=1/(min(next_spike,prev_spike)/fs); % isi is the time from the closest spike
 		
 		end
 
@@ -107,7 +107,7 @@ TRIALS=trialnum;
 
 [samples,trials]=size(spikewindows{1});
 
-expansion=interpolate_fs/sr;
+expansion=interpolate_fs/fs;
 interpspikes=zeros(samples*expansion,trials,channels);
 
 % take the time vector and expand to 2*fs (from 25k to 50k)
@@ -583,7 +583,7 @@ for i=1:CLUSTERS
 	[samples,trials]=size(WINDOWS{i});
 
 	if ~interpolate
-		plot(([1:samples]./sr)*1e3,WINDOWS{i});
+		plot(([1:samples]./fs)*1e3,WINDOWS{i});
 	else		
 		plot(([1:samples]./interpolate_fs)*1e3,WINDOWS{i});
 	end
@@ -608,7 +608,7 @@ for i=1:CLUSTERS
 
 	counter=counter+1;
 	ax2=subplot(CLUSTERS,2,counter);
-	density=histc((ISI{i}/sr)*1e3,binedges);
+	density=histc((ISI{i}/fs)*1e3,binedges);
 	bar(binedges,density,'histc');
 	xlabel('ISI (msec)');
 	ylabel('N');

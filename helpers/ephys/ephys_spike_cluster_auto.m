@@ -1,4 +1,4 @@
-function [LABELS TRIALS ISI WINDOWS FS]=ephys_spike_cluster_auto(SPIKEWINDOWS,SPIKETIMES,varargin)
+function [LABELS TRIALS ISI WINDOWS]=ephys_spike_cluster_auto(SPIKEWINDOWS,SPIKETIMES,varargin)
 %automated spike clustering using a GMM with EM
 %
 %
@@ -19,9 +19,7 @@ TRIALS=[];
 ISI=[];
 WINDOWS=[];
 
-sr=25e3;
-interpolate=1;
-interpolate_fs=50e3;
+fs=25e3;
 use_spiketime=0; % use spiketime as a clustering feature (usually helps if SNR is low)
 nparams=length(varargin);
 maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
@@ -33,12 +31,8 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			sr=varargin{i+1};
-		case 'interpolate'
-			interpolate=varargin{i+1};
-		case 'interpolate_fs'
-			interpolate_fs=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'use_spiketime'
 			spiketime=varaargin{i+1};
 		case 'maxcoeffs'
@@ -46,7 +40,6 @@ for i=1:2:nparams
 	end
 end
 
-FS=interpolate_fs;
 % need to deal with cell input (multiple trials), convert input to big matrix
 % and spit out trial number
 
@@ -73,7 +66,7 @@ if iscell(SPIKEWINDOWS)
 			curr_spike=padded_spikes(j);
 			next_spike=min(padded_spikes(padded_spikes>padded_spikes(j)))-curr_spike;
 			prev_spike=curr_spike-max(padded_spikes(padded_spikes<padded_spikes(j)));
-			ifr_tmp(j-1)=1/(min(next_spike,prev_spike)/sr); % isi is the time from the closest spike, before or after
+			ifr_tmp(j-1)=1/(min(next_spike,prev_spike)/fs); % isi is the time from the closest spike, before or after
 		
 		end
 
@@ -95,7 +88,7 @@ else
 		curr_spike=padded_spikes(j);
 		next_spike=min(padded_spikes(padded_spikes>padded_spikes(j)))-curr_spike;
 		prev_spike=curr_spike-max(padded_spikes(padded_spikes<padded_spikes(j)));
-		ifr_tmp(j-1)=(1/min(next_spike,prev_spike)/sr); % isi is the min spike distance
+		ifr_tmp(j-1)=(1/min(next_spike,prev_spike)/fs); % isi is the min spike distance
 	end
 
 	spikeifr=ifr_tmp(:);
@@ -108,25 +101,14 @@ TRIALS=trialnum;
 
 [samples,trials]=size(spikewindows);
 
-expansion=interpolate_fs/sr;
-interpspikes=zeros(samples*expansion,trials);
-
 % take the time vector and expand to interpolated fs
 
 timepoints=[1:samples]';
-newtimepoints=linspace(1,samples,expansion*samples)';
-
-% either sinc or spline interpolation
-
-parfor i=1:trials
-	%interpspikes(:,i)=sinc(newtimepoints(:,ones(size(timepoints)))-timepoints(:,ones(size(newtimepoints)))')*spikewindows(:,i);
-	interpspikes(:,i)=spline(timepoints,spikewindows(:,i),newtimepoints);
-end
 
 % need to check for wavelet toolbox, otherwise we would need to use PCA or standard features
 
 if license('test','Wavelet_Toolbox')
-	[coeffs]=get_wavelet_coefficients(interpspikes,maxcoeffs,'method','bimodal'); % use bimodality coefficient to pick relevant dimensions
+	[coeffs]=get_wavelet_coefficients(spikewindows,maxcoeffs,'method','bimodal'); % use bimodality coefficient to pick relevant dimensions
 	spike_data=[spike_data coeffs];
 else
 
@@ -134,7 +116,7 @@ else
 
 	disp('Could not find the wavelet toolbox, falling back on PCA...');
 
-	[coef score]=princomp(interpspikes');
+	[coef score]=princomp(spikewindows');
 	spike_data=[spike_data score(:,1:2)];
 
 end
@@ -242,7 +224,7 @@ trial_boundary=[1;trial_boundary];
 
 for i=1:length(clusters)
 
-	WINDOWS{i}=interpspikes(:,LABELS==i);
+	WINDOWS{i}=spikewindows(:,LABELS==i);
 
 	spikeisitmp=[];
 

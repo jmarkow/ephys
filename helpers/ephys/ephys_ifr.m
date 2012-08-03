@@ -1,4 +1,4 @@
-function IFRVEC=ephys_ifr(SPIKETIMES,TIMEVECTOR,SR)
+function IFRVEC=ephys_ifr(SPIKETIMES,TIMEVECTOR,FS)
 %computes IFR per the Hahnloser et al. 2001 definition
 %
 
@@ -23,5 +23,5 @@ end
 IFRVEC=zeros(TIMEVECTOR,1);
 
 for i=1:length(SPIKETIMES)-1
-	IFRVEC(SPIKETIMES(i)+1:SPIKETIMES(i+1))=1/((SPIKETIMES(i+1)-SPIKETIMES(i))/SR);
+	IFRVEC(SPIKETIMES(i)+1:SPIKETIMES(i+1))=1/((SPIKETIMES(i+1)-SPIKETIMES(i))/FS);
 end

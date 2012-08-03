@@ -196,7 +196,7 @@ switch lower(null)
 		end
 
 		for i=1:ntrials
-			spike_data{i}=find(poissrnd(nullrate.*dt))./lfp_fs;
+			spike_data{i}=find(poisfsnd(nullrate.*dt))./lfp_fs;
 		end
 
 		name=[name '_inpoiss'];
@@ -212,7 +212,7 @@ switch lower(null)
 		end
 
 		for i=1:ntrials
-			spike_data{i}=find(poissrnd(nullrate(ones(1,nsamples)).*dt))./lfp_fs;
+			spike_data{i}=find(poisfsnd(nullrate(ones(1,nsamples)).*dt))./lfp_fs;
 		end
 
 		name=[name '_poiss_fr' num2str(nullrate)];
@@ -238,7 +238,7 @@ switch lower(null)
 		end
 
 		for i=1:ntrials
-			spike_data{i}=find(poissrnd(nullrate(ones(1,nsamples)).*dt))./lfp_fs;
+			spike_data{i}=find(poisfsnd(nullrate(ones(1,nsamples)).*dt))./lfp_fs;
 		end
 
 		peak_value=max(abs(lfp_data(:)));
@@ -278,7 +278,7 @@ binspike_data=zeros(ntrials,nsamples,'double');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AVERAGE SPECTRA %%%%%%%%%%%%%%%%%%%%
 
-% bin spikes at the same SR as the fields
+% bin spikes at the same fs as the fields
 
 disp('Binning spikes...');
 
@@ -288,7 +288,7 @@ for i=1:ntrials
 
 	if length(unique(spike_locs))<length(spike_locs)
 		warning('ephysPipeline:spectcoherence:toomanyspikesperbin',...
-			'Multiple spikes in a single bin, try increasing SR');
+			'Multiple spikes in a single bin, try increasing fs');
 	end
 
 	binspike_data(i,spike_locs)=1;
@@ -297,7 +297,7 @@ end
 
 disp('Computing spectra and coherence');
 
-[coh,t,f,lfp_spect_mean,spike_spect_mean,stats]=ephys_tfcoherence(lfp_data,binspike_data,'sr',lfp_fs,...
+[coh,t,f,lfp_spect_mean,spike_spect_mean,stats]=ephys_tfcoherence(lfp_data,binspike_data,'fs',lfp_fs,...
 	'nfft',nfft,'n',n,'overlap',overlap,'ntapers',ntapers,'alpha',alpha);
 
 fig_title=['LFPCH' num2str(LFPCHANNEL) ' SUCH' num2str(SUCHANNEL)...

@@ -21,7 +21,7 @@ function [MUA TIME LABEL HISTOGRAM]=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNE
 %		smooth_window
 %		smoothing_window for multi-unit in seconds (default .005)
 %
-%		SR
+%		fs
 %		data sampling rate (default: 25e3)
 %
 %		noise
@@ -60,7 +60,7 @@ end
 %%%
 
 sigma=.0025; % smoothing window in secs
-SR=25e3;
+fs=25e3;
 noise='none'; % common-average reference for noise removal, none to skip digital
 	      % re-referencing
 car_exclude=[];
@@ -79,8 +79,8 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'sigma'
 			smooth_window=varargin{i+1};
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'noise'
 			noise=varargin{i+1};
 		case 'savedir'
@@ -113,7 +113,7 @@ end
 % intan nearest neighbor mapping
 
 [nsamples,ntrials,nchannels]=size(EPHYS_DATA);
-TIME=[1:nsamples]./SR;
+TIME=[1:nsamples]./fs;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -189,7 +189,7 @@ for i=1:length(channels)
 	PLOTMUA.trials=PLOTMUA.trials(goodtrials);
 	PLOTMUA.image=PLOTMUA.image(goodtrials,:,i);
 
-	multi_unit_raster(HISTOGRAM,PLOTMUA,'sr',SR,...
+	multi_unit_raster(HISTOGRAM,PLOTMUA,'fs',fs,...
 		'fig_num',raster_fig,'fig_title',{[figtitle];[ 'Channel ' num2str(channels(i))]},...
 		'min_f',min_f,'max_f',max_f,'raster_colors',mua_colors,'hist_colors',hist_colors);
 

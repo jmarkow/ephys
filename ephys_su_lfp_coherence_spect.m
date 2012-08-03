@@ -186,7 +186,7 @@ for i=1:trials
 
 	if length(unique(spike_locs))<length(spike_locs)
 		warning('ephysPipeline:spectcoherence:toomanyspikesperbin',...
-			'Multiple spikes in a single bin, try increasing SR');
+			'Multiple spikes in a single bin, try increasing fs');
 	end
 
 	binspike_data(i,spike_locs)=1;

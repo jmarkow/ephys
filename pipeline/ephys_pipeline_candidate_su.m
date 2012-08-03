@@ -21,7 +21,7 @@ function SNR=ephys_candidate_su(EPHYS_DATA,CHANNELS,varargin)
 %
 %	the following may be specified as parameter/value pairs:
 %
-%		SR
+%		fs
 %		sampling rate for aligned data (25e3, default Intan)
 %
 %		freq_range
@@ -40,7 +40,7 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
 end
 
-SR=25e3;
+fs=25e3;
 noise='none'; % common-average reference for noise removal
 car_exclude=[];
 filtering='y'; % if defined then filtering filter the traces
@@ -52,8 +52,8 @@ channels=CHANNELS;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'noise'
 			noise=varargin{i+1};
 		case 'filtering'
@@ -96,16 +96,20 @@ for i=1:length(channels)
 		spike_pp=[];
 		threshold=4*median(abs(proc_data(:,j,i))/.6745);
 
-		spikes_pp=ephys_spike_detect(proc_data(:,j,i),threshold,'sr',SR,'visualize','n');
-		
+		spikes_pp=ephys_spike_detect(proc_data(:,j,i),threshold,'fs',fs,'visualize','n','interpolate',0);
+	
+		% need to adjust our windows if we've interpolated
+
 		[samples,nspikes]=size(spikes_pp.abs.windows);
-		
+	
 		if nspikes<2
 			snr(j)=NaN;
 			continue;
 		end
 
-		window=floor((samples-1)/2); % how many samples to the left and right of the spike
+		% if tetrode then check each channel for significant spike
+
+		window=ceil((samples-1)/2); % how many samples to the left and right of the spike
 
 		% should we delete?
 

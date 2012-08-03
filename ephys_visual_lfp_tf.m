@@ -20,7 +20,7 @@ function [SPECT_AVE]=ephys_visual_lfp_tf(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %		car_exclude
 %		electrodes to exclude from noise estimate
 %
-%		SR
+%		fs
 %		data sampling rate (default: 25e3)
 %
 %		noise
@@ -95,7 +95,7 @@ if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
-SR=25e3;
+fs=25e3;
 noise='none'; % common-average reference for noise removal
 car_exclude=[];
 savedir=pwd;
@@ -123,8 +123,8 @@ medfilt_scale=1.5; % median filter scale (in ms)
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'savedir'
 			savedir=varargin{i+1};
 		case 'hist_colors'
@@ -166,7 +166,7 @@ end
 
 
 [nsamples,ntrials,nchannels]=size(EPHYS_DATA);
-TIME=[1:nsamples]./SR;
+TIME=[1:nsamples]./fs;
 
 % if the window size is greater than the length of the signal
 % make the window size roughly the length of the signal/5
@@ -194,7 +194,7 @@ end
 % check if we're using multi-taper
 
 if lower(method(1))=='m'
-	resolution=lfp_w*1/(lfp_n/SR);
+	resolution=lfp_w*1/(lfp_n/fs);
 	
 	if isempty(lfp_ntapers)
 		lfp_ntapers=2*(lfp_w)-1;
@@ -202,7 +202,7 @@ if lower(method(1))=='m'
 	[tapers,lambda]=dpss(lfp_n,lfp_w,lfp_ntapers);
 else
 	lfp_ntapers='';
-	resolution=lfp_n/SR;
+	resolution=lfp_n/fs;
 	tapers=[];
 end
 
@@ -213,7 +213,7 @@ disp(['NFFT:  ' num2str(lfp_nfft)]);
 % get rows and columns
 
 
-[t,f,lfp_startidx,lfp_stopidx]=getspecgram_dim(nsamples,lfp_n,lfp_overlap,lfp_nfft,SR,lfp_min_f,lfp_max_f);
+[t,f,lfp_startidx,lfp_stopidx]=getspecgram_dim(nsamples,lfp_n,lfp_overlap,lfp_nfft,fs,lfp_min_f,lfp_max_f);
 
 rows=length(f);
 columns=length(t);
@@ -340,7 +340,7 @@ for i=1:length(channels)
 	spect_ave_plot.t=SPECT_AVE.t;
 	spect_ave_plot.f=SPECT_AVE.f;
 
-	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(800*nsamples/SR) 800]);
+	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(800*nsamples/fs) 800]);
 	
 	fig_title=['CH' num2str(channels(i)) ' NTAP' num2str(lfp_ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
 

@@ -23,7 +23,7 @@ function ephys_cluster(DIR,varargin)
 %
 %	the following may be specified as parameter/value pairs:
 %
-%		SR
+%		fs
 %		sampling rate for aligned data (25e3, default Intan)
 %
 %		min_f
@@ -40,7 +40,7 @@ function ephys_cluster(DIR,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 spect_thresh=.1; % deprecated, this parameter is no longer used
-SR=25e3; % sampling
+fs=25e3; % sampling
 colors='hot';
 min_f=1;
 max_f=10e3;
@@ -75,8 +75,8 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'spect_thresh'
 			spect_thresh=varargin{i+1};
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'colors'
 			colors=varargin{i+1};
 		case 'masks'
@@ -178,7 +178,7 @@ if ~exist(fullfile(proc_dir,'template_data.mat'),'file')
 	% compute the features of the template
 
 	disp('Computing the spectral features of the template');
-	template_features=ephys_pipeline_smscore(TEMPLATE,SR,...
+	template_features=ephys_pipeline_smscore(TEMPLATE,fs,...
 		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling);
 	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features','padding');
 
@@ -187,7 +187,7 @@ else
 	load(fullfile(proc_dir,'template_data.mat'),'TEMPLATE');
 	
 	disp('Computing the spectral features of the template');
-	template_features=ephys_pipeline_smscore(TEMPLATE,SR,...
+	template_features=ephys_pipeline_smscore(TEMPLATE,fs,...
 		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling);
 	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features','padding');
 
@@ -196,7 +196,7 @@ end
 % generate a nice sonogram of the selected template
 
 template_fig=figure('Visible','off');
-[template_image,f,t]=pretty_sonogram(TEMPLATE,SR,'N',1024,'overlap',1000);
+[template_image,f,t]=pretty_sonogram(TEMPLATE,fs,'N',1024,'overlap',1000);
 
 startidx=max([find(f<=min_f);1]);
 
@@ -356,7 +356,7 @@ end
 
 if ~skip
 	[mic_data ephys_data channels used_filenames]=extract_hits(sorted_syllable,filenames,...
-		act_templatesize,spect_thresh,time_range,SR,n,overlap,downsampling);
+		act_templatesize,spect_thresh,time_range,fs,n,overlap,downsampling);
 
 	disp(['Saving data to ' fullfile(proc_dir,'extracted_data.mat')]);
 
@@ -579,7 +579,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA EXTRACTION %%%%%%%%%%%%%%%%%%%%
 
 
-function [MIC_DATA EPHYS_DATA CHANNELS USED_FILENAMES]=extract_hits(SELECTED_PEAKS,FILENAMES,TEMPLATESIZE,SPECT_THRESH,TIME_RANGE,SR,N,OVERLAP,DOWNSAMPLING)
+function [MIC_DATA EPHYS_DATA CHANNELS USED_FILENAMES]=extract_hits(SELECTED_PEAKS,FILENAMES,TEMPLATESIZE,SPECT_THRESH,TIME_RANGE,fs,N,OVERLAP,DOWNSAMPLING)
 
 TEMPLATESIZE=TEMPLATESIZE+N;
 USED_FILENAMES={};
@@ -656,7 +656,7 @@ parfor i=1:length(SELECTED_PEAKS)
 		startpoint=(peakLoc*(N-OVERLAP)*DOWNSAMPLING)-N;
 		endpoint=startpoint+TEMPLATESIZE;
 
-		if startpoint/SR>=TIME_RANGE(1) & endpoint/SR<=TIME_RANGE(2)
+		if startpoint/fs>=TIME_RANGE(1) & endpoint/fs<=TIME_RANGE(2)
 
 			if length(sound_data)>endpoint && startpoint>0
 				
@@ -709,7 +709,7 @@ for i=1:length(SELECTED_PEAKS)
 		startpoint=(peakLoc*(N-OVERLAP)*DOWNSAMPLING)-N;
 		endpoint=startpoint+TEMPLATESIZE;
 
-		if startpoint/SR>=TIME_RANGE(1) & endpoint/SR<=TIME_RANGE(2)
+		if startpoint/fs>=TIME_RANGE(1) & endpoint/fs<=TIME_RANGE(2)
 
 			if length(sound_data)>endpoint && startpoint>0
 

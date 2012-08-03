@@ -6,7 +6,7 @@ function HISTOGRAM=ephys_visual_histogram(MIC_DATA,varargin)
 %	MIC_DATA
 %	samples x trials matrix of aligned sounds
 %
-%	sr
+%	fs
 %	sampling frequency (default: 25e3)
 %
 %	tscale
@@ -31,14 +31,14 @@ if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
-SR=25e3;
+fs=25e3;
 tscale=1.5;
 savedir=pwd;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'tscale'
 			tscale=varargin{i+1};
 		case 'savedir'
@@ -50,7 +50,7 @@ end
 
 % compute the contour histogram
 
-[HISTOGRAM.rmask HISTOGRAM.imask HISTOGRAM.f HISTOGRAM.t]=contour_histogram(MIC_DATA,'sr',SR);
+[HISTOGRAM.rmask HISTOGRAM.imask HISTOGRAM.f HISTOGRAM.t]=contour_histogram(MIC_DATA,'fs',fs);
 
 % mean oscillogram
 

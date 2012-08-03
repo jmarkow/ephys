@@ -12,7 +12,7 @@ end
 
 
 
-SR=25e3;
+fs=25e3;
 min_f=1;
 max_f=10e3;
 hist_colors='jet';
@@ -21,8 +21,8 @@ fig_num=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'min_f'
 			min_f=varargin{i+1};
 		case 'max_f'
@@ -56,7 +56,7 @@ if isempty(stopidx)
 	stopidx=length(HISTOGRAM.f);
 end
 
-time=[1:length(HISTOGRAM.mean_osc)]./SR;
+time=[1:length(HISTOGRAM.mean_osc)]./fs;
 
 ax(1)=subaxis(6,1,1,1,1,2,'margin',.1,'spacingvert',0);
 imagesc(HISTOGRAM.t,HISTOGRAM.f(startidx:stopidx),HISTOGRAM.imask(startidx:stopidx,:));

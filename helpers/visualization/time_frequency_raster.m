@@ -11,7 +11,7 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
 end
 
-SR=25e3;
+fs=25e3;
 hist_min_f=1;
 hist_max_f=10e3;
 tf_min_f=1;
@@ -27,8 +27,8 @@ colorbarsize=.02; % normalized units, height of the colorbar
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'tf_min_f'
 			tf_min_f=varargin{i+1};
 		case 'tf_max_f'
@@ -93,7 +93,7 @@ if isempty(tf_stopidx)
 	tf_stopidx=length(TFIMAGE.f);
 end
 
-time=[1:length(HISTOGRAM.mean_osc)]./SR;
+time=[1:length(HISTOGRAM.mean_osc)]./fs;
 
 ax(1)=subaxis(4,1,1,1,1,2,'margin',.12,'spacingvert',0,'paddingbottom',0);
 imagesc(HISTOGRAM.t,HISTOGRAM.f(hist_startidx:hist_stopidx),HISTOGRAM.imask(hist_startidx:hist_stopidx,:));
