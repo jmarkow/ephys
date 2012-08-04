@@ -23,7 +23,10 @@ fs=25e3;
 use_spiketime=0; % use spiketime as a clustering feature (usually helps if SNR is low)
 nparams=length(varargin);
 maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
+wavelet_method='ks';
+wavelet_mpca=1;
 outlier_cutoff=.5; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
+clust_choice='knee'; % knee is more tolerance, choice BIC (b) or AIC (a) for more sensitive clustering
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -31,17 +34,28 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
+		case 'wavelet_method'
+			wavelet_method=varargin{i+1};
+		case 'wavelet_mpca'
+			wavelet_mpca=varargin{i+1};
 		case 'fs'
 			fs=varargin{i+1};
 		case 'use_spiketime'
 			spiketime=varaargin{i+1};
 		case 'maxcoeffs'
 			maxcoeffs=varargin{i+1};
+		case 'clust_choice'
+			clust_choice=varargin{i+1};
 	end
 end
 
 % need to deal with cell input (multiple trials), convert input to big matrix
 % and spit out trial number
+
+disp(['Wavelet dimensionality reduction method:  ' wavelet_method]);
+disp(['N wavelet coefficients:  ' num2str(maxcoeffs)]);
+disp(['MPCA ' num2str(wavelet_mpca)]);
+disp(['GMM mode selection method:  ' clust_choice]);
 
 spikewindows=[];
 spiketimes=[];
@@ -107,9 +121,14 @@ timepoints=[1:samples]';
 
 % need to check for wavelet toolbox, otherwise we would need to use PCA or standard features
 
+% include an option for mpca
+
 if license('test','Wavelet_Toolbox')
-	[coeffs]=get_wavelet_coefficients(spikewindows,maxcoeffs,'method','bimodal'); % use bimodality coefficient to pick relevant dimensions
+
+	[coeffs]=get_wavelet_coefficients(spikewindows,maxcoeffs,...
+		'method',wavelet_method,'mpca',wavelet_mpca); % pick multi-modal method and weighted PCA
 	spike_data=[spike_data coeffs];
+
 else
 
 	% fall back on PCA if necessary, just first two components seem to be most useful
@@ -169,7 +188,7 @@ end
 
 % max partition coefficient instead
 
-%[val,loc]=max(AIC);
+%[val,loc]=min(AIC);
 %[val,loc]=max(partition_coef);
 
 % second derivative is defined over 2:length-1
@@ -180,9 +199,22 @@ end
 
 % AIC and BIC have worked miserably here, simply using the elbow of the log-likelihood
 
-x=clustnum(2:end-1);
-[val,loc]=max(secondderiv); % maximum derivative in log-likelihood over k
-nclust=x(loc(1));
+switch lower(clust_choice(1))
+
+	case 'b'
+		[val loc]=min(BIC);
+		nclust=clustnum(loc);
+	case 'a'
+		[val loc]=min(AIC);
+		nclust=clustnum(loc);
+	case 'k'
+		x=clustnum(2:end-1);
+		[val,loc]=max(secondderiv); % maximum derivative in log-likelihood over k
+		nclust=x(loc(1));
+
+	otherwise
+		error('ephysPipeline:autoclust:badnclustchoice','Did not understand nclust choice method!')
+end
 
 disp(['Will use ' num2str(nclust) ' clusters']);
 

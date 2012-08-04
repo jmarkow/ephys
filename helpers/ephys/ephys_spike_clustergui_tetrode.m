@@ -1,4 +1,4 @@
-function [LABELS TRIALS ISI WINDOWS FS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,varargin)
+function [LABELS TRIALS ISI WINDOWS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,varargin)
 %GUI for spike cluster cutting
 %
 %
@@ -7,9 +7,6 @@ function [LABELS TRIALS ISI WINDOWS FS]=ephys_spike_clustergui_tetrode(SPIKEWIND
 
 TRIALS=[]; % by default we don't need this, unless input is over multiple trials
 fs=25e3;
-interpolate=1; % do we want to interpolate the spikes for feature calculation?
-interpolate_fs=50e3; % interpolate 
-interpolate_method='sinc'; % sinc or spline?
 features={'P2P','width','energy','min','ISI','Spiketimes','PCA','wavelets'}; % possible features include, min, max, PCA, width
 				     % energy and wavelet coefficients
 outlier_cutoff=.5;				     
@@ -24,6 +21,11 @@ WINDOWS={};
 CLUSTERS=[];
 wavelets=10; % chooses top N non-normal wavelets according to either negentropy or KS test
 %
+
+wavelet_method='ks';
+wavelet_mpca=1;
+
+
 if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs!');
 end
@@ -32,71 +34,79 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'fs'
 			fs=varargin{i+1};
-		case 'interpolate'
-			interpolate=varargin{i+1};
-		case 'interpolate_fs'
-			interpolate_fs=varargin{i+1};
 		case 'features'
 			features=varargin{i+1};
 		case 'channel_labels'
 			channel_labels=varargin{i+1};
 		case 'wavelets'
 			wavelets=varargin{i+1};
+		case 'wavelet_method'
+			wavelet_method=varargin{i+1};
+		case 'wavelet_mpca'
+			wavelet_mpca=varargin{i+1};
+
 	end
 end
-
-FS=interpolate_fs;
 
 % need to deal with cell input (multiple trials), convert input to big matrix
 % and spit out trial number
 
 % get the number of channels
 
+spikewindows=[];
 spiketimes=[];
-spikeisi=[];
+spikeifr=[];
 trialnum=[];
+spike_data=[];
 
 if iscell(SPIKEWINDOWS)
-
-	[samples,trials,channels]=size(SPIKEWINDOWS{1});
-
-	for j=1:channels
-		spikewindows{j}=[];
-	end
-	
 	for i=1:length(SPIKEWINDOWS)
 
-		[samples,trials,channels]=size(SPIKEWINDOWS{i});
+		[samples,trials]=size(SPIKEWINDOWS{i});
+
+		spikewindows=[spikewindows SPIKEWINDOWS{i}];
 		spiketimes=[spiketimes SPIKETIMES{i}];
 
-		for j=1:channels
-			spikewindows{j}=[spikewindows{j} SPIKEWINDOWS{i}(:,:,j)];
-		end
-
-		isi_tmp=[];
+		ifr_tmp=[];
 		padded_spikes=[-inf SPIKETIMES{i} inf];
 		for j=2:length(padded_spikes)-1
 			
 			curr_spike=padded_spikes(j);
 			next_spike=min(padded_spikes(padded_spikes>padded_spikes(j)))-curr_spike;
 			prev_spike=curr_spike-max(padded_spikes(padded_spikes<padded_spikes(j)));
-			isi_tmp(j-1)=1/(min(next_spike,prev_spike)/fs); % isi is the time from the closest spike
+			ifr_tmp(j-1)=1/(min(next_spike,prev_spike)/fs); % isi is the time from the closest spike, before or after
 		
 		end
 
-		spikeisi=[spikeisi;isi_tmp(:)];
+		spikeifr=[spikeifr;ifr_tmp(:)];
+		[samples trials]=size(SPIKEWINDOWS{i});
 		trialnum=[trialnum;repmat(i,trials,1)];
+
 	end
 else
-	[samples,trials,channels]=size(SPIKEWINDOWS);
-	for i=1:channels
-		spikewindows{i}=SPIKEWINDOWS(:,:,i);
+
+	spikewindows=SPIKEWINDOWS;
+	spiketimes=SPIKETIMES;
+
+	ifr_tmp=[];
+	padded_spikes=[-inf spiketimes inf];
+	
+	for j=2:length(padded_spikes)-1
+
+		curr_spike=padded_spikes(j);
+		next_spike=min(padded_spikes(padded_spikes>padded_spikes(j)))-curr_spike;
+		prev_spike=curr_spike-max(padded_spikes(padded_spikes<padded_spikes(j)));
+		ifr_tmp(j-1)=(1/min(next_spike,prev_spike)/fs); % isi is the min spike distance
 	end
 
-	spiketimes=SPIKETIMES;
-	trialnum=ones(size(spiketimes));
+	spikeifr=ifr_tmp(:);
 
+	[samples,trials]=size(SPIKEWINDOWS);
+	trialnum=repmat(1,trials,1);
 end
+
+[samples,trials,channels]=size(spikewindows);
+
 
 if isempty(channel_labels)
 	channel_labels=[1:channels];
@@ -105,46 +115,13 @@ end
 clear SPIKEWINDOWS;
 TRIALS=trialnum;
 
-[samples,trials]=size(spikewindows{1});
 
-expansion=interpolate_fs/fs;
-interpspikes=zeros(samples*expansion,trials,channels);
 
 % take the time vector and expand to 2*fs (from 25k to 50k)
 
 timepoints=[1:samples]';
-newtimepoints=linspace(1,samples,expansion*samples)';
-
-%
-
-switch lower(interpolate_method)
-	case 'sinc'
-
-		for i=1:trials
-			for j=1:channels
-				interpspikes(:,i,j)=sinc(newtimepoints(:,ones(size(timepoints)))-...
-					timepoints(:,ones(size(newtimepoints)))')*spikewindows{j}(:,i);
-			end
-		end
-
-	case 'spline'
-		
-		for i=1:trials
-			for j=1:channels
-				interpspikes(:,i)=spline(timepoints,spikewindows{j}(:,i),newtimepoints);
-			end
-		end
-
-	otherwise
-	
-		error('Did not understand interpolation method agrument (must be sinc or spline)');
-end
-	
 
 % expand to include features from all channels processed
-
-spikewindows=interpspikes;
-
 % by convention let's keep each channel a separate column
 
 features_all={'max','min','p2p','width','energy','PC1','PC2'}; % all features excluding IFR and spiketimes
@@ -194,13 +171,13 @@ for i=1:channels
 	end
 
 	if any(strcmp('pca',lower(features)))
-		[coef score variance t2]=princomp(interpspikes(:,:,i)');
+		[coef score variance t2]=princomp(spikewindows(:,:,i)');
 		spike_data=[spike_data score(:,1:2)];
 		features_status(6:7)=1;
 	end
 
 	if any(strcmp('wavelets',lower(features)))
-		[coeffs]=get_wavelet_coefficients(interpspikes(:,:,i),wavelets,'method','bimodal');
+		[coeffs]=get_wavelet_coefficients(spikewindows(:,:,i),wavelets,'method',wavelet_method,'mpca',wavelet_mpca);
 		[m,ncoeffs]=size(coeffs);
 		spike_data=[spike_data coeffs];
 		features_status(8:end)=1;
@@ -225,7 +202,7 @@ if any(strcmp('spiketimes',lower(features)))
 end
 
 if any(strcmp('isi',lower(features)))
-	spike_data=[spike_data spikeisi(:)];
+	spike_data=[spike_data spikeifr(:)];
 	property_names{end+1}='Spike ISI';
 
 end
@@ -412,12 +389,6 @@ if ~draw_mode
 
 			testobj=gmdistribution.fit(cluster_data,clustnum(i),'Regularize',1,'Options',options);
 			
-			%[center,u,obj_fcn]=fcm(cluster_data,clustnum(i),[NaN NaN NaN 0]);
-			
-			% compute the partition coefficient, simply all membership indices squared and summed
-
-			%partition_coef(i)=sum(sum(u.^2))/datapoints;
-
 			AIC(i)=testobj.AIC;
 			logl(i)=testobj.NlogL;
 			disp([ num2str(clustnum(i)) ' clusters']);
@@ -536,7 +507,7 @@ for i=1:CLUSTERS
 
 	% need to collect isi within trial, don't count the first spike!
 	
-	spikeisitmp=[];
+	spikeifrtmp=[];
 
 	for j=1:length(uniq_trial)
 		
@@ -553,10 +524,10 @@ for i=1:CLUSTERS
 		currtrial=currtrial(currlabels==i);
 
 		currisi=(diff(currtrial)); % isi in msec
-		spikeisitmp=[spikeisitmp;currisi(:)];
+		spikeifrtmp=[spikeifrtmp;currisi(:)];
 	end
 
-	ISI{i}=spikeisitmp;
+	ISI{i}=spikeifrtmp;
 	WINDOWS{i}=spikewintmp;
 
 end
@@ -582,11 +553,7 @@ for i=1:CLUSTERS
 	ax(i)=subplot(CLUSTERS,2,counter);
 	[samples,trials]=size(WINDOWS{i});
 
-	if ~interpolate
-		plot(([1:samples]./fs)*1e3,WINDOWS{i});
-	else		
-		plot(([1:samples]./interpolate_fs)*1e3,WINDOWS{i});
-	end
+	plot(([1:samples]./fs)*1e3,WINDOWS{i});
 
 	ylabel('microvolts');
 	xlabel('msec');
@@ -601,7 +568,7 @@ for i=1:CLUSTERS
 		ymax=ylimits(2);
 	end
 
-	%[f,xi]=ksdensity(spikeisi);
+	%[f,xi]=ksdensity(spikeifr);
 	
 	xlimits=xlim();
 	xlim([0 xlimits(2)]);

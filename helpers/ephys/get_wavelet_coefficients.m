@@ -13,12 +13,15 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs!');
 end
 
-method='bimodal';
+method='ks'; % ks with mpca seem to be the best choice here
+mpca=1;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'method'
 			method=varargin{i+1};
+		case 'mpca'
+			mpca=varargin{i+1};
 	end
 end
 
@@ -54,9 +57,9 @@ for i=1:coeffs
 	% samplecdf
 
 	if length(testpoints(testpoints~=NaN))<1
-		normdev(i)=-inf;
-		negentropy(i)=-inf;
-		coeffbimodal(i)=-inf;
+		normdev(i)=0;
+		negentropy(i)=0;
+		coeffbimodal(i)=0;
 		continue;
 	end
 
@@ -64,10 +67,12 @@ for i=1:coeffs
 
 	% evaluate normal cdf at same mean and variance as data
 
-	samplemean=mean(testpoints);
-	samplestd=std(testpoints);
+	% use robust mean and variance estimators per Takekawa et al. (2012)
 
-	gx=normcdf(x,samplemean,samplestd);
+	samplemedian=median(testpoints);
+	samplevar=median(abs(testpoints-samplemedian))./.6745;
+
+	gx=normcdf(x,samplemedian,samplevar);
 
 	% deviation, ks statistic
 
@@ -87,38 +92,48 @@ end
 % with bimodality we could add a simple cutoff...if no one passes then let everyone in
 
 normdev(normdev==1)=0;
+normdev(isnan(normdev))=0;
 coeffbimodal(isnan(coeffbimodal))=0;
 
-if strcmp(lower(method),'ks')
-	[val,loc]=sort(normdev,'descend');
-elseif strcmp(lower(method),'neg')
-	[val,loc]=sort(negentropy,'descend');
+switch lower(method(1))
+
+	case 'k'
+		[val,loc]=sort(normdev,'descend');
+	case 'n'
+		[val,loc]=sort(negentropy,'descend');
+	case 'b'
+		[val,loc]=sort(coeffbimodal,'descend');
+	otherwise
+		error('ephysPipeline:getwaveletcoeffs:badmethod','Did not understand coefficient sorting method');
+end
+
+if mpca
+	% take components, weight by KS (or CB) and take PCA
+	% scale KS test by L2 norm, use as a weight for coefficient
+
+	for i=1:coeffs
+		wavecoeff(i,:)=(normdev(i)/sqrt(sum(wavecoef(i,:).^2))).*wavecoef(i,:);
+	end
+
+	% get PCA scores
+
+	[pcacoeff pcascore]=princomp(wavecoef');
+
+	%multimodal PCA
+
+	SELCOEFFS=pcascore(:,1:NCOEFFS);
 else
 
-	[val,loc]=sort(coeffbimodal,'descend');
+	if length(loc)>=NCOEFFS
+		sortcoeffs=loc(1:NCOEFFS);
+	else
+		sortcoeffs=loc;
+	end
 
-	% stripping away values degraded cluster quality, decided to keep everything 8/1/12
-	%cutoff=find(val<.15);
-
-	% if everything is below the cutoff, just use all coeffs
-
-	%if length(cutoff)==length(val)
-	%	cutoff=[];
-	%end
-
-	%val(cutoff)=[];
-	%loc(cutoff)=[];
-
+	for i=1:length(sortcoeffs)
+		SELCOEFFS(:,i)=wavecoef(sortcoeffs(i),:);
+	end
 end
 
-if length(loc)>=NCOEFFS
-	sortcoeffs=loc(1:NCOEFFS);
-else
-	sortcoeffs=loc;
-end
-
-for i=1:length(sortcoeffs)
-	SELCOEFFS(:,i)=wavecoef(sortcoeffs(i),:);
-end
 
 

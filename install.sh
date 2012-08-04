@@ -64,12 +64,11 @@ if [ -f $DEST/ephys_pipeline_dirs.cfg ];then
 		;;
 	* ) 
 		echo "Not replacing directories..."
-		echo "LOCAL=$LOCAL" > $DEST/ephys_pipeline_dirs.cfg
-		echo "COMPILED=$COMPILED" >> $DEST/ephys_pipeline_dirs.cfg
-		echo "# set NETWORK to an array to sync multiple directories" >> $DEST/ephys_pipeline_dirs.cfg
-		echo "# e.g. NETWORK[1]=/path/to/dir" >> $DEST/ephys_pipeline_dirs.cfg
-		echo "# NETWORK[2]=/path/to/other/dir" >> $DEST/ephys_pipeline_dirs.cfg
-		echo "NETWORK=$NETWORK" >> $DEST/ephys_pipeline_dirs.cfg
+		
+		# always update the compiled directory
+
+		sed -i '' "s|\(COMPILED\=\).*|\1$COMPILED|" $DEST/ephys_pipeline_dirs.cfg
+		COUNTER=1
 		;;
 	esac
 else
@@ -113,12 +112,17 @@ find . -type f -maxdepth 1 -exec ln -sf -- "$SOURCE"/{} "$DEST"/{} \;
 echo -n "Do you want to replace your settings [y/n] (this will overwrite your old settings, enter y if installing for the first time)?  "
 read response
 
+# don't use symlinks for settings so that they're preserved through updates
+
 case "$response" in
 	"y" | "Y" ) 
 		echo "Replacing settings..."
-		SOURCE=$BASE/pipeline/bash/settings
-		cd -- "$SOURCE"
-		find . -type f -maxdepth 1 -exec ln -sf -- "$SOURCE"/{} "$DEST"/{} \;
+
+		rm /usr/local/bin/ephys_pipeline.cfg
+		rm /usr/local/bin/ephys_pipeline_wrapper.cfg
+
+		cp $BASE/pipeline/bash/settings/*.cfg /usr/local/bin
+
 		;;
 	* ) 
 		echo "Not replacing settings..."

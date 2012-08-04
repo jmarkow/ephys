@@ -95,6 +95,10 @@ interpolate_fs=50e3;
 channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
+wavelet_method='ks';
+wavelet_mpca=1;
+wavelet_coeffs=10;
+clust_choice='knee'; 
 
 colors={'b','r','g','c','m','y','k','r','g','b'};
 
@@ -138,6 +142,14 @@ for i=1:2:nparams
 			align=varargin{i+1};
 		case 'jitter'
 			jitter=varargin{i+1};
+		case 'clust_choice'
+			clust_choice=varargin{i+1};
+		case 'wavelet_coeffs'
+			wavelet_coeffs=varargin{i+1};
+		case 'wavelet_mpca'
+			wavelet_mpca=varargin{i+1};
+		case 'wavelet_method'
+			wavelet_method=varargin{i+1};
 	end
 end
 
@@ -340,9 +352,12 @@ for i=1:length(channels)
 
 	if sort
 		if auto_clust
-			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},'fs',fs);
+			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},...
+				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca,'clust_choice',clust_choice,...
+				'maxcoeffs',wavelet_coeffs);
 		else
-			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},'fs',fs);
+			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},...
+				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca);
 		end
 
 		if isempty(clusterid)
