@@ -57,6 +57,8 @@ function ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %		vector of trials to include in the analysis (default: all trials)
 %
 %
+% NOTE: Tetrode sorting does not currently work, to be implemented soon...
+%
 % see also ephys_visual_mua.m,ephys_visual_lfp_amp.m,ephys_visual_lfp_tf.m,ephys_spike_cluster_auto.m,ephys_spike_clustergui_tetrode.m,ephys_spike_detect.m
 
 
@@ -86,19 +88,17 @@ auto_clust=0;
 tetrode_channels=[];
 sigma_t=4;
 jitter=4;
-singletrials=10; % number of random single trials to plot per cluster
+singletrials=5; % number of random single trials to plot per cluster
 subtrials=[];
 align='com'; % how to align spike waveforms can be min for minimum peak or COM
-	     % COM seems a bit sloppy, may move to MIN
-% parameter for smooth density estimate
-interpolate_fs=50e3;
+interpolate_fs=50e3; % 50e3 or 100e3 are reasonable
 channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
-wavelet_method='ks';
-wavelet_mpca=1;
-wavelet_coeffs=10;
-clust_choice='knee'; 
+wavelet_method='ks'; % ks or bimodal have been sucessful
+wavelet_mpca=1; % mpca seems to help dramatically
+wavelet_coeffs=10; % 10 has worked well
+clust_choice='fhv'; % fuzzy hypervolume has outperformed everything else at this point
 
 colors={'b','r','g','c','m','y','k','r','g','b'};
 
@@ -189,7 +189,6 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
 proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
@@ -212,7 +211,6 @@ end
 [samples,ntrials,newchannels]=size(proc_data);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SPIKE DETECTION %%%%%%%%%%%%%%%%%%%%
 
 disp('Entering spike detection...');
@@ -306,7 +304,7 @@ for i=1:length(channels)
 		tetrode_preview=figure('Name','Tetrode Preview','Visible','off');
 		subplot(tetrodes,1,1);
 		plot(spikewindows{1}{1}(:,:,1));
-		title(['Channel ' num2str(CHANNELS(channels(i)))]);
+		title(['Channel ' num2str(channels(i))]);
 		axis tight;
 		for k=1:tetrodes-1
 			subplot(tetrodes,1,k+1);
@@ -370,8 +368,6 @@ for i=1:length(channels)
 	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IFR, SMOOTH RATE %%%%%%%%%%%%%%%%%%%
 
 
@@ -502,8 +498,6 @@ for i=1:length(channels)
 	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% RASTER PLOTTING %%%%%%%%%%%%%%%%%%%%%
 
 	savefilename_raster=[ savefilename num2str(channels(i))...

@@ -85,7 +85,7 @@ interpolate_fs=50e3; % what fs should we intepolate to? (50e3 has worked in my h
 align='com'; % you'll want to use COM here, others seem a bit unreliable
 jitter=4; % how much jitter do we allow before tossing out a spike (in samples of original fs)?
 peak_frac=.5; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
-peak_width=10; % how many samples about the peak to include in COM (interpolated space, 5-8 is reasonable here for 50e3 fs)
+peak_width=5; % how many samples about the peak to include in COM (interpolated space, 5-8 is reasonable here for 50e3 fs)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -212,25 +212,26 @@ for j=1:length(abs_times)
 
 		tmp_time=abs_times(j);
 		isneg=abs_isneg(j);
-		tmp_window=DATA(tmp_time-frame(1):tmp_time+frame(2),1);
+		tmp_window=DATA(tmp_time-frame(1):tmp_time+frame(2),:);
 
 		% find the absolute min in the window
 
-		[val loc]=min(tmp_window);
+		[val loc]=min(tmp_window(:,1));
 		peak_time=tmp_time-frame(1)+(loc(1)-1);
 
 		% need to grab new time based on absolute peak, grab extra samples for jitter
 
 		if peak_time-frame(1)>0 && peak_time+frame(2)<length(DATA(:,1))
-			tmp_window=DATA(peak_time-frame(1):peak_time+frame(2),1);
+			tmp_window=DATA(peak_time-frame(1):peak_time+frame(2),:);
 		else
 			continue;
 		end
 	
 		% upsample the window with sinc interpolation, or spline
 
-		timepoints=[1:length(tmp_window)]';
-		samples=length(tmp_window);
+		[samples,channels]=size(tmp_window);
+
+		timepoints=[1:samples];
 
 		if interpolate	
 
@@ -243,12 +244,17 @@ for j=1:length(abs_times)
 
 			% spline interpolation
 
-			interp_window=spline(timepoints,tmp_window,newtimepoints);
+			for k=1:channels
+				interp_window(:,k)=spline(timepoints,tmp_window(:,k),newtimepoints);
+			end
 
 		else
 
 			newtimepoints=timepoints;
-			interp_window=tmp_window;
+			
+			for k=1:channels
+				interp_window(:,k)=tmp_window(:,k);
+			end
 
 		end
 
@@ -262,8 +268,8 @@ for j=1:length(abs_times)
 				% the negative-going peak has been the most reliable, use it to compute COM
 				% per sahani '99, try to capture the majority of the peak
 
-				[val loc]=min(interp_window);
-				compointsneg=find(interp_window<=peak_frac*val);
+				[val loc]=min(interp_window(:,1));
+				compointsneg=find(interp_window(:,1)<=peak_frac*val);
 				compoints=sort(compointsneg);
 
 				% take only points about the peak
@@ -273,7 +279,7 @@ for j=1:length(abs_times)
 			
 				% toss out any points where alignment>jitter, assume to be outliers
 
-				com=sum(compoints.*abs(interp_window(compoints)))/sum(abs(interp_window(compoints)));
+				com=sum(compoints.*abs(interp_window(compoints,1)))/sum(abs(interp_window(compoints,1)));
 
 				if isnan(com) || isempty(com)
 					continue;
@@ -292,7 +298,7 @@ for j=1:length(abs_times)
 
 				% just take the min
 
-				[val loc]=min(interp_window);
+				[val loc]=min(interp_window(:,1));
 
 				if abs(loc-frame_center)>=jitter*expansion
 					continue;
@@ -304,7 +310,7 @@ for j=1:length(abs_times)
 
 				% just take the max
 
-				[val loc]=max(interp_window);
+				[val loc]=max(interp_window(:,1));
 
 				if abs(loc-frame_center)>=jitter*expansion
 					continue;
@@ -316,7 +322,7 @@ for j=1:length(abs_times)
 
 		% new spike window
 
-		new_spikewindow=interp_window(alignpoint-spike_window(1):alignpoint+spike_window(2));
+		new_spikewindow=interp_window(alignpoint-spike_window(1):alignpoint+spike_window(2),:);
 
 		% get the spike time in the old sample space
 

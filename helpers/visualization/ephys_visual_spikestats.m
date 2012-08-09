@@ -35,8 +35,12 @@ for i=1:2:nparams
 			noise_p2p=varargin{i+1};
 		case 'y_res'
 			y_res=varargin{i+1};
+		case 'isi_method'
+			isi_method=varargin{i+1};
 	end
 end
+
+% TODO: spike autocorrelation and cross-correlations functions, simply xcorr of binned spikes-mean(lambda)
 
 if isempty(fig_num)
 	fig_num=figure('Visible','off');
@@ -49,7 +53,7 @@ end
 % isi bin edges (msec)
 % also plot 2D histogram
 
-isipoints=[0:.1:10];
+isipoints=[0:.01:10];
 
 subplot(2,1,1);
 
@@ -61,9 +65,6 @@ voltmax=-inf;
 timevec=([1:samples]./spike_fs)*1e3;
 timevec_mat=[1:samples]';
 coordmat=[];
-
-% slows down to a CRAWL with many spikes!
-% TODO re-implement with reshape and repmat
 
 % reshape takes elements columnwise, so should simply have samples*trials values
 
@@ -97,18 +98,39 @@ end
 
 xlabel('Time (ms)','FontName','Helvetica','FontSize',13);
 ylabel('Voltage (in $\mu$V)','FontName','Helvetica','FontSize',13,'Interpreter','Latex');
-set(gca,'YDir','Normal','tickdir','out','FontSize',10,'FontName','Helvetica');
+prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
+prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+axis xy
 box off
 axis tight
 
 subplot(2,1,2);
-density=histc((SPIKEISI/fs)*1e3,isipoints);
-h=bar(isipoints,density,'histc');
+
+if isempty(SPIKEISI);
+	warning('ephysPipeline:visualspikestats:emptyspikeisi','ISI vector is empty, skipping ISI density plot.');
+	return;
+end
+
+[density,xi]=ksdensity((SPIKEISI/fs)*1e3,isipoints,'support','positive');
+%density=histc((SPIKEISI/fs)*1e3,isipoints);
+%h=bar(isipoints,density,'histc');
+plot(xi,density,'r-','linewidth',3);
+hline=findobj(gca,'type','line');
+set(hline,'clipping','off');
 box off
-set(h,'FaceColor',[.7 .7 .7],'EdgeColor','k','LineWidth',1.5);
-set(gca,'TickDir','out','FontSize',10,'FontName','Helvetica');
-xlabel('ISI (ms)','FontName','Helvetica','FontSize',13);
-ylabel('N','FontName','Helvetica','FontSize',13);
-axis tight
+%set(h,'FaceColor',[.7 .7 .7],'EdgeColor','k','LineWidth',1.5);
+xlabel('ISI (ms)');
+ylabel('Probability density');
+
+ylimits(1)=min(density);
+ylimits(2)=ceil(max(density)*100)/100;
+
+if ylimits(1)<ylimits(2)
+	set(gca,'YLim',ylimits,'YTick',ylimits);
+end
+
+prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
+prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+xlim([xi(1) xi(end)]);
 
 %linkaxes(ax,'x');

@@ -20,7 +20,24 @@ padding=[];
 % of the template as determined by the classifier 
 
 load(TEMPLATEFILE,'template_features','TEMPLATE','padding'); % we'll get warnings if padding DNE
-load(DATAFILE,'features');
+
+% if for some reason we cannot load datafile (e.g. if the pipeline crashes, then delete it so it's 
+% recomputed on the next run)
+
+try
+	load(DATAFILE,'features');
+catch
+	warning('ephysPipeline:clusterstandalone:loadingattempt1','Could not load %s, pausing 30 seconds',DATAFILE);
+	pause(30);
+	try
+		load(DATAFILE,'features');
+	catch
+		warning('ephysPipeline:clusterstandalone:loadingattempt2','Could not load %s, deleting',DATAFILE);
+		delete(DATAFILE);
+		return;
+	end
+end
+
 load(CLASSIFYFILE,'cluster_choice','classobject');
 
 if length(padding)==2

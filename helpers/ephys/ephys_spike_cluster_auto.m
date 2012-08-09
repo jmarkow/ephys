@@ -25,8 +25,8 @@ nparams=length(varargin);
 maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
 wavelet_method='ks';
 wavelet_mpca=1;
-outlier_cutoff=.5; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
-clust_choice='knee'; % knee is more tolerance, choice BIC (b) or AIC (a) for more sensitive clustering
+outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
+clust_choice='fhv'; % knee is more tolerance, choice BIC (b) or AIC (a) for more sensitive clustering
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -136,7 +136,7 @@ else
 	disp('Could not find the wavelet toolbox, falling back on PCA...');
 
 	[coef score]=princomp(spikewindows');
-	spike_data=[spike_data score(:,1:2)];
+	spike_data=[spike_data score(:,1:4)];
 
 end
 
@@ -151,7 +151,7 @@ end
 options=statset('Display','off');
 obj_fcn=[];
 
-clustnum=1:6;
+clustnum=2:10;
 [datapoints,features]=size(spike_data);
 if datapoints<=features
 	warning('ephysPipeline:spikesort:toofewspikes','Too few spikes to fit');
@@ -164,7 +164,7 @@ end
 parfor i=1:length(clustnum)
 
 	warning('off','stats:gmdistribution:FailedToConverge');
-	testobj=gmdistribution.fit(spike_data,clustnum(i),'Regularize',1,'Options',options,'replicates',2);
+	testobj=gmdistribution.fit(spike_data,clustnum(i),'Regularize',1,'Options',options,'replicates',5);
 	warning('on','stats:gmdistribution:FailedToConverge');
 
 	%[center,u,obj_fcn]=fcm(spike_data,clustnum(i),[NaN NaN NaN 0]);
@@ -182,35 +182,67 @@ parfor i=1:length(clustnum)
 	disp([ 'AIC ' num2str(testobj.AIC)]) % Akaike information criterion
 	disp([ 'BIC ' num2str(testobj.BIC)]) % Bayes information criterion
 
+	[m,n,components]=size(testobj.Sigma);
+
+	% grab the variance for each dimension in K components
+
+	variance=[];
+
+	for j=1:components
+		variance(j)=prod(diag(testobj.Sigma(:,:,j)));
+	end
+
+	% the hypervolume is defined by the product of the variances for a given components,
+	% so then take the summed volume of all components as a measure of model fit (FHV)
+	% another method is to take the hypervolume as a penalty term for the log-likelihood (ED)
+
+	FHV(i)=sum(variance);
+	ED(i)=-logl(i)/FHV(i);
+	
+	disp([ 'ED ' num2str(ED(i))]);
+
 end
 
-% what gives us the max AIC?
-
-% max partition coefficient instead
-
-%[val,loc]=min(AIC);
-%[val,loc]=max(partition_coef);
-
-% second derivative is defined over 2:length-1
-
-for i=1:length(logl)-2
-	secondderiv(i)=logl(i+2)+logl(i)-2*logl(i+1);
-end
+secondderiv=diff(diff(logl));
 
 % AIC and BIC have worked miserably here, simply using the elbow of the log-likelihood
+% decided to use fuzzy hypervolume or scaled likelihood, pretty stable (8/7/2012)
 
 switch lower(clust_choice(1))
 
 	case 'b'
+
+		% BIC
+
 		[val loc]=min(BIC);
 		nclust=clustnum(loc);
 	case 'a'
+
+		% AIC
+
 		[val loc]=min(AIC);
 		nclust=clustnum(loc);
 	case 'k'
-		x=clustnum(2:end-1);
+
+		% logl knee
+
+		x=clustnum(3:end);
 		[val,loc]=max(secondderiv); % maximum derivative in log-likelihood over k
 		nclust=x(loc(1));
+
+	case 'e'
+
+		% ED Measure, log likelihood scaled by hypervolume
+
+		[val loc]=min(ED);
+		nclust=clustnum(loc);
+
+	case 'f'
+
+		% hypervolume alone
+
+		[val loc]=min(FHV);
+		nclust=clustnum(loc);
 
 	otherwise
 		error('ephysPipeline:autoclust:badnclustchoice','Did not understand nclust choice method!')
@@ -243,16 +275,29 @@ end
 disp([ num2str(counter) ' outliers']);
 clusters=unique(idx);
 
-for i=1:length(nclust)
-	idx(idx==clusters(i))=i;	
+% number of spikes per cluster is simply the number of labels
+
+for i=1:length(clusters)
+	nspikes(i)=sum(idx==clusters(i));
 end
+
+[val loc]=sort(nspikes,'descend');
+
+% make the number contiguous and sort by number of spikes, descending
+
+LABLES=zeros(size(idx));
+
+for i=1:length(clusters)
+	LABELS(idx==clusters(loc(i)))=i;	
+end
+
+% resort labels by number of spikes, first vector is cluster id, and the second the 
+% point where those labels end (e.g. 1 1 1 2 2 2 2 would return 1 2 and 3 7)
 
 % return labels, and windows and ISI sorted by cluster IDX
 
-LABELS=idx;
-
 [uniq_trial trial_boundary trial_group]=unique(trialnum);
-trial_boundary=[1;trial_boundary];
+trial_boundary=[0;trial_boundary];
 
 for i=1:length(clusters)
 
@@ -264,7 +309,7 @@ for i=1:length(clusters)
 		
 		% all spike times in this trial
 		
-		currtrial=spiketimes(trial_boundary(j):trial_boundary(j+1));
+		currtrial=spiketimes(trial_boundary(j)+1:trial_boundary(j+1));
 
 		% now all spike ids from this trial
 

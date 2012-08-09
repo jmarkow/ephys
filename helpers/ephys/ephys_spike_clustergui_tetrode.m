@@ -7,9 +7,9 @@ function [LABELS TRIALS ISI WINDOWS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS
 
 TRIALS=[]; % by default we don't need this, unless input is over multiple trials
 fs=25e3;
-features={'P2P','width','energy','min','ISI','Spiketimes','PCA','wavelets'}; % possible features include, min, max, PCA, width
+features={'P2P','width','energy','min','ISI','Spiketimes','wavelets'}; % possible features include, min, max, PCA, width
 				     % energy and wavelet coefficients
-outlier_cutoff=.5;				     
+outlier_cutoff=.05;				     
 channel_labels=[];
 nparams=length(varargin);
 colors={'b','r','g','c','m','y','k','r','g','b'};
@@ -19,9 +19,7 @@ LABELS=[];
 ISI={};
 WINDOWS={};
 CLUSTERS=[];
-wavelets=10; % chooses top N non-normal wavelets according to either negentropy or KS test
-%
-
+wavelets=5; % chooses top N non-normal wavelets according to either negentropy or KS test
 wavelet_method='ks';
 wavelet_mpca=1;
 
@@ -62,7 +60,7 @@ spike_data=[];
 if iscell(SPIKEWINDOWS)
 	for i=1:length(SPIKEWINDOWS)
 
-		[samples,trials]=size(SPIKEWINDOWS{i});
+		[samples,trials,channels]=size(SPIKEWINDOWS{i});
 
 		spikewindows=[spikewindows SPIKEWINDOWS{i}];
 		spiketimes=[spiketimes SPIKETIMES{i}];
@@ -79,7 +77,7 @@ if iscell(SPIKEWINDOWS)
 		end
 
 		spikeifr=[spikeifr;ifr_tmp(:)];
-		[samples trials]=size(SPIKEWINDOWS{i});
+		[samples,trials,channels]=size(SPIKEWINDOWS{i});
 		trialnum=[trialnum;repmat(i,trials,1)];
 
 	end
@@ -101,12 +99,11 @@ else
 
 	spikeifr=ifr_tmp(:);
 
-	[samples,trials]=size(SPIKEWINDOWS);
+	[samples,trials,channels]=size(SPIKEWINDOWS);
 	trialnum=repmat(1,trials,1);
 end
 
 [samples,trials,channels]=size(spikewindows);
-
 
 if isempty(channel_labels)
 	channel_labels=[1:channels];
@@ -138,11 +135,11 @@ for i=1:channels
 	% cheap to compute standard features
 
 
-	[max_value(:,i),max_sample]=max(spikewindows(:,:,i)',[],2); % will get first max if there are multiple peaks
-	[min_value(:,i),min_sample]=min(spikewindows(:,:,i)',[],2); % will get first min if there are multiple peaks (maybe interpolate?)
-	peak_to_peak(:,i)=max_value(:,i)-min_value(:,i);
-	width(:,i)=abs(min_sample-max_sample);
-	energy(:,i)=sum(spikewindows(:,:,i)'.^2,2);
+	[max_value,max_sample]=max(spikewindows(:,:,i)',[],2); % will get first max if there are multiple peaks
+	[min_value,min_sample]=min(spikewindows(:,:,i)',[],2); % will get first min if there are multiple peaks (maybe interpolate?)
+	peak_to_peak=max_value-min_value;
+	width=abs(min_sample-max_sample);
+	energy=sum(spikewindows(:,:,i)'.^2,2);
 
 
 	if any(strcmp('max',lower(features)))
@@ -499,7 +496,7 @@ end
 % compute any other stats we want, ISI, etc...
 
 [uniq_trial trial_boundary trial_group]=unique(trialnum);
-trial_boundary=[1;trial_boundary];
+trial_boundary=[0;trial_boundary];
 
 for i=1:CLUSTERS
 
@@ -513,7 +510,7 @@ for i=1:CLUSTERS
 		
 		% all spike times in this trial
 		
-		currtrial=spiketimes(trial_boundary(j):trial_boundary(j+1));
+		currtrial=spiketimes(trial_boundary(j)+1:trial_boundary(j+1));
 
 		% now all spike ids from this trial
 
