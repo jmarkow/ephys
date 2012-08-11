@@ -56,8 +56,22 @@ function ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %		subtrials
 %		vector of trials to include in the analysis (default: all trials)
 %
+%		wavelet_coeffs
+%		number of wavelet coefficients to use for clustering (default: 10)
 %
-% NOTE: Tetrode sorting does not currently work, to be implemented soon...
+%		wavelet_mpca
+%		use multi-modality weighted PCA (default: 1)
+%
+%		wavelet_method
+%		method for ranking multi-modality of wavelet coefficients (default: KS, options 'KS'
+%		for KS test, 'bimodal' for coefficient of bimodality, or 'neg' for negentropy)
+%
+%		clust_choice
+%		method of choosing the number of modes for GMM clustering (default: fhv, options 'fhv' 
+%		for fuzzy hypervolume, 'ed' for log-likelihood scaled by fuzzy hypervolume, 'knee' for
+%		knee in log-likelihood, 'AIC' for Akaike Information Criterion, 'BIC' for Bayes Information
+%		Criterion')
+%
 %
 % see also ephys_visual_mua.m,ephys_visual_lfp_amp.m,ephys_visual_lfp_tf.m,ephys_spike_cluster_auto.m,ephys_spike_clustergui_tetrode.m,ephys_spike_detect.m
 

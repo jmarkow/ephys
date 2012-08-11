@@ -1,5 +1,5 @@
 function ephys_multi_mua(HISTOGRAMS,MUA,varargin)
-%
+%THIS FUNCTION IS CURRENTLY DEPRECATED, USE AT YOUR OWN RISK!
 %
 %
 %

@@ -44,6 +44,10 @@ function ephys_quicklook(MIC_DATA,EPHYS_DATA,CHANNELS,varargin)
 %		nfft
 %		spectrogram nfft (default: 1024)
 %
+%		ylim_match
+%		if set to 1, matches all y axes to min and max, if set to a two element vector sets all axes
+%		to min=ylim_match(1) and max=ylim_match(2), otherwise defaults to standard axes (default: 0)
+%
 %
 % see also ephys_condition_data.m,ephys_denoise_data.m
 

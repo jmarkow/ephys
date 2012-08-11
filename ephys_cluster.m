@@ -27,13 +27,34 @@ function ephys_cluster(DIR,varargin)
 %		sampling rate for aligned data (25e3, default Intan)
 %
 %		min_f
-%		lowermost frequency for template spectrogram
+%		lowermost frequency for template spectrogram (default: 1)
 %
 %		max_f
-%		uppermost frequency for template spectrogram
+%		uppermost frequency for template spectrogram (default: 10e3)
 %		
 %		colors
-%		colormap for template spectrogram
+%		colormap for template spectrogram (default: hot)
+%
+%		padding
+%		only relevant if you are using ephys_cluster to generate a template
+%		for the pipeline, this will force the standalone sound clustering
+%		daemon to add a pad before and after an extraction (two element vector
+%		for seconds before and after extractions, in seconds)
+%
+%		n
+%		spectral feature score spectrogram window, if you are using the pipeline
+%		this MUST match the pipeline parameters in ephys_pipeline.cfg (default: 1024)
+%
+%		overlap
+%		spectral feature score spectrogram overlap, must match ephys_pipeline.cfg (default: 1000)
+%
+%		filter_scale
+%		spectral feature score smoothing window size, must match ephys_pipeline.cfg (default: 10)
+%
+%		downsampling
+%		spectral feature downsampling factor, must match ephys_pipeline.cfg (default: 5)
+%
+%
 %
 %see also songdet.m,ephys_visual_mua.m,ephys_visual_sua.m,ephys_pipeline_smscore.m
 

@@ -55,7 +55,7 @@ function [LFPWINS_PEAK,LFPWINS_TROUGH,LFPWINS_RAND]=ephys_su_lfp_coherence_ifr(L
 
 % TODO finish documentation
 % TODO comment thoroughly
-% TODO pare down to compute IFR triggered fields
+% TODO pare down to compute only IFR triggered fields
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION  %%%%%%%%%%%%%%

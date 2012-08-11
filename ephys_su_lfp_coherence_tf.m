@@ -146,9 +146,6 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA COLLECTION %%%%%%%%%%%%%%%%%%%%
 
-% TODO SHOW LFP AND SPIKE SPECTROGRAMS
-% also generate null cases: (1) white noise LFP (2) poisson spikes (3) rate-varying poisson spikes
-
 resolution=w*1/(n/lfp_fs);
 disp(['Resolution:  ' num2str(resolution)  ' Hz']);
 disp(['NFFT:  ' num2str(nfft)]);
