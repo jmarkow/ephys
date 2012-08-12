@@ -75,12 +75,14 @@ randreps=100;
 singletrialplots=30; % trials chosen at random to plot with fields, spikes, and IFR
 debug=0;
 trial_min=20;
-freq_range=[10 40];
+freq_range=[30 60];
 options=statset('UseParallel','Always');
 peak='m';
 trough='m';
 medfilt_scale=1.5; % median filter scale (in ms)
 lfp_fs=25e3;
+hist_facecolor='none';
+hist_edgecolor='m';
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -112,6 +114,10 @@ for i=1:2:nparams
 			medfilt_scale=varargin{i+1};
 		case 'lfp_fs'
 			lfp_fs=varargin{i+1};
+		case 'hist_facecolor'
+			hist_facecolor=varargin{i+1};
+		case 'hist_edgecolor'
+			hist_edgecolor=varargin{i+1};
 	end
 end
 
@@ -280,7 +286,7 @@ for i=1:ntrials
 
 	if debug
 		lfpfig=figure();
-		plot(lfp_time,normlfp(i,:));
+		plot(lfp_time,normifr(i,:));
 		hold on;
 		if ~isempty(zerocross{i})
 			plot(ifr_time(zerocross{i}),currifr(zerocross{i}),'g*');
@@ -545,13 +551,16 @@ end
 
 subplot(1,3,1);
 pretty_polar(LFPWINS_PEAK.phaseangle,15,'x_label',{'FR Peak';...
-	['Rayleigh test: p ' sprintf('%.3f',rtest_p.peak)]},'fignum',stats_fig);
+	['Rayleigh test: p ' sprintf('%.3f',rtest_p.peak)]},'fignum',stats_fig,...
+	'edgecolor','m','facecolor',[.9333 .51 .9333]);
 subplot(1,3,2);
 pretty_polar(LFPWINS_TROUGH.phaseangle,15,'x_label',{'FR Trough',...
-	['Rayleigh test: p ' sprintf('%.3f',rtest_p.trough)]},'fignum',stats_fig,'labels',{'','','',''});
+	['Rayleigh test: p ' sprintf('%.3f',rtest_p.trough)]},'fignum',stats_fig,'labels',{'','','',''},...
+	'edgecolor',[0 .545 .275],'facecolor','g');
 subplot(1,3,3);
 pretty_polar(LFPWINS_RAND.phaseangle,15,'x_label',{'Random',...
-	['Rayleigh test: p ' sprintf('%.3f',rtest_p.rand)]},'fignum',stats_fig,'labels',{'','','',''});
+	['Rayleigh test: p ' sprintf('%.3f',rtest_p.rand)]},'fignum',stats_fig,'labels',{'','','',''},...
+	'edgecolor',[.2 .2 .2],'facecolor',[.6 .6 .6]);
 
 if ~isempty(savedir)
 	multi_fig_save(stats_fig,savedir,...

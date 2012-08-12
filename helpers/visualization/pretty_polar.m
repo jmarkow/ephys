@@ -6,12 +6,14 @@ function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)
 %
 
 filled=1;
-linewidth=1;
+linewidth=1.5;
 labels={'0','$\pi$/2','$\pm\pi$','-$\pi$/2'};
 nparams=length(varargin);
 fig_title=[];
 x_label=[];
 fignum=[];
+facecolor=[0 0 1];
+edgecolor=[0 0 1];
 
 if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
@@ -33,6 +35,10 @@ for i=1:2:nparams
 			y_label=varargin{i+1};
 		case 'fignum'
 			fignum=varargin{i+1};
+		case 'facecolor'
+			facecolor=varargin{i+1};
+		case 'edgecolor'
+			edgecolor=varargin{i+1};
 	end
 end
 
@@ -45,13 +51,9 @@ end
 [n,x]=rose(ANGLES,NBINS);
 p=polar(n,x);
 
-if filled
-	x=get(p,'XData');
-	y=get(p,'YData');
-	g=patch(x,y,'y','FaceColor',[1 0 0],'EdgeColor',[.2 .2 .2],'linewidth',linewidth);
-else
-	set(p,'color',facecolor,'linewidth',linewidth);
-end
+x=get(p,'XData');
+y=get(p,'YData');
+g=patch(x,y,'y','FaceColor',facecolor,'EdgeColor',edgecolor,'linewidth',linewidth);
 
 h=findall(gcf,'type','line');
 h(h==p)=[];
