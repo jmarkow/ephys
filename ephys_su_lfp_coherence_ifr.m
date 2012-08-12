@@ -142,6 +142,7 @@ lfp_data=squeeze(lfp_data);
 lfp_data=lfp_data(:,subtrials);
 [samples,trials]=size(lfp_data);
 lfp_data=lfp_data';
+lfp_time=[1:samples]./lfp_fs;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -166,6 +167,7 @@ winlength=length([-lfp_winextract(1):lfp_winextract(2)]);
 
 [ntrials,samples]=size(IFR{1}{SUCLUSTER});
 ifr=zeros(ntrials,samples);
+ifr_time=[1:samples]./ifr_fs;
 
 % ifr and lfp amplitudes in a trial x sample matrix
 
@@ -176,6 +178,7 @@ ifr_data=IFR{1}{SUCLUSTER};
 lfp_data=lfp_data(subtrials,:);
 
 spike_data=clust_spike_vec{1}{SUCLUSTER};
+
 % vector for peak/trough detection
 
 indx=[1:samples-1];
@@ -188,6 +191,7 @@ LFPWINS_RAND.waveforms=[];
 zerocount=0;
 poscount=0;
 randcount=0;
+
 for i=1:ntrials
 
 	%normifr(i,:)=zscore(ifr_data(i,:));
@@ -275,17 +279,18 @@ for i=1:ntrials
 	% show the results if debugging
 
 	if debug
-		lfpfig=figure();plotyy(TIME,normifr(i,:),LFP_RASTER.t,normlfp(i,:));
+		lfpfig=figure();
+		plot(lfp_time,normlfp(i,:));
 		hold on;
 		if ~isempty(zerocross{i})
-			plot(TIME(zerocross{i}),currifr(zerocross{i}),'g*');
+			plot(ifr_time(zerocross{i}),currifr(zerocross{i}),'g*');
 		end
 
 		if ~isempty(poscross{i})
-			plot(TIME(poscross{i}),currifr(poscross{i}),'r*');
+			plot(ifr_time(poscross{i}),currifr(poscross{i}),'r*');
 		end
 		if ~isempty(randcross{i})
-			plot(TIME(randcross{i}),currifr(randcross{i}),'m*');
+			plot(ifr_time(randcross{i}),currifr(randcross{i}),'m*');
 		end
 		pause();
 		close([lfpfig]);
@@ -366,11 +371,6 @@ for i=1:ntrials
 		end
 
 	end
-
-
-	
-	% show the results if debugging
-
 
 end
 
@@ -472,21 +472,9 @@ if trials>trial_min
 
 	h(end+1)=plot(timevec,mean_lfp_peak,'m-','linewidth',2);
 
-
 	% jackknife the standard error, sqrt(n-1/n*SIGMA[mean_j - mean_sample]^2)
-
-	% tranpose the matrix since the jackknife function assumes each row is a sample
-
-
-	disp('Jackknifing the mean...');
-
-	%jackknife_mat=jackknife(@mean,LFPWINS_PEAK.waveforms','Options',options);
-
-	% then use the standard formula
-
-	%LFPWINS_PEAK.jackknife_sem=sqrt(((trials-1)/trials).*sum((jackknife_mat-repmat(mean_lfp_peak',trials,1)).^2))';
+	
 	LFPWINS_PEAK.sem=[std(LFPWINS_PEAK.waveforms')./sqrt(trials)]';
-
 	plot(timevec,mean_lfp_peak-LFPWINS_PEAK.sem,'m--');
 	plot(timevec,mean_lfp_peak+LFPWINS_PEAK.sem,'m--');
 	axis tight;
@@ -502,10 +490,6 @@ if trials>trial_min
 
 	h(end+1)=plot(timevec,mean_lfp_trough,'g-','linewidth',2);
 
-	disp('Jackknifing the mean...');
-
-	%jackknife_mat=jackknife(@mean,LFPWINS_TROUGH.waveforms','Options',options);
-	%LFPWINS_TROUGH.jackknife_sem=sqrt(((trials-1)/trials).*sum((jackknife_mat-repmat(mean_lfp_trough',trials,1)).^2))';
 	LFPWINS_TROUGH.sem=[std(LFPWINS_TROUGH.waveforms')./sqrt(trials)]';
 
 	plot(timevec,mean_lfp_trough-LFPWINS_TROUGH.sem,'g--');
@@ -560,11 +544,14 @@ if isempty(savedir)
 end
 
 subplot(1,3,1);
-pretty_polar(LFPWINS_PEAK.phaseangle,15,'x_label',{'FR Peak';['Rayleigh test: p ' sprintf('%.3f',rtest_p.peak)]},'fignum',stats_fig);
+pretty_polar(LFPWINS_PEAK.phaseangle,15,'x_label',{'FR Peak';...
+	['Rayleigh test: p ' sprintf('%.3f',rtest_p.peak)]},'fignum',stats_fig);
 subplot(1,3,2);
-pretty_polar(LFPWINS_TROUGH.phaseangle,15,'x_label',{'FR Trough',['Rayleigh test: p ' sprintf('%.3f',rtest_p.trough)]},'fignum',stats_fig,'labels',{'','','',''});
+pretty_polar(LFPWINS_TROUGH.phaseangle,15,'x_label',{'FR Trough',...
+	['Rayleigh test: p ' sprintf('%.3f',rtest_p.trough)]},'fignum',stats_fig,'labels',{'','','',''});
 subplot(1,3,3);
-pretty_polar(LFPWINS_RAND.phaseangle,15,'x_label',{'Random',['Rayleigh test: p ' sprintf('%.3f',rtest_p.rand)]},'fignum',stats_fig,'labels',{'','','',''});
+pretty_polar(LFPWINS_RAND.phaseangle,15,'x_label',{'Random',...
+	['Rayleigh test: p ' sprintf('%.3f',rtest_p.rand)]},'fignum',stats_fig,'labels',{'','','',''});
 
 if ~isempty(savedir)
 	multi_fig_save(stats_fig,savedir,...
