@@ -7,7 +7,7 @@ function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)
 
 filled=1;
 linewidth=1.5;
-labels={'0','$\pi$/2','$\pm\pi$','-$\pi$/2'};
+labels={'0 (pk)','$\pi$/2 (pre-tr)','$\pm\pi$ (tr)','3$\pi$/2 (post-tr)'};
 nparams=length(varargin);
 fig_title=[];
 x_label=[];

@@ -66,9 +66,9 @@ end
 
 nparams=length(varargin);
 filedir=pwd;
-savedir=[];
+savedir=pwd;
 lfp_winextract=[.03 .03]; % msec before and after peak or trough to grab LFP
-peakedges=[300 300]; % take the leading edge of the peak
+peakedges=[200 200]; % take the leading edge of the peak
 troughedges=[100 100];
 fig_title='noname';
 randreps=100;
@@ -77,7 +77,7 @@ debug=0;
 trial_min=20;
 freq_range=[30 60];
 options=statset('UseParallel','Always');
-peak='m';
+peak='e';
 trough='m';
 medfilt_scale=1.5; % median filter scale (in ms)
 lfp_fs=25e3;
@@ -126,7 +126,12 @@ end
 
 % where to grab the files from?
 
-savename=[ fig_title '_lfpch_' num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_clust' num2str(SUCLUSTER)];
+if isempty(savedir)
+	name='noname';
+else
+	[path,name,ext]=fileparts(savedir);
+end
+savename=[ name '_lfpch_' num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_clust' num2str(SUCLUSTER) '_freqs' num2str(freq_range)];
 load(fullfile(filedir,'aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
 
 % first let's get the smooth spike traces and IFR (use IFR on a trial by trial basis)
@@ -137,8 +142,12 @@ load(sua_mat,'smooth_spikes','IFR','TIME','clust_spike_vec','subtrials'); % smoo
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
+if isempty(find(LFPCHANNEL==CHANNELS))
+	error('ephysPipeline:ifrcoherence:lfpchanneldne','LFP channel %g does not exist',LFPCHANNEL);
+end
 
 lfp_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,LFPCHANNEL);
+
 clear EPHYS_DATA;
 lfp_data=ephys_condition_signal(lfp_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale);
 lfp_data=squeeze(lfp_data);
@@ -181,7 +190,7 @@ ifr_data=IFR{1}{SUCLUSTER};
 
 % need to account for subset of trials if used in single unit data 
 
-lfp_data=lfp_data(subtrials,:);
+%lfp_data=lfp_data(subtrials,:);
 
 spike_data=clust_spike_vec{1}{SUCLUSTER};
 
@@ -204,6 +213,11 @@ for i=1:ntrials
 	normifr(i,:)=ifr_data(i,:);
 	normlfp(i,:)=zscore(lfp_data(i,:));
 	phaselfp(i,:)=angle(hilbert(normlfp(i,:)));
+
+	% unwrap the phase
+
+	phaselfp(i,:)=mod(unwrap(phaselfp(i,:)),2*pi);
+
 	currifr=normifr(i,:);
 	currlfp=normlfp(i,:);
 
@@ -306,12 +320,12 @@ end
 
 % now pre-allocate wave matrices
 
-LFPWINS_TROUGH.waveforms=zeros(winlength,zerocount);
-LFPWINS_PEAK.waveforms=zeros(winlength,poscount);
-LFPWINS_RAND.waveforms=zeros(winlength,randcount);
-LFPWINS_TROUGH.phaseangle=zeros(zerocount,1);
-LFPWINS_PEAK.phaseangle=zeros(poscount,1);
-LFPWINS_RAND.phaseangle=zeros(randcount,1);
+LFPWINS_TROUGH.waveforms=zeros(winlength,zerocount,'single');
+LFPWINS_PEAK.waveforms=zeros(winlength,poscount,'single');
+LFPWINS_RAND.waveforms=zeros(winlength,randcount,'single');
+LFPWINS_TROUGH.phaseangle=zeros(zerocount,1,'single');
+LFPWINS_PEAK.phaseangle=zeros(poscount,1,'single');
+LFPWINS_RAND.phaseangle=zeros(randcount,1,'single');
 
 zerocount=1;
 poscount=1;
@@ -457,14 +471,23 @@ timevec=[-lfp_winextract(1):lfp_winextract(2)]./lfp_fs*1e3;
 mean_lfp_peak=mean(LFPWINS_PEAK.waveforms,2);
 
 stalfp_fig=figure('Position',[0 0 800 600],'Visible','off');
+
 if isempty(savedir)
 	set(stalfp_fig,'Visible','on');
+else
+	
+	savedir=fullfile(savedir,'coherence',['stalfp (ch' num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER) ')']);
+
+	if ~exist(savedir,'dir')
+		mkdir(savedir);
+	end
+
 end
 
 % 99 % confidence interval
 
-conf_upper=ones(size(timevec)).*prctile(mean_rand(:),99.5);
-conf_lower=ones(size(timevec)).*prctile(mean_rand(:),.5);
+conf_upper=ones(size(timevec)).*prctile(mean_rand(:),97.5);
+conf_lower=ones(size(timevec)).*prctile(mean_rand(:),2.5);
 
 fill([timevec fliplr(timevec)],[conf_upper fliplr(conf_lower)],'k','FaceColor',[.8 .8 .8],'EdgeColor','none');
 
@@ -481,8 +504,8 @@ if trials>trial_min
 	% jackknife the standard error, sqrt(n-1/n*SIGMA[mean_j - mean_sample]^2)
 	
 	LFPWINS_PEAK.sem=[std(LFPWINS_PEAK.waveforms')./sqrt(trials)]';
-	plot(timevec,mean_lfp_peak-LFPWINS_PEAK.sem,'m--');
-	plot(timevec,mean_lfp_peak+LFPWINS_PEAK.sem,'m--');
+	plot(timevec,mean_lfp_peak-1.96*LFPWINS_PEAK.sem,'m--');
+	plot(timevec,mean_lfp_peak+1.96*LFPWINS_PEAK.sem,'m--');
 	axis tight;
 
 end
@@ -498,8 +521,8 @@ if trials>trial_min
 
 	LFPWINS_TROUGH.sem=[std(LFPWINS_TROUGH.waveforms')./sqrt(trials)]';
 
-	plot(timevec,mean_lfp_trough-LFPWINS_TROUGH.sem,'g--');
-	plot(timevec,mean_lfp_trough+LFPWINS_TROUGH.sem,'g--');
+	plot(timevec,mean_lfp_trough-1.96*LFPWINS_TROUGH.sem,'g--');
+	plot(timevec,mean_lfp_trough+1.96*LFPWINS_TROUGH.sem,'g--');
 	axis tight;
 
 end
@@ -550,15 +573,15 @@ if isempty(savedir)
 end
 
 subplot(1,3,1);
-pretty_polar(LFPWINS_PEAK.phaseangle,15,'x_label',{'FR Peak';...
+pretty_polar(LFPWINS_PEAK.phaseangle,12,'x_label',{'FR Peak';...
 	['Rayleigh test: p ' sprintf('%.3f',rtest_p.peak)]},'fignum',stats_fig,...
 	'edgecolor','m','facecolor',[.9333 .51 .9333]);
 subplot(1,3,2);
-pretty_polar(LFPWINS_TROUGH.phaseangle,15,'x_label',{'FR Trough',...
+pretty_polar(LFPWINS_TROUGH.phaseangle,12,'x_label',{'FR Trough',...
 	['Rayleigh test: p ' sprintf('%.3f',rtest_p.trough)]},'fignum',stats_fig,'labels',{'','','',''},...
 	'edgecolor',[0 .545 .275],'facecolor','g');
 subplot(1,3,3);
-pretty_polar(LFPWINS_RAND.phaseangle,15,'x_label',{'Random',...
+pretty_polar(LFPWINS_RAND.phaseangle,12,'x_label',{'Random',...
 	['Rayleigh test: p ' sprintf('%.3f',rtest_p.rand)]},'fignum',stats_fig,'labels',{'','','',''},...
 	'edgecolor',[.2 .2 .2],'facecolor',[.6 .6 .6]);
 

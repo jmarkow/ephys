@@ -1,4 +1,4 @@
-function ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)
+function [abscoh,m_coherence_null,m_coherence_err,freqs]=ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)
 %computes coherency spectra between fields and single units
 %
 %	ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)
@@ -87,6 +87,8 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
+		case 'savedir'
+			savedir=varargin{i+1};
 		case 'filedir'
 			filedir=varargin{i+1};
 		case 'dir'
@@ -115,8 +117,6 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA COLLECTION %%%%%%%%%%%%%%%%%%%%
 
 
@@ -124,6 +124,10 @@ sua_mat=fullfile(filedir,'sua',['sua_channels ' num2str(SUCHANNEL) '.mat']);
 
 load(fullfile(filedir,'aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
 load(sua_mat,'smooth_spikes','clust_spike_vec','subtrials'); % smooth spikes
+
+if isempty(find(LFPCHANNEL==CHANNELS))
+	error('ephysPipeline:spectcoherence:lfpchanneldne','LFP channel %g does not exist',LFPCHANNEL);
+end
 
 lfp_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,LFPCHANNEL);
 clear EPHYS_DATA;
@@ -174,8 +178,6 @@ spike_spect_mean=zeros(1,nfft);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AVERAGE SPECTRA %%%%%%%%%%%%%%%%%%%%
 
 
@@ -234,8 +236,6 @@ parfor i=1:trials
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% STATS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -273,15 +273,13 @@ upperconf=abscoh+m_coherence_err;
 lowerconf=abscoh-m_coherence_err;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PLOTTING CODE %%%%%%%%%%%%%%%%%%%%%%
-
-
 
 % save plots, data and parameters
 
 [path,name,ext]=fileparts(savedir);
-savedir=fullfile(savedir,'coherence');
+
+savedir=fullfile(savedir,'coherence',[ 'spect (ch' num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER) ')']);
 
 if ~exist(savedir,'dir')
 	mkdir(savedir);
@@ -305,6 +303,7 @@ axis tight
 box off
 
 l=legend(h,'Coh.',['p=' num2str(alpha)]);
+legend boxoff;
 
 xlabel('Fs (Hz)');
 ylabel('Coherence');

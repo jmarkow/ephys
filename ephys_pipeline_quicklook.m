@@ -69,7 +69,7 @@ channels=[1];
 colors='jet';
 fs=25e3;
 t=[1:length(MIC_DATA)]./fs;
-min_f=1e3;
+min_f=0;
 max_f=8e3;
 exclude=[];
 figtitle=[];
@@ -77,8 +77,8 @@ figsave=[];
 noise='none';
 car_exclude=[];
 freq_range=[];
-n=800;
-overlap=750;
+n=1024;
+overlap=1e3;
 nfft=1024;
 type='s';
 ylim_match=0;
@@ -130,6 +130,11 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING  %%%%%%%%%%%%%%%
 
+for i=1:length(channels)
+	if isempty(find(channels(i)==CHANNELS))
+		error('ephysPipeline:quicklook:suchanneldne','SU channel %g does not exist',channels(i));
+	end
+end
 
 if isempty(nfft)
 	nfft=2^nextpow2(n);
@@ -198,17 +203,22 @@ set(gca,'ydir','normal','tickdir','out','xtick',[],'ytick',[min_f max_f],'xcolor
 ylim([min_f max_f]);
 ylabel('Hz');
 title([figtitle]);
+prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+prettify_axis(gca,'FontSize',15,'FontName','Helvetica','Linewidth',2,'TickLength',[.025 .025]);
 box off;
 
 ax(2)=subaxis(nplots,1,2,'spacingvert',0,'margin',0.1,'paddingbottom',.025);
-plot(t,MIC_DATA,'-k');
+plot(t,MIC_DATA,'-','color',[0 1 1]);
 ylabel('Osc.');
+prettify_axis(gca,'FontSize',15,'FontName','Helvetica','Linewidth',2,'TickLength',[.025 .025]);
+prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+
 set(gca,'tickdir','out','xtick',[],'ytick',[],'xcolor',get(quickfig,'color'));
 
 for i=1:length(channels)
 
 	ax(2+i)=subaxis(nplots,1,2+i,'spacingvert',0.025,'margin',0.1,'paddingbottom',0);
-	plot(t,plot_data(:,i)); % took out CAR 6/20/12
+	plot(t,plot_data(:,i),'-','color',[0 .5430 .5430]); % took out CAR 6/20/12
 
 	if i<length(channels)
 		set(gca,'xtick',[],'xcolor',get(quickfig,'color'));
@@ -216,7 +226,10 @@ for i=1:length(channels)
 
 	% add a label to the right
 
-	set(gca,'tickdir','out');
+	ylabel('Voltage ($\mu$V)','interpreter','latex');
+	prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+	prettify_axis(gca,'FontSize',15,'FontName','Helvetica','Linewidth',2,'TickLength',[.025 .025]);
+
 	box off;
 	axis tight;
 	
@@ -229,7 +242,8 @@ for i=1:length(channels)
 	end
 
 	rightax(i)=axes('position',get(gca,'Position'),'color','none',...
-		'xtick',[],'ytick',[],'yaxislocation','right','box','off');
+		'xtick',[],'ytick',[],'yaxislocation','right','box','off','linewidth',2);
+	prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
 	ylabel(rightax(i),[ 'Channel ' num2str(channels(i))])
 
 end
@@ -248,8 +262,9 @@ end
 xlabel(ax(end),'Time (in secs)');
 linkaxes([ax rightax],'x');
 xlim([t2(1) t2(end)]);
+prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
 
-set(quickfig,'visible','on');
+set(quickfig,'visible','on','PaperPositionMode','auto');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

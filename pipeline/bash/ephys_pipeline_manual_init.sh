@@ -20,6 +20,25 @@ case "$1" in
 	"mua" ) REPLACEFILE="mat/ephys/.mua_signal";;
 	"lfp" ) REPLACEFILE="mat/ephys/.lfp_signal";;
 	"extract" ) REPLACEFILE=".songextraction";;
+	"postproc" )
+	
+		if [ $# == 1 ]; then
+			EXTRACTLIST=( `find $PWD -type f -name "*.postproc"` )
+		elif [ $# == 2 ]; then
+			EXTRACTLIST=( `find $PWD -type f -name "*.postproc" | grep "$2"` )
+		else
+			echo 'Did not understand command line options'
+			echo 'Standard usage: ' $0 ' mua|lfp|sua extraction_name '
+			exit 1
+		fi
+
+		for EXTRACT in ${EXTRACTLIST[@]}; do
+			echo 'Touching ' $EXTRACT
+			touch $EXTRACT
+		done
+
+		exit 0;;
+		
 	* ) 
 		echo 'Did not understand argument, bailing...'
 		echo 'Possible options are "sua" "mua" "lfp" or "extract"'

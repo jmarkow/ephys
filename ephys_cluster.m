@@ -431,7 +431,7 @@ end
 
 %%%%
 
-% function to compute the spectral features for all the pertinent wave files
+% function to compute the spectral features for all the pertinent wav files
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% COMPUTE FEATURES %%%%%%%%%%%%%%%%%%%
 
@@ -487,10 +487,6 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% COMPARE FEATURES WITH TEMPLATE %%%%%
 
 
@@ -514,7 +510,7 @@ parfor i=1:length(TARGET_FILES)
 	try
 		target=getfield(load(input_file,'features'),'features');
 	catch
-		warning('ephysPipeline:ephysCluster:errortemplatefile','Troubling reading %s' input_file);
+		warning('ephysPipeline:ephysCluster:errortemplatefile','Troubling reading %s',input_file);
 		continue;
 	end
 

@@ -38,3 +38,4 @@ screen -t LFP 3 tail -f $HOME/.ephys_pipeline_lfp.log
 screen -t SpectralFeatures 4 tail -f $HOME/.ephys_pipeline_smscore.log
 screen -t SoundClustering 5 tail -f $HOME/.ephys_pipeline_cluster.log
 screen -t FileAggregating 6 tail -f $HOME/.ephys_pipeline_aggregate.log
+screen -t PostProcessing 7 tail -f $HOME/.ephys_pipeline_postproc.log

@@ -56,9 +56,13 @@ try
 	end	
 
 	%print(fighandle,'-dtiffn','-r300',fullfile(save_dir,[filename '.tif']));
-	
+
+	if ~isempty(findstr('tiff',formats)) || strcmp(formats,'all')
+		print(fighandle,'-dtiff',renderer,'-r300',fullfile(save_dir,[filename '.tiff']));
+	end
+
 	if ~isempty(findstr('png',formats)) || strcmp(formats,'all')
-		print(fighandle,'-dpng',renderer,'-r200',fullfile(save_dir,[filename '.png']));
+		print(fighandle,'-dpng',renderer,'-r300',fullfile(save_dir,[filename '.png']));
 	end
 
 	if ~isempty(findstr('fig',formats)) || strcmp(formats,'all')

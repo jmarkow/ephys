@@ -18,9 +18,10 @@ savedir=pwd;
 lfp_fs=25e3;
 fig_title=[];
 medfilt_scale=1.5; % median filter scale (in ms)
-freq_range=[25 100]
-singletrials=1:10; % default to 1-201singletrials=1:20; % default to 1-20
+freq_range=[25 100];
+singletrials=1:10; % default to 1-20
 time_range=[]; % if defined only visualize data in this subregion
+
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
@@ -90,7 +91,7 @@ trialperm=trialvec(randperm(trials));
 
 % add an options to isolate a given time region and color code according to phase if the user wants
 
-savedir=fullfile(savedir,'coherence','spikestats',[ num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER)]);
+savedir=fullfile(savedir,'coherence',[ 'spikestats (ch' num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER) ')' ]);
 
 if ~exist(savedir,'dir')
 	mkdir(savedir);
@@ -113,7 +114,7 @@ for i=singletrials
 	currlfp=lfp_data(i,:);
 	currifr=ifr_data(i,:);
 	currspike=spike_data{i}*ifr_fs;	
-	currphase=angle(hilbert(lfp_data));
+	currphase=mod(unwrap(angle(hilbert(lfp_data))),2*pi);
 
 	singletrialfig=figure('Position',[0 0 800 600],'Visible','off');
 	ephys_visual_spike_lfp(currlfp,currspike,currifr,'fignum',singletrialfig,...
@@ -145,8 +146,8 @@ if isempty(savedir)
 	set(mean_fig,'Visible','on');
 end
 
-lowerconf=lfp_mean-lfp_sem;
-upperconf=lfp_mean+lfp_sem;
+lowerconf=lfp_mean-1.96*lfp_sem;
+upperconf=lfp_mean+1.96*lfp_sem;
 timevec_lfp=[1:length(lfp_mean)]./lfp_fs;
 
 xdata=[timevec_lfp fliplr(timevec_lfp)];
@@ -165,7 +166,6 @@ lab_axis=ylabel('LFP Amp. ($\mu$V)','fontsize',15,'fontname','helvetica','interp
 
 xlabel('Time (s)','FontSize',13,'FontName','Helvetica');
 
-
 ifr_mean=mean(ifr_data);
 ifr_sem=std(ifr_data)./sqrt(trials);
 
@@ -179,8 +179,8 @@ if ymin>=ymax
 	ymax=100;
 end
 
-lowerconf=ifr_mean-ifr_sem;
-upperconf=ifr_mean+ifr_sem;
+lowerconf=ifr_mean-1.96*ifr_sem;
+upperconf=ifr_mean+1.96*ifr_sem;
 
 xdata=[timevec_ifr fliplr(timevec_ifr)];
 ydata=[lowerconf fliplr(upperconf)];
@@ -202,7 +202,8 @@ xlim([timevec_ifr(1) timevec_ifr(end)]);
 if ~isempty(savedir)
 	set(mean_fig,'paperpositionmode','auto');
 	multi_fig_save(mean_fig,savedir,[ savename '_mean' ],'eps,png');
-	save(fullfile(savedir,[savename '.mat']),'ifr_mean','lfp_mean','ifr_sem','lfp_sem');
+	save(fullfile(savedir,[savename '.mat']),'ifr_mean','lfp_mean','ifr_sem','lfp_sem',...
+		'lfp_data','ifr_data','spike_data');
 	close([mean_fig]);
 end
 

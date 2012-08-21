@@ -67,7 +67,7 @@ function [abscoh,t,f]=ephys_su_lfp_coherence_tf(LFPCHANNEL,SUCHANNEL,SUCLUSTER,H
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
 if nargin<4
-	error('ephysPipeline:tfcoherence:notenoughparams','Four arguments to continue, see documentation...');
+	error('ephysPipeline:tfcoherence:notenoughparams','Need four arguments to continue, see documentation...');
 end
 
 nparams=length(varargin);
@@ -157,6 +157,10 @@ load(sua_mat,'smooth_spikes','clust_spike_vec','subtrials'); % smooth spikes
 
 load(fullfile(filedir,'aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
 
+if isempty(find(LFPCHANNEL==CHANNELS))
+	error('ephysPipeline:tfcoherence:lfpchanneldne','LFP channel %g does not exist',LFPCHANNEL);
+end
+
 % filter the LFP data
 
 lfp_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,LFPCHANNEL);
@@ -168,13 +172,11 @@ lfp_data=lfp_data(:,subtrials);
 [nsamples,ntrials]=size(lfp_data);
 [path,name,ext]=fileparts(savedir);
 
-savedir=fullfile(savedir,'coherence',[ num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER)]);
+savedir=fullfile(savedir,'coherence',[ 'tf (ch' num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER) ')'] );
 
 if ~exist(savedir,'dir')
 	mkdir(savedir);
 end
-
-
 
 dt=1/lfp_fs;
 
@@ -329,7 +331,7 @@ abscoh=abs(coh);
 
 % phase, could plot over the abs value as quivers per Pesaran et al.
 
-phasecoh=angle(coh);
+phasecoh=mod(unwrap(angle(coh)),2*pi);
 
 % z-transformed coherence
 
@@ -398,7 +400,7 @@ close([phase_fig]);
 
 % bin the phase angle at each frequency bin, maybe ten bins to start
 
-phase_edges=linspace(-pi,pi,nphasebins);
+phase_edges=linspace(0,2*pi,nphasebins);
 startidx=max([find(f<=min_f)]);
 
 if isempty(startidx)
@@ -431,16 +433,19 @@ for i=1:length(fvec)
 
 end
 
-amp_fig=figure('Visible','off','position',[0 0 800 600]);
+amp_fig=figure('Visible','off','position',[0 0 700 500]);
 imagesc(phase_edges(1:end-1),f(fvec),amp_weighted_histogram(:,1:end-1));
 axis xy
 colormap(hot)
 ylabel('Fs (Hz)');
-xlabel('Phase (rad)');
+xlabel('Phase');
 box off
-prettify_axis(amp_fig,'ticklength',[.02 .02],'fontsize',13,'font','helvetica','linewidth',3);
-prettify_axislabels(amp_fig,'fontsize',15,'font','helvetica');
-
+prettify_axis(amp_fig,'ticklength',[.025 .025],'linewidth',3);
+prettify_axislabels(amp_fig,'fontsize',18,'font','helvetica');
+axis tight;
+set(gca,'XTick',[ phase_edges(1) phase_edges(ceil(length(phase_edges)/2)) phase_edges(end-1) ],...
+	'XTickLabel',{'0' 'p' '2p'});
+set(gca,'FontName','Symbol','FontSize',20);
 
 pos=get(gca,'pos');
 set(gca,'pos',[pos(1) pos(2) pos(3)*.95 pos(4)]);
@@ -448,6 +453,8 @@ pos=get(gca,'pos');
 hc2=colorbar('location','eastoutside','position',[pos(1)+pos(3)+.01 pos(2)+pos(4)/2 .02 pos(4)/2]);
 set(hc2,'linewidth',2,'FontSize',12,'FontName','Helvetica');
 ylabel(hc2,'sum(abs(coherence))','FontSize',15,'FontName','Helvetica');
+
+set(amp_fig,'PaperPositionMode','auto');
 multi_fig_save(amp_fig,savedir,[savefilename '_cohweightedphase' ],'eps,png');
 close([amp_fig]);
 
@@ -460,7 +467,6 @@ xlabel('Time (s)');
 prettify_axislabels(tapers_fig,'fontsize',15,'font','Helvetica');
 prettify_axis(tapers_fig,'ticklength',[.02 .02],'fontsize',14,'font','helvetica','linewidth',3);
 box off
-
 
 multi_fig_save(tapers_fig,savedir,[savefilename '_tapers' ],'eps,png');
 close([tapers_fig]);

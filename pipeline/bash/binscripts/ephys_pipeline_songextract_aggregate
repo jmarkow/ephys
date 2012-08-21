@@ -2,5 +2,5 @@
 
 source ephys_pipeline_wrapper.cfg
 
-${EXECDIR}ephys_pipeline_songextract_aggregate/ephys_pipeline_songextract_aggregate.app/Contents/MacOS/ephys_pipeline_songextract_aggregate $@
+${EXECDIR}/ephys_pipeline_songextract_aggregate/ephys_pipeline_songextract_aggregate.app/Contents/MacOS/ephys_pipeline_songextract_aggregate $@
 
