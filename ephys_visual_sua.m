@@ -1,10 +1,10 @@
 function ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %generates song-aligned single-unit rasters
 %
-%	[MUA TIME LABEL HISTOGRAM]=ephys_visual_sua(MIC_DATA,EPHYS_DATA,CHANNELS,varargin)
+%	ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %
-%	MIC_DATA
-%	aligned microphrone traces from extracted_data.mat (should be the variable mic_data)
+%	EPHYS_DATA
+%	sound-aligned voltage traces from extracted_data.mat (should be the variable ephys_data)
 %
 %	HISTOGRAM
 %	contour histogram returned by ephys_visual_histogram.m (or loaded from histogram.mat)

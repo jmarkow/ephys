@@ -1,18 +1,17 @@
 function [MUA TIME LABEL HISTOGRAM]=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %generates song-aligned mult-unit rasters
 %
-%	[MUA TIME LABEL HISTOGRAM]=intan_visual_mua(MIC_DATA,EPHYS_DATA,CHANNELS,varargin)
-%
-%	MIC_DATA
-%	aligned microphrone traces from extracted_data.mat (should be the variable mic_data)
+%	[MUA TIME LABEL HISTOGRAM]=intan_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %
 %	EPHYS_DATA
-%	aligned Intan data from extracted_data.mat (should be the variable ephys_data)
+%	sound-aligned voltage traces from extracted_data.mat (should be the variable ephys_data)
+%
+%	HISTOGRAM
+%	contour histogram returned by ephys_visual_histogram.m (or loaded from histogram.mat)
 %
 %	CHANNELS
 %	channel labels (i.e. the channel that corresponds to a given element in the cell array
-%	ephys_data) from extracted_data.mat
-%
+%	ephys_data) from extracted_data.mat%
 %	the following may be specified as parameter/value pairs:
 %
 %		exclude
