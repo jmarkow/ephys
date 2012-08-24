@@ -11,7 +11,7 @@ if nargin<2
 end
 
 if ~license('test','Statistics_Toolbox')
-	error('ephysPipeline:toolboxChk','Need statistics toolbox for clustering!');
+	error('ephysPipeline:toolboxChk','Need statistics toolbox for clustering.');
 end
 
 LABELS=[];
@@ -26,7 +26,7 @@ maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
 wavelet_method='ks';
 wavelet_mpca=1;
 outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
-clust_choice='fhv'; % knee is more tolerance, choice BIC (b) or AIC (a) for more sensitive clustering
+clust_choice='fhv'; % knee is more tolerant, choice BIC (b) or AIC (a) for more sensitive clustering
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -136,10 +136,14 @@ else
 	disp('Could not find the wavelet toolbox, falling back on PCA...');
 
 	[coef score]=princomp(spikewindows');
-	spike_data=[spike_data score(:,1:4)];
+
+	% first three usually work well
+
+	spike_data=[spike_data score(:,1:3)];
 
 end
 
+% TODO:  include projection pursuit as an option after it has been thoroughly vetted...
 
 if use_spiketime
 	spike_data=[spike_data spiketimes];

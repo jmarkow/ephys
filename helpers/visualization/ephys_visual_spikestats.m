@@ -42,9 +42,6 @@ end
 
 % TODO: spike autocorrelation and cross-correlations functions, simply xcorr of binned spikes-mean(lambda)
 
-if isempty(fig_num)
-	fig_num=figure('Visible','off');
-end
 
 % patch coordinates
 
@@ -55,7 +52,6 @@ end
 
 isipoints=[0:.01:10];
 
-subplot(2,1,1);
 
 % need the upper/lower edges for the 2D histogram
 
@@ -83,6 +79,20 @@ voltmax=prctile(coordmat(:,2),99)+10;
 
 edges{1}=.5:1:samples+.5;
 edges{2}=linspace(voltmin,voltmax,y_res);
+
+if isempty(fig_num)
+	fig_num=figure('Visible','on');
+end
+
+subplot(3,1,1);
+plot(timevec,SPIKEWINDOWS,'m-');
+ylabel('Voltage (in $\mu$V)','FontName','Helvetica','FontSize',13,'Interpreter','Latex');
+box off
+axis tight;
+prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
+prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+
+subplot(3,1,2);
 density=hist3(coordmat,'Edges',edges);
 imagesc(timevec(1:end-1),edges{2},density(1:length(timevec)-1,:)');
 colormap(hot);
@@ -97,14 +107,13 @@ end
 
 
 xlabel('Time (ms)','FontName','Helvetica','FontSize',13);
-ylabel('Voltage (in $\mu$V)','FontName','Helvetica','FontSize',13,'Interpreter','Latex');
 prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
 prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
 axis xy
 box off
 axis tight
 
-subplot(2,1,2);
+subplot(3,1,3);
 
 if isempty(SPIKEISI);
 	warning('ephysPipeline:visualspikestats:emptyspikeisi','ISI vector is empty, skipping ISI density plot.');
