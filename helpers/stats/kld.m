@@ -11,6 +11,8 @@ jsd=1; % setting jsd to 1 will compute Jensen Shannon divergence
        % instead of kld
 
 nbins=100; % only set if you are using the constant bin method
+histmax=[];
+histmin=[];
 
 nparams=length(varargin);
 
@@ -26,6 +28,10 @@ for i=1:2:nparams
 			binmethod=varargin{i+1};
 		case 'nbins'
 			nbins=varargin{i+1};
+		case 'histmax'
+			histmax=varargin{i+1};
+		case 'histmin'
+			histmin=varargin{i+1};
 	end
 end
 
@@ -38,6 +44,11 @@ Q=Q(:);
 
 n_p=length(P);
 n_q=length(Q);
+
+if ~isempty(histmax)
+	n_p=sum(P<=histmax);
+	n_q=sum(Q<=histmax);
+end
 
 n_max=max([n_p n_q]);
 
@@ -70,24 +81,38 @@ end
 
 bins=round(mean([bins_1 bins_2]));
 
-binedges=linspace(1,max([P;Q]),bins);
+if isempty(histmax)
+	histmax=max([P;Q]);
+end
+
+if isempty(histmin)
+	histmin=min([P;Q]);
+end
+
+binedges=linspace(histmin,histmax,bins);
 
 [density_1]=histc(P,binedges);
 [density_2]=histc(Q,binedges);
 
-pi=density_1./sum(density_1);
-qi=density_2./sum(density_2);
+%density_1=density_1+ones(size(density_1));
+%density_2=density_2+ones(size(density_2));
 
-pi=pi+eps;
-qi=qi+eps;
+p_i=density_1./sum(density_1);
+q_i=density_2./sum(density_2);
 
 if ~jsd
-	DIV=sum(pi.*(log2(pi)-log2(qi)));
+	DIV=sum(p_i.*(log(p_i./q_i)));
 else
-	m=(pi+qi)./2;
+	m=(p_i+q_i).*.5;
 
-	d_pm=sum(pi.*(log2(pi)-log2(m)));
-	d_qm=sum(qi.*(log2(qi)-log2(m)));
+	d_pm=p_i.*(log(p_i./m));
+	d_qm=q_i.*(log(q_i./m));
+
+	d_pm(isnan(d_pm))=0;
+	d_qm(isnan(d_qm))=0;
+
+	d_pm=sum(d_pm);
+	d_qm=sum(d_qm);
 
 	DIV=.5*d_pm+.5*d_qm;
 end

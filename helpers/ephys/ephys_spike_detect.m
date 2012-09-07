@@ -84,8 +84,8 @@ interpolate=1; % do we want to interpolate for realignment and subsequent sortin
 interpolate_fs=50e3; % what fs should we intepolate to? (50e3 has worked in my hands, consider going higher for low SNR)
 align='com'; % you'll want to use COM here, others seem a bit unreliable
 jitter=4; % how much jitter do we allow before tossing out a spike (in samples of original fs)?
-peak_frac=.5; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
-peak_width=5; % how many samples about the peak to include in COM (interpolated space, 5-8 is reasonable here for 50e3 fs)
+peak_frac=0; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
+peak_width=4; % how many samples about the peak to include in COM (interpolated space, 5-8 is reasonable here for 50e3 fs)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -275,8 +275,9 @@ for j=1:length(abs_times)
 				% take only points about the peak
 
 				%compoints=compoints(diff(compoints)==1);
-				compoints((compoints>loc+(peak_width))|(compoints<(loc-peak_width)))=[];
-			
+
+				compoints((compoints>(loc+peak_width))|(compoints<(loc-peak_width)))=[];
+
 				% toss out any points where alignment>jitter, assume to be outliers
 
 				com=sum(compoints.*abs(interp_window(compoints,1)))/sum(abs(interp_window(compoints,1)));

@@ -23,8 +23,8 @@ fs=25e3;
 use_spiketime=0; % use spiketime as a clustering feature (usually helps if SNR is low)
 nparams=length(varargin);
 maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
-wavelet_method='ks';
-wavelet_mpca=1;
+wavelet_method='neg';
+wavelet_mpca=0;
 outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
 clust_choice='fhv'; % knee is more tolerant, choice BIC (b) or AIC (a) for more sensitive clustering
 
@@ -41,7 +41,7 @@ for i=1:2:nparams
 		case 'fs'
 			fs=varargin{i+1};
 		case 'use_spiketime'
-			spiketime=varaargin{i+1};
+			use_spiketime=varaargin{i+1};
 		case 'maxcoeffs'
 			maxcoeffs=varargin{i+1};
 		case 'clust_choice'
@@ -155,7 +155,7 @@ end
 options=statset('Display','off');
 obj_fcn=[];
 
-clustnum=2:10;
+clustnum=2:7;
 [datapoints,features]=size(spike_data);
 if datapoints<=features
 	warning('ephysPipeline:spikesort:toofewspikes','Too few spikes to fit');
@@ -168,7 +168,7 @@ end
 parfor i=1:length(clustnum)
 
 	warning('off','stats:gmdistribution:FailedToConverge');
-	testobj=gmdistribution.fit(spike_data,clustnum(i),'Regularize',1,'Options',options,'replicates',5);
+	testobj=gmdistribution.fit(spike_data,clustnum(i),'Regularize',1,'Options',options,'replicates',10);
 	warning('on','stats:gmdistribution:FailedToConverge');
 
 	%[center,u,obj_fcn]=fcm(spike_data,clustnum(i),[NaN NaN NaN 0]);

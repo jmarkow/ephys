@@ -115,41 +115,6 @@ SCORES=zeros(m,projections);
 
 % take the projections with maximum non-normality
 
-for i=1:projections+1
-
-	testpoints=COEFFS(i,:);
-	[fx,x]=ecdf(testpoints);
-
-	% evaluate normal cdf at same mean and variance as data
-	% use robust mean and variance estimators per Takekawa et al. (2012)
-
-	samplemedian=median(testpoints);
-
-	% robust variance
-
-	samplevar=median(abs(testpoints-samplemedian))./.6745;
-
-	% evaluate normcdf
-
-	gx=normcdf(x,samplemedian,samplevar);
-
-	% deviation, ks statistic
-
-	% negentropy, has the entropy been reduced relative to the normal distribution?
-
-	normentropy=-sum(gx.*log2(gx+eps));
-	negentropy(i)=[normentropy-obsentropy]; % an alternative measure
-
-end
-
-% rank dimensions by negentropy
-
-% TODO:  finish rank sorting, perhaps put in exclusion criteria
-
-[val,loc]=sort(negentropy,'descending');
-rank_proj=loc(1:projections)
-
-
 for i=1:n
 	for j=1:projections
 		SCORES(i,j)=COEFFS(j,:)*sphered_data(i,:)';

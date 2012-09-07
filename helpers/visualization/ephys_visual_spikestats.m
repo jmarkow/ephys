@@ -52,7 +52,6 @@ end
 
 isipoints=[0:.01:10];
 
-
 % need the upper/lower edges for the 2D histogram
 
 voltmin=inf;
@@ -89,15 +88,6 @@ plot(timevec,SPIKEWINDOWS,'m-');
 ylabel('Voltage (in $\mu$V)','FontName','Helvetica','FontSize',13,'Interpreter','Latex');
 box off
 axis tight;
-prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
-prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
-
-subplot(3,1,2);
-density=hist3(coordmat,'Edges',edges);
-imagesc(timevec(1:end-1),edges{2},density(1:length(timevec)-1,:)');
-colormap(hot);
-
-%box off
 
 if ~isempty(noise_p2p)
 	mean_waveform=mean(SPIKEWINDOWS,2);
@@ -105,6 +95,31 @@ if ~isempty(noise_p2p)
 	title([' SNR:  ' num2str(peaktopeak/noise_p2p)],'FontName','Helvetica','FontSize',13)
 end
 
+ylimits=ylim();
+yticks=[ ceil(ylimits(1)/10)*10 floor(ylimits(2)/10)*10 ];
+
+if yticks(2)<=yticks(1)
+	yticks(2)=yticks(1)+1;
+end
+
+set(gca,'YTick',yticks);
+prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
+prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+set(gca,'xcolor',get(gcf,'color'));
+
+yticks=[ceil(voltmin/10)*10 floor(voltmax/10)*10];
+
+if yticks(2)<=yticks(1)
+	yticks(2)=yticks(1)+1;
+end
+
+subplot(3,1,2);
+density=hist3(coordmat,'Edges',edges);
+imagesc(timevec(1:end-1),edges{2},density(1:length(timevec)-1,:)');
+set(gca,'YTick',yticks);
+colormap(hot);
+
+%box off
 
 xlabel('Time (ms)','FontName','Helvetica','FontSize',13);
 prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
@@ -123,12 +138,21 @@ end
 [density,xi]=ksdensity((SPIKEISI/fs)*1e3,isipoints,'support','positive');
 %density=histc((SPIKEISI/fs)*1e3,isipoints);
 %h=bar(isipoints,density,'histc');
+
+% get percentage of ISI values below 1 msec
+
+violations=sum((SPIKEISI/fs)<.001)/length(SPIKEISI);
+
+% round off to percent
+
+violations=round(1000*violations)/10;
+
 plot(xi,density,'r-','linewidth',3);
 hline=findobj(gca,'type','line');
 set(hline,'clipping','off');
 box off
 %set(h,'FaceColor',[.7 .7 .7],'EdgeColor','k','LineWidth',1.5);
-xlabel('ISI (ms)');
+xlabel(['ISI (ms), ' num2str(violations) '% < 1 ms']);
 ylabel('Probability density');
 
 ylimits(1)=min(density);

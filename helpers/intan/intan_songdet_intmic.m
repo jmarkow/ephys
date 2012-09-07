@@ -225,17 +225,17 @@ parfor i=1:length(proc_files)
 
 		% create the bird directory
 
-		if ~exist(fullfile(root_dir,birdid))
+		if ~exist(fullfile(root_dir,birdid),'dir')
 			mkdir(fullfile(root_dir,birdid));
 		end
 
 		% create the template directory and a little readme
 
-		if ~exist(fullfile(root_dir,birdid,'templates'))
+		if ~exist(fullfile(root_dir,birdid,'templates'),'dir')
 			mkdir(fullfile(root_dir,birdid,'templates'));
 			fid=fopen(fullfile(root_dir,birdid,'templates','README.txt'),'w');
 			fprintf(fid,'Templates are stored in this directory, follow these steps:\n\n');
-			fprintf(fid,'1) Create a directory within this directory (templates) with' ... 
+			fprintf(fid,['1) Create a directory within this directory (templates) with' ... 
 				'the name of the template (e.g. motif1)\n']);
 			fprintf(fid,['2) Place template_data.mat,classify_data.mat and template.png' ... 
 				'from a folder created by ephys_cluster in the subdirectory\n']);

@@ -13,8 +13,8 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs!');
 end
 
-method='ks'; % ks with mpca seem to be the best choice here
-mpca=1; % mpca improves results dramatically
+method='neg';
+mpca=0; % enable at your own risk
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -33,63 +33,69 @@ parfor i=1:trials
 	[wavecoef(:,i),l]=wavedec(WAVEFORMS(:,i),4,'haar'); % 4-level wavelet decomposition
 end
 
+% center and scale the coefficients
+
 [coeffs,trials]=size(wavecoef);
 to_del=[];
 
+nbins=sqrt(trials);
+
 for i=1:coeffs
-
-	% remove points > +/- 3 std per quiroga et al 2004, probably irrelevant for
-	% coeff of bimodality
-
-	% first normalize the data (zscore)
 
 	testpoints=wavecoef(i,:);
 
 	samplemedian=median(testpoints);
 	samplevar=median(abs(testpoints-samplemedian))./.6745;
-	testpoints=(testpoints-samplemedian)./samplevar;
 
-	% store the normalized data
+	% normalizing does not seem to make much sense to me...maybe we should leave out for now
 
+	testpoints=testpoints-samplemedian;
 	wavecoef(i,:)=testpoints;
+
+	samplemedian=median(testpoints);
 
 	% need to compute deviation from normality take max of empirical cdf and normcdf 
 	% with same mean and variance
 
-	if any(isnan(testpoints))
-		normdev(i)=0;
+	if any(isnan(testpoints)) | nbins==0
+		ks_stat(i)=0;
 		negentropy(i)=0;
 		coeffbimodal(i)=0;
 		to_del=[to_del i];
 		continue;
 	end
 
-	% get the empirical cdf
+	% get the empirical pdf, kernel density estimate
 
-	[fx,x]=ecdf(testpoints);
+	x=linspace(min(testpoints),max(testpoints),nbins);
 
-	% evaluate normal cdf at same mean and variance as data
-	% use robust mean and variance estimators per Takekawa et al. (2012)
+	count=ksdensity(testpoints,x);
 
-	samplemedian=median(testpoints);
+	fx_pdf=count./sum(count);
+	fx_cdf=cumsum(fx_pdf);
 
-	% robust variance
+	% evaluate normpdf
 
-	samplevar=median(abs(testpoints-samplemedian))./.6745;
-
-	% evaluate normcdf
-
-	gx=normcdf(x,samplemedian,samplevar);
+	gx_pdf=normpdf(x,samplemedian,samplevar);
+	gx_pdf=gx_pdf./sum(gx_pdf);
+	gx_cdf=cumsum(gx_pdf);
 
 	% deviation, ks statistic
 
-	normdev(i)=[max(abs(fx-gx))];
+	ks_stat(i)=max(abs(fx_cdf-gx_cdf));
 
-	% negentropy, has the entropy been reduced relative to the normal distribution?
+	normentropy=-sum(gx_pdf.*log2(gx_pdf+eps));
+	obsentropy=-sum(fx_pdf.*log2(fx_pdf+eps));
 
-	normentropy=-sum(gx.*log2(gx+eps));
-	obsentropy=-sum(fx.*log2(fx+eps));
-	negentropy(i)=[normentropy-obsentropy]; % an alternative measure
+	negentropy(i)=[normentropy-obsentropy];
+
+	% is obsentropy==0 then the distribution has collapsed onto zero
+
+	if negentropy(i)==normentropy
+		negentropy(i)=NaN;
+	end
+
+	% an alternative measure
 
 	% coefficient of bimodality...
 	% consider the coefficient of bimodality here... should incorporate into compiled auto clustering
@@ -98,22 +104,29 @@ for i=1:coeffs
 
 end
 
-normdev(normdev==1)=0;
-normdev(isnan(normdev))=0;
-coeffbimodal(isnan(coeffbimodal))=0;
+% remove any NaNs
 
-normdev(to_del)=[];
+ks_stat(ks_stat==1)=0;
+ks_stat(isnan(ks_stat))=0;
+coeffbimodal(isnan(coeffbimodal))=0;
+negentropy(isnan(negentropy))=-inf;
+
+% remove stray points
+
+ks_stat(to_del)=[];
 coeffbimodal(to_del)=[];
 negentropy(to_del)=[];
 wavecoef(to_del,:)=[];
+
+% what's left?
 
 [coeffs,trials]=size(wavecoef);
 
 switch lower(method(1))
 
 	case 'k'
-		[val,loc]=sort(normdev,'descend');
-		weights=normdev;
+		[val,loc]=sort(ks_stat,'descend');
+		weights=ks_stat;
 	case 'n'
 		[val,loc]=sort(negentropy,'descend');
 		weights=negentropy;
@@ -124,10 +137,17 @@ switch lower(method(1))
 		error('ephysPipeline:getwaveletcoeffs:badmethod','Did not understand coefficient sorting method');
 end
 
+
+% mpca works surprisingly well, just scale the data by a multi-modality measure, let it rip...
+
 if mpca
 
 	% take components, weight by KS (or CB) and take PCA
 	% scale KS test by L2 norm, use as a weight for coefficient
+
+	% remove any negative values (only need to worry about negentropy here)
+
+	weights(weights<0)=0;
 
 	for i=1:coeffs
 		wavecoeff(i,:)=(weights(i)/sqrt(sum(wavecoef(i,:).^2))).*wavecoef(i,:);

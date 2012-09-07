@@ -105,13 +105,13 @@ jitter=4;
 singletrials=5; % number of random single trials to plot per cluster
 subtrials=[];
 align='com'; % how to align spike waveforms can be min for minimum peak or COM
-interpolate_fs=50e3; % 50e3 or 100e3 are reasonable
+interpolate_fs=100e3; % 50e3 or 100e3 are reasonable
 channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
-wavelet_method='ks'; % ks or bimodal have been sucessful
-wavelet_mpca=1; % mpca seems to help dramatically
-wavelet_coeffs=10; % 10 has worked well
+wavelet_method='neg'; % ks or bimodal have been sucessful
+wavelet_mpca=1; % mpca seems to help...
+wavelet_coeffs=4; % 10 has worked well (3-5 for mpca)
 clust_choice='fhv'; % fuzzy hypervolume has outperformed everything else at this point
 
 colors={'b','r','g','c','m','y','k','r','g','b'};
@@ -164,6 +164,8 @@ for i=1:2:nparams
 			wavelet_mpca=varargin{i+1};
 		case 'wavelet_method'
 			wavelet_method=varargin{i+1};
+		case 'interpolate_fs'
+			interpolate_fs=varargin{i+1};
 	end
 end
 
@@ -501,14 +503,31 @@ for i=1:length(channels)
 
 			noise_p2p(isnan(noise_p2p))=[];
 			mean_noise_p2p=mean(noise_p2p);
+			
+			stats_fig=figure('Visible','off');
+			
 			stats_fig=ephys_visual_spikestats(clusterwindows{uniq_clusters(j)},clusterisi{uniq_clusters(j)},...
-				'noise_p2p',mean_noise_p2p,'fs',fs,'spike_fs',interpolate_fs);
+				'noise_p2p',mean_noise_p2p,'fs',fs,'spike_fs',interpolate_fs,'fig_num',stats_fig);
+			
+			set(stats_fig,'Position',[0 0 450 600]);
+			set(stats_fig,'PaperPositionMode','auto');
 
 			multi_fig_save(stats_fig,savedir,...
 				[ savefilename_stats num2str(uniq_clusters(j))],'eps,png');
 			close([stats_fig]);
 
 		end
+
+		stats_fig=figure('Visible','off');
+
+		stats_fig=ephys_visual_clustresults(clusterwindows,'spike_fs',interpolate_fs,'fig_num',stats_fig);
+
+		set(stats_fig,'Position',[0 0 600 400]);
+		set(stats_fig,'PaperPositionMode','auto');
+
+		multi_fig_save(stats_fig,savedir,...
+			[ savefilename_stats 'clustresults' ],'eps,png');
+		close([stats_fig]);
 	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -598,7 +617,7 @@ for i=1:length(channels)
 				ylabel('Voltage ($\mu$V)','FontName','Helvetica','FontSize',13,'interpreter','latex');
 				box off
 				axis tight
-				multi_fig_save(singletrialfig,singletrialdir,['trial' num2str(idx)],'eps,png');
+				multi_fig_save(singletrialfig,singletrialdir,['trial' num2str(idx)],'png');
 
 				close([singletrialfig]);
 
