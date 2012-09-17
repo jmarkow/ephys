@@ -23,10 +23,13 @@ fs=25e3;
 use_spiketime=0; % use spiketime as a clustering feature (usually helps if SNR is low)
 nparams=length(varargin);
 maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
-wavelet_method='neg';
+wavelet_method='bi';
 wavelet_mpca=0;
 outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
-clust_choice='fhv'; % knee is more tolerant, choice BIC (b) or AIC (a) for more sensitive clustering
+clust_choice='ed'; % knee is more tolerant, choice BIC (b) or AIC (a) for more sensitive clustering
+nfeatures=10; % number of features to use, ranked by dimreduction technique
+dim_reduce='bi';
+red_cutoff=.1;
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -46,6 +49,10 @@ for i=1:2:nparams
 			maxcoeffs=varargin{i+1};
 		case 'clust_choice'
 			clust_choice=varargin{i+1};
+		case 'nfeatures'
+			nfeatures=varargin{i+1};
+		case 'dim_reduce'
+			dim_reduce=varargin{i+1};
 	end
 end
 
@@ -120,27 +127,134 @@ TRIALS=trialnum;
 timepoints=[1:samples]';
 
 % need to check for wavelet toolbox, otherwise we would need to use PCA or standard features
-
 % include an option for mpca
+% calculate other features and re-evaluate the correlation-coefficients and multimodality
 
 if license('test','Wavelet_Toolbox')
 
+	disp('Computing wavelet coefficients...');
 	[coeffs]=get_wavelet_coefficients(spikewindows,maxcoeffs,...
 		'method',wavelet_method,'mpca',wavelet_mpca); % pick multi-modal method and weighted PCA
 	spike_data=[spike_data coeffs];
+end
 
-else
+disp('Computing PCA...');
+[coef score]=princomp(spikewindows');
 
-	% fall back on PCA if necessary, just first two components seem to be most useful
+% take first ten
 
-	disp('Could not find the wavelet toolbox, falling back on PCA...');
+spike_data=[spike_data score(:,1:10)];
 
-	[coef score]=princomp(spikewindows');
+% compute geometric measures
 
-	% first three usually work well
+disp('Computing geometric features...');
+[coef]=get_geometric_coefficients(spikewindows);
 
-	spike_data=[spike_data score(:,1:3)];
+% remove features with NaN
 
+todel=[];
+for i=1:size(coef,2)
+	if sum(isnan(coef(:,i)))>0
+		todel(end+1)=i;
+	end
+end
+
+coef(:,todel)=[];
+
+spike_data=[spike_data coef];
+nbins=sqrt(trials);
+
+for i=1:size(spike_data,2)
+
+	% center the data points
+
+	testpoints=spike_data(:,i);
+	samplemedian=median(testpoints);
+	samplevar=median(abs(testpoints-samplemedian))./.6745;
+
+	testpoints=testpoints-samplemedian;
+	
+	spike_data(:,i)=testpoints;
+
+	samplemedian=median(testpoints);
+	samplevar=median(abs(testpoints-samplemedian))./.6745;
+
+	% don't need to remove outliers, simply control for cases with large skew
+
+	%testpoints(testpoints>samplemedian+4*samplevar)=[];
+	
+	% get the empirical pdf, kernel density estimate
+
+	x=linspace(min(testpoints),max(testpoints),nbins);
+
+	count=ksdensity(testpoints,x);
+
+	fx_pdf=count./sum(count);
+	fx_cdf=cumsum(fx_pdf);
+
+	% evaluate normpdf
+
+	gx_pdf=normpdf(x,samplemedian,samplevar);
+	gx_pdf=gx_pdf./sum(gx_pdf);
+	gx_cdf=cumsum(gx_pdf);
+
+	normentropy=-sum(gx_pdf.*log2(gx_pdf+eps));
+	obsentropy=-sum(fx_pdf.*log2(fx_pdf+eps));
+
+	negentropy(i)=[normentropy-obsentropy];
+	coeffbimodal(i)=(1+skewness(testpoints)^2)/(kurtosis(testpoints)+((3*(trials-1)^2)/((trials-2)*(trials-3))));
+
+	% if the skewness is too high, reject
+	% if the skewness exceeds roughly .4 this estimate becomes highly unstable
+
+	if abs(skewness(testpoints)>.4)
+		coeffbimodal(i)=0;
+	end
+
+end
+
+% take the top six dimensions
+% use multimodal test to choose best features
+
+switch lower(dim_reduce(1))
+	case 'n'
+		[val loc]=sort(negentropy,'descend');
+	case 'b'
+		[val loc]=sort(coeffbimodal,'descend');
+end
+
+% take 3 extra features
+
+if nfeatures<length(loc)
+	loc=loc(1:nfeatures);
+end
+
+spike_data=spike_data(:,loc);
+
+% need better criteria for optimizing redundancy without losing informative dimensions 
+% maybe MIFS or variant using coefficient of bimodality 
+
+features=length(loc);
+
+disp(['Using features ' num2str(loc) ' for clustering']);
+
+for i=2:features
+
+	jsd=[];
+
+	for j=1:i-1
+		jsd(j)=sqrt(kld(spike_data(:,i),spike_data(:,j),'jsd',1));
+	end
+
+	[redundancy(i-1) newloc(i-1)]=min(jsd);
+end
+
+redundant_dims=find(redundancy<red_cutoff);
+
+disp(['Will remove the following redundant dimensions: ' num2str(redundant_dims+1)]);
+
+if length(redundant_dims)<size(spike_data,2)
+	spike_data(:,redundant_dims+1)=[];
 end
 
 % TODO:  include projection pursuit as an option after it has been thoroughly vetted...
@@ -149,6 +263,7 @@ if use_spiketime
 	spike_data=[spike_data spiketimes];
 end
 
+% now compute the combination of 6 features that is the least redundant
 % clustering, fit a Gaussian mixture model, first find the appropriate number of modes using
 % Akaike Information Criterion (AIC)
 
@@ -186,14 +301,14 @@ parfor i=1:length(clustnum)
 	disp([ 'AIC ' num2str(testobj.AIC)]) % Akaike information criterion
 	disp([ 'BIC ' num2str(testobj.BIC)]) % Bayes information criterion
 
-	[m,n,components]=size(testobj.Sigma);
+	[m,n,K]=size(testobj.Sigma);
 
 	% grab the variance for each dimension in K components
 
 	variance=[];
 
-	for j=1:components
-		variance(j)=prod(diag(testobj.Sigma(:,:,j)));
+	for j=1:K
+		variance(j)=sqrt(det(testobj.Sigma(:,:,j)));
 	end
 
 	% the hypervolume is defined by the product of the variances for a given components,
@@ -202,8 +317,15 @@ parfor i=1:length(clustnum)
 
 	FHV(i)=sum(variance);
 	ED(i)=-logl(i)/FHV(i);
+
+	d=testobj.NDimensions;
+
+	L=d+d*((d+1)/2);
+	MDL(i)=logl(i)+((K*L)/2)*log(trials);
 	
+	disp([ 'FHV ' num2str(FHV(i))]);	
 	disp([ 'ED ' num2str(ED(i))]);
+	disp([ 'MDL ' num2str(MDL(i))]);
 
 end
 
@@ -246,6 +368,13 @@ switch lower(clust_choice(1))
 		% hypervolume alone
 
 		[val loc]=min(FHV);
+		nclust=clustnum(loc);
+
+	case 'm'
+
+		% minimum description length
+
+		[val loc]=min(MDL);
 		nclust=clustnum(loc);
 
 	otherwise

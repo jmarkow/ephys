@@ -1,7 +1,7 @@
 function [abscoh,m_coherence_null,m_coherence_err,freqs]=ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)
 %computes coherency spectra between fields and single units
 %
-%	ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)
+%	ephys_su_lfp_coherence_spect(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)
 %	
 %	LFPCHANNEL
 %	LFPCHANNEL to use
@@ -111,6 +111,8 @@ for i=1:2:nparams
 			medfilt_scale=varargin{i+1};
 		case 'alpha'
 			alpha=varargin{i+1};
+        case 'w'
+            w=varargin{i+1};
 
 	end
 end

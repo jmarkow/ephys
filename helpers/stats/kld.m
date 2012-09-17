@@ -13,6 +13,7 @@ jsd=1; % setting jsd to 1 will compute Jensen Shannon divergence
 nbins=100; % only set if you are using the constant bin method
 histmax=[];
 histmin=[];
+bins=[];
 
 nparams=length(varargin);
 
@@ -22,6 +23,8 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
+        	case 'bins'
+            		bins=varargin{i+1};
 		case 'jsd'
 			jsd=varargin{i+1};
 		case 'binmethod'
@@ -52,44 +55,51 @@ end
 
 n_max=max([n_p n_q]);
 
-switch lower(binmethod(1))
+if isempty(bins)
+	switch lower(binmethod(1))
 
-	case 'r'
+		case 'r'
 
-		bins_1=sqrt(n_p);
-		bins_2=sqrt(n_q);
+			bins_1=sqrt(n_p);
+			bins_2=sqrt(n_q);
 
-	case 'f'
+		case 'f'
 
-		bins_1=2*(iqr(P)/(n_p^(1/3)));
-		bins_2=2*(iqr(Q)/(n_q^(1/3)));
+			bins_1=2*(iqr(P)/(n_p^(1/3)));
+			bins_2=2*(iqr(Q)/(n_q^(1/3)));
 
-	case 's'
+		case 's'
 
 
 
-	case 'c'
+		case 'c'
 
-		bins_1=nbins;
-		bins_2=nbins;
-		
-	otherwise
-		
-		error('ephysPipeline:kld:binmethod','Did not understand bin method %s',binmethod);
+			bins_1=nbins;
+			bins_2=nbins;
 
+		otherwise
+
+			error('ephysPipeline:kld:binmethod','Did not understand bin method %s',binmethod);
+
+	end
+
+	bins=round(mean([bins_1 bins_2]));
+	
+	if isempty(histmax)
+		histmax=max([P;Q]);
+	end
+
+	if isempty(histmin)
+		histmin=min([P;Q]);
+	end
+
+	binedges=linspace(histmin,histmax,bins);
+
+else
+
+	binedges=bins;
 end
 
-bins=round(mean([bins_1 bins_2]));
-
-if isempty(histmax)
-	histmax=max([P;Q]);
-end
-
-if isempty(histmin)
-	histmin=min([P;Q]);
-end
-
-binedges=linspace(histmin,histmax,bins);
 
 [density_1]=histc(P,binedges);
 [density_2]=histc(Q,binedges);
@@ -115,4 +125,8 @@ else
 	d_qm=sum(d_qm);
 
 	DIV=.5*d_pm+.5*d_qm;
+
+	%DIV=sum(abs(cumsum(p_i)-cumsum(q_i)));
+
+
 end

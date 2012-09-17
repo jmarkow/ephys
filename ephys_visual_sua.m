@@ -109,10 +109,10 @@ interpolate_fs=100e3; % 50e3 or 100e3 are reasonable
 channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
-wavelet_method='neg'; % ks or bimodal have been sucessful
-wavelet_mpca=1; % mpca seems to help...
-wavelet_coeffs=4; % 10 has worked well (3-5 for mpca)
-clust_choice='fhv'; % fuzzy hypervolume has outperformed everything else at this point
+wavelet_method='bi'; % ks or bimodal have been sucessful
+wavelet_mpca=0; % mpca seems to help...
+wavelet_coeffs=10; % 10 has worked well (3-5 for mpca)
+clust_choice='ed'; % fuzzy hypervolume and MDL has outperformed everything else at this point
 
 colors={'b','r','g','c','m','y','k','r','g','b'};
 

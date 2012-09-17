@@ -7,7 +7,8 @@ function [LABELS TRIALS ISI WINDOWS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS
 
 TRIALS=[]; % by default we don't need this, unless input is over multiple trials
 fs=25e3;
-features={'P2P','width','energy','min','ISI','Spiketimes','wavelets'}; % possible features include, min, max, PCA, width
+features={'PCA','pose','nege','tote',...
+	'min','width','ISI','Spiketimes','wavelets'}; % possible features include, min, max, PCA, width
 				     % energy and wavelet coefficients
 outlier_cutoff=.05;				     
 channel_labels=[];
@@ -19,10 +20,9 @@ LABELS=[];
 ISI={};
 WINDOWS={};
 CLUSTERS=[];
-wavelets=5; % chooses top N non-normal wavelets according to either negentropy or KS test
-wavelet_method='ks';
-wavelet_mpca=1;
-
+wavelets=10; % chooses top N non-normal wavelets according to either negentropy or KS test
+wavelet_method='neg';
+wavelet_mpca=0;
 
 if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs!');
@@ -121,70 +121,94 @@ timepoints=[1:samples]';
 % expand to include features from all channels processed
 % by convention let's keep each channel a separate column
 
-features_all={'max','min','p2p','width','energy','PC1','PC2'}; % all features excluding IFR and spiketimes
+features_all={'max','min','pose','nege','energy','neo','width','posgrad','neggrad','PC1','PC2','PC3','PC4'}; % all features excluding IFR and spiketimes
 
 for i=1:wavelets
-	features_all{7+i}=['WC' num2str(i)];
+	features_all{end+1}=['WC' num2str(i)];
 end
 
-features_status=zeros(7+wavelets,1,'int8');
+features_status=zeros(length(features_all),1,'int8');
 
 spike_data=[];
+
 for i=1:channels
 
 	% cheap to compute standard features
 
 
-	[max_value,max_sample]=max(spikewindows(:,:,i)',[],2); % will get first max if there are multiple peaks
-	[min_value,min_sample]=min(spikewindows(:,:,i)',[],2); % will get first min if there are multiple peaks (maybe interpolate?)
-	peak_to_peak=max_value-min_value;
-	width=abs(min_sample-max_sample);
-	energy=sum(spikewindows(:,:,i)'.^2,2);
+	geom_features=get_geometric_coefficients(spikewindows);
+
+	%[max_value,max_sample]=max(spikewindows(:,:,i)',[],2); % will get first max if there are multiple peaks
+	%[min_value,min_sample]=min(spikewindows(:,:,i)',[],2); % will get first min if there are multiple peaks (maybe interpolate?)
+	%peak_to_peak=max_value-min_value;
+	%width=abs(min_sample-max_sample);
+	%energy=sum(spikewindows(:,:,i)'.^2,2);
 
 
 	if any(strcmp('max',lower(features)))
-		spike_data=[spike_data max_value];
+		spike_data=[spike_data geom_features(:,1)];
 		features_status(1)=1;
 	end
 
 	if any(strcmp('min',lower(features)))
-		spike_data=[spike_data min_value];
+		spike_data=[spike_data geom_features(:,2)];
 		features_status(2)=1;
 	end
 
-	if any(strcmp('p2p',lower(features)))
-		spike_data=[spike_data peak_to_peak];
+	if any(strcmp('pose',lower(features)))
+		spike_data=[spike_data geom_features(:,3)];
 		features_status(3)=1;
 	end
 
-	if any(strcmp('width',lower(features)))
-		spike_data=[spike_data width];
+	if any(strcmp('nege',lower(features)))
+		spike_data=[spike_data geom_features(:,4)];
 		features_status(4)=1;
 	end
 
-	if any(strcmp('energy',lower(features)))
-		spike_data=[spike_data energy];
+	if any(strcmp('tote',lower(features)))
+		spike_data=[spike_data geom_features(:,5)];
 		features_status(5)=1;
+	end
+
+	if any(strcmp('neo',lower(features)))
+		spike_data=[spike_data geom_features(:,6)];
+		features_status(6)=1;
+	end
+
+	if any(strcmp('width',lower(features)))
+		spike_data=[spike_data geom_features(:,7)];
+		features_status(7)=1;
+	end
+
+	if any(strcmp('posgrad',lower(features)))
+		spike_data=[spike_data geom_features(:,8)];
+		features_status(8)=1;
+	end
+
+	if any(strcmp('neggrad',lower(features)))
+		spike_data=[spike_data geom_features(:,9)];
+		features_status(9)=1;
 	end
 
 	if any(strcmp('pca',lower(features)))
 		[coef score variance t2]=princomp(spikewindows(:,:,i)');
-		spike_data=[spike_data score(:,1:2)];
-		features_status(6:7)=1;
+		spike_data=[spike_data score(:,1:4)];
+		features_status(10:13)=1;
 	end
 
 	if any(strcmp('wavelets',lower(features)))
 		[coeffs]=get_wavelet_coefficients(spikewindows(:,:,i),wavelets,'method',wavelet_method,'mpca',wavelet_mpca);
 		[m,ncoeffs]=size(coeffs);
 		spike_data=[spike_data coeffs];
-		features_status(8:end)=1;
+		features_status(13:end)=1;
 	end
+	
 end
 
-features_status=features_status(1:7+ncoeffs);
-features_all=features_all(1:7+ncoeffs);
+features_status=features_status(1:13+ncoeffs)
+features_all=features_all(1:13+ncoeffs)
 
-active_features=find(features_status);
+active_features=find(features_status)
 
 property_names={};
 for i=1:channels

@@ -13,7 +13,7 @@ function [COEFFS SCORES]=pp_negentropy(DATA,varargin)
 
 % first, sphere the data
 
-projections=2; % number of dimensions to return, should retest for 
+projections=6; % number of dimensions to return, should retest for 
          % negentropy of coefficient of bimodality
 
 maxiter=400;

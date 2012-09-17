@@ -100,7 +100,12 @@ for i=1:coeffs
 	% coefficient of bimodality...
 	% consider the coefficient of bimodality here... should incorporate into compiled auto clustering
 
-	coeffbimodal(i)=(1+skewness(testpoints)^2)/(kurtosis(testpoints)+3);
+	coeffbimodal(i)=(1+skewness(testpoints)^2)/(kurtosis(testpoints)+((3*(trials-1)^2)/((trials-2)*(trials-3))));
+
+	if abs(skewness(testpoints)>.4)
+		coeffbimodal(i)=0;
+	end
+
 
 end
 

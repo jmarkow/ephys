@@ -47,7 +47,7 @@ channel_ref=[3 4 3 2 1 16 15 14 6 5 6 7 8 9 10 11];
 exclude_channels=[];
 
 for i=1:length(car_exclude)
-	exclude_channels(i)=find(CHANNELS==car_exclude(i));
+	exclude_channels(i)=find(CHIN==car_exclude(i));
 end
 
 car_electrodes=setdiff(1:length(CHIN),exclude_channels); % which electrodes are good for CAR?

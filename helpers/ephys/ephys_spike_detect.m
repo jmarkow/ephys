@@ -82,9 +82,9 @@ fs=25e3;
 realign='y';
 interpolate=1; % do we want to interpolate for realignment and subsequent sorting (default 'y');
 interpolate_fs=50e3; % what fs should we intepolate to? (50e3 has worked in my hands, consider going higher for low SNR)
-align='com'; % you'll want to use COM here, others seem a bit unreliable
-jitter=4; % how much jitter do we allow before tossing out a spike (in samples of original fs)?
-peak_frac=0; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
+align='min'; % you'll want to use COM here, others seem a bit unreliable
+jitter=3; % how much jitter do we allow before tossing out a spike (in samples of original fs)?
+peak_frac=.6; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
 peak_width=4; % how many samples about the peak to include in COM (interpolated space, 5-8 is reasonable here for 50e3 fs)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -230,12 +230,12 @@ for j=1:length(abs_times)
 		% upsample the window with sinc interpolation, or spline
 
 		[samples,channels]=size(tmp_window);
-
+		interp_samples=expansion*samples;
 		timepoints=[1:samples];
 
-		if interpolate	
+		if interpolate
 
-			newtimepoints=linspace(1,samples,expansion*samples)';
+			newtimepoints=linspace(1,samples,interp_samples)';
 
 			% sinc interpolation
 
@@ -268,19 +268,47 @@ for j=1:length(abs_times)
 				% the negative-going peak has been the most reliable, use it to compute COM
 				% per sahani '99, try to capture the majority of the peak
 
+				% grab the peak after the threshold crossings	
+				% first get contiguous region
+			
 				[val loc]=min(interp_window(:,1));
-				compointsneg=find(interp_window(:,1)<=peak_frac*val);
-				compoints=sort(compointsneg);
 
-				% take only points about the peak
+				% we can make these for loops go away, but honestly we're not taking a huge
+				% performance hit ATM...
 
-				%compoints=compoints(diff(compoints)==1);
+				% walk to and fro to the threshold, use this for the peak CoM measurement
 
-				compoints((compoints>(loc+peak_width))|(compoints<(loc-peak_width)))=[];
 
+				for k=loc:-1:1
+					if interp_window(k,1)>-THRESH
+						break;
+					end
+				end
+				
+				left_edge=k+1;
+
+				for k=loc:length(interp_window)
+					if interp_window(k,1)>-THRESH
+						break;
+					end
+				end
+
+				right_edge=k-1;
+
+				peakind=left_edge:right_edge;
+
+				masked_spike=THRESH-interp_window(:,1);
+
+				idx=[1:length(masked_spike)]';
+
+				mask=zeros(size(idx));
+				mask(peakind)=1;
+
+				masked_spike=masked_spike.*mask;
+					
 				% toss out any points where alignment>jitter, assume to be outliers
 
-				com=sum(compoints.*abs(interp_window(compoints,1)))/sum(abs(interp_window(compoints,1)));
+				com=sum(idx.*masked_spike)/sum(masked_spike);
 
 				if isnan(com) || isempty(com)
 					continue;
@@ -290,7 +318,7 @@ for j=1:length(abs_times)
 				
 				% if the alignpoint is too far from the center of the frame, dump the spike (likely outlier)
 
-				if abs(alignpoint-frame_center)>=jitter*expansion
+				if abs(alignpoint-frame_center)>jitter
 					continue;
 				end
 
@@ -301,11 +329,14 @@ for j=1:length(abs_times)
 
 				[val loc]=min(interp_window(:,1));
 
-				if abs(loc-frame_center)>=jitter*expansion
+				
+				alignpoint=loc;
+
+				if abs(alignpoint-frame_center)>jitter
 					continue;
 				end
 
-				alignpoint=loc;
+
 
 			case 'max'
 
@@ -313,11 +344,12 @@ for j=1:length(abs_times)
 
 				[val loc]=max(interp_window(:,1));
 
-				if abs(loc-frame_center)>=jitter*expansion
+				alignpoint=loc;
+
+				if abs(alignpoint-frame_center)>jitter
 					continue;
 				end
 
-				alignpoint=loc;
 
 		end
 
