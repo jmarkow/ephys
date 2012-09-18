@@ -158,7 +158,7 @@ xlabel(['ISI (ms), ' num2str(violations) '% < 1 ms']);
 ylabel('Probability density');
 
 ylimits(1)=min(density);
-ylimits(2)=ceil(max(density)*100)/100;
+ylimits(2)=ceil(max(density)*1e3)/1e3;
 
 if ylimits(1)<ylimits(2)
 	set(gca,'YLim',ylimits,'YTick',ylimits);
