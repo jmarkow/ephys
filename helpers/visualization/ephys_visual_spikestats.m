@@ -136,6 +136,8 @@ if isempty(SPIKEISI);
 end
 
 [density,xi]=ksdensity((SPIKEISI/fs)*1e3,isipoints,'support','positive');
+density=density./sum(density);
+
 %density=histc((SPIKEISI/fs)*1e3,isipoints);
 %h=bar(isipoints,density,'histc');
 

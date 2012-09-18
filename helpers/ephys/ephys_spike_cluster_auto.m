@@ -1,4 +1,4 @@
-function [LABELS TRIALS ISI WINDOWS]=ephys_spike_cluster_auto(SPIKEWINDOWS,SPIKETIMES,varargin)
+function [LABELS TRIALS ISI WINDOWS CLUSTERSTATS]=ephys_spike_cluster_auto(SPIKEWINDOWS,SPIKETIMES,varargin)
 %automated spike clustering using a GMM with EM
 %
 %
@@ -26,7 +26,7 @@ maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
 wavelet_method='bi';
 wavelet_mpca=0;
 outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
-clust_choice='ed'; % knee is more tolerant, choice BIC (b) or AIC (a) for more sensitive clustering
+clust_choice='mdl'; % knee is more tolerant, choice BIC (b) or AIC (a) for more sensitive clustering
 nfeatures=10; % number of features to use, ranked by dimreduction technique
 dim_reduce='bi';
 red_cutoff=.1;
@@ -63,6 +63,9 @@ disp(['Wavelet dimensionality reduction method:  ' wavelet_method]);
 disp(['N wavelet coefficients:  ' num2str(maxcoeffs)]);
 disp(['MPCA ' num2str(wavelet_mpca)]);
 disp(['GMM mode selection method:  ' clust_choice]);
+disp(['All dimensionality reduction method:  ' dim_reduce]);
+disp(['Redundancy cutoff:  ' num2str(red_cutoff)]);
+
 
 spikewindows=[];
 spiketimes=[];
@@ -296,14 +299,13 @@ parfor i=1:length(clustnum)
 	logl(i)=testobj.NlogL;
 	BIC(i)=testobj.BIC;
 	disp([ num2str(clustnum(i)) ' clusters']);
-
-	%disp(['Partition coefficient ' num2str(partition_coef(i))]);
 	disp([ 'AIC ' num2str(testobj.AIC)]) % Akaike information criterion
 	disp([ 'BIC ' num2str(testobj.BIC)]) % Bayes information criterion
 
-	[m,n,K]=size(testobj.Sigma);
-
 	% grab the variance for each dimension in K components
+
+	K=testobj.NComponents;
+	M=testobj.NDimensions;
 
 	variance=[];
 
@@ -311,17 +313,18 @@ parfor i=1:length(clustnum)
 		variance(j)=sqrt(det(testobj.Sigma(:,:,j)));
 	end
 
-	% the hypervolume is defined by the product of the variances for a given components,
-	% so then take the summed volume of all components as a measure of model fit (FHV)
-	% another method is to take the hypervolume as a penalty term for the log-likelihood (ED)
-
+	% fuzzy hypervolume
+	
 	FHV(i)=sum(variance);
+
+	% evidence density
+
 	ED(i)=-logl(i)/FHV(i);
 
-	d=testobj.NDimensions;
+	% minimum description length
 
-	L=d+d*((d+1)/2);
-	MDL(i)=logl(i)+((K*L)/2)*log(trials);
+	L=K*(1+M+(((M+1)*M)/2))-1; % nparameters
+	MDL(i)=logl(i)+((L)/2)*log(trials*M);
 	
 	disp([ 'FHV ' num2str(FHV(i))]);	
 	disp([ 'ED ' num2str(ED(i))]);
@@ -384,10 +387,14 @@ end
 disp(['Will use ' num2str(nclust) ' clusters']);
 
 warning('off','stats:gmdistribution:FailedToConverge');
-testobj=gmdistribution.fit(spike_data,nclust,'Regularize',1,'Options',options,'replicates',5);
+testobj=gmdistribution.fit(spike_data,nclust,'Regularize',1,'Options',options,'replicates',10);
+CLUSTERSTATS=testobj;
 warning('on','stats:gmdistribution:FailedToConverge');
 
 [idx,nlogl,P]=cluster(testobj,spike_data);
+
+% instead, get mean and covariances, project onto FLD, assess cluster quality and then 
+% use outlier cutoff per Hill et al. (2011)
 
 %[center,u,obj_fcn]=fcm(spike_data,nclust,[NaN NaN NaN 0]);
 % place all points with posterior probability <cutoff in the same junk cluster

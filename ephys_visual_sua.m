@@ -96,7 +96,8 @@ min_f=1;
 max_f=10e3;
 hist_colors='jet';
 figtitle='';
-freq_range=[500 8000]; % frequency range for filtering
+freq_range=[800]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
+filt_type='high';
 sort=1; % do we want to sort?
 auto_clust=0;
 tetrode_channels=[];
@@ -104,15 +105,15 @@ sigma_t=4;
 jitter=4;
 singletrials=5; % number of random single trials to plot per cluster
 subtrials=[];
-align='com'; % how to align spike waveforms can be min for minimum peak or COM
-interpolate_fs=100e3; % 50e3 or 100e3 are reasonable
+align='min'; % how to align spike waveforms can be min for minimum peak or COM
+interpolate_fs=200e3; % 200 has worked best here
 channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
 wavelet_method='bi'; % ks or bimodal have been sucessful
 wavelet_mpca=0; % mpca seems to help...
 wavelet_coeffs=10; % 10 has worked well (3-5 for mpca)
-clust_choice='ed'; % fuzzy hypervolume and MDL has outperformed everything else at this point
+clust_choice='mdl'; % fuzzy hypervolume and MDL has outperformed everything else at this point
 
 colors={'b','r','g','c','m','y','k','r','g','b'};
 
@@ -138,6 +139,8 @@ for i=1:2:nparams
 			car_exclude=varargin{i+1};
 		case 'figtitle'
 			figtitle=varargin{i+1};
+		case 'filt_type'
+			filt_type=varargin{i+1};
 		case 'freq_range'
 			freq_range=varargin{i+1};
 		case 'sort'
@@ -208,7 +211,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
 proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
-proc_data=ephys_condition_signal(proc_data,'s','freq_range',freq_range);
+proc_data=ephys_condition_signal(proc_data,'s','freq_range',freq_range,'filt_type',filt_type);
 
 if ~isempty(tetrode_channels)
 	tetrode_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,tetrode_channels,'method',noise,'car_exclude',car_exclude);
@@ -231,7 +234,7 @@ end
 
 disp('Entering spike detection...');
 disp(['Alignment method:  ' align]);
-
+disp(['Interpolate FS:  ' num2str(interpolate_fs)]);
 % need a noise cutoff...let's start with 3*std or Quiroga's measure
 
 for i=1:length(channels)
@@ -366,7 +369,8 @@ for i=1:length(channels)
 
 	if sort
 		if auto_clust
-			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},...
+			[clusterid clustertrial clusterisi clusterwindows clusterstats]=...
+				ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},...
 				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca,'clust_choice',clust_choice,...
 				'maxcoeffs',wavelet_coeffs);
 		else
@@ -509,6 +513,8 @@ for i=1:length(channels)
 			stats_fig=ephys_visual_spikestats(clusterwindows{uniq_clusters(j)},clusterisi{uniq_clusters(j)},...
 				'noise_p2p',mean_noise_p2p,'fs',fs,'spike_fs',interpolate_fs,'fig_num',stats_fig);
 			
+			% TODO:  function for cluster stats (Fisher test, etc.)
+
 			set(stats_fig,'Position',[0 0 450 600]);
 			set(stats_fig,'PaperPositionMode','auto');
 

@@ -7,8 +7,8 @@ function ephys_lfp_standalone(PROCDIR,CONFIG)
 
 parameters=ephys_pipeline_readconfig(CONFIG);
 
-fprintf('Parameters\n\n%-10s%-10s%-10s%-10s\n\n','Sigma_t','Align','FS','Jitter');
-fprintf('%-10d%-10s%-10d%-10d\n\n\n',parameters.sigma_t,parameters.spike_align,parameters.fs,parameters.jitter);
+fprintf('Parameters\n\n%-10s%-10s%-10s%-10s\n\n','Sigma_t','Align','FS','Comp.');
+fprintf('%-10d%-10s%-10d%-10d\n\n\n',parameters.sigma_t,parameters.spike_align,parameters.spike_fs,parameters.mode_selection);
 
 % load in agg data and histogram
 
@@ -53,7 +53,7 @@ for i=1:length(candidate_channels)
 		'savedir',PROCDIR,'align',parameters.spike_align,'sigma_t',parameters.sigma_t,'sr',parameters.fs,...
 		'jitter',parameters.jitter,'wavelet_method',parameters.wavelet_sort,'wavelet_mpca',parameters.wavelet_mpca,...
 		'wavelet_coeffs',parameters.wavelet_coeffs,'clust_choice',parameters.mode_selection,...
-		'interpolate_fs',parameters.spike_fs);
+		'interpolate_fs',parameters.spike_fs,'filt_type',parameters.spike_filt_type,'freq_range',parameters.spike_freq_range);
 end
 
 

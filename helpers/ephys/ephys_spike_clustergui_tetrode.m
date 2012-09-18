@@ -7,7 +7,7 @@ function [LABELS TRIALS ISI WINDOWS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS
 
 TRIALS=[]; % by default we don't need this, unless input is over multiple trials
 fs=25e3;
-features={'PCA','pose','nege','tote',...
+features={'PCA','pose','nege','tote','neggrad','posgrad',...
 	'min','width','ISI','Spiketimes','wavelets'}; % possible features include, min, max, PCA, width
 				     % energy and wavelet coefficients
 outlier_cutoff=.05;				     
@@ -21,7 +21,7 @@ ISI={};
 WINDOWS={};
 CLUSTERS=[];
 wavelets=10; % chooses top N non-normal wavelets according to either negentropy or KS test
-wavelet_method='neg';
+wavelet_method='bi';
 wavelet_mpca=0;
 
 if mod(nparams,2)>0
@@ -121,7 +121,7 @@ timepoints=[1:samples]';
 % expand to include features from all channels processed
 % by convention let's keep each channel a separate column
 
-features_all={'max','min','pose','nege','energy','neo','width','posgrad','neggrad','PC1','PC2','PC3','PC4'}; % all features excluding IFR and spiketimes
+features_all={'max','min','pe','ne','^2','neo','wid','pgrad','nrad','PC1','PC2','PC3','PC4'}; % all features excluding IFR and spiketimes
 
 for i=1:wavelets
 	features_all{end+1}=['WC' num2str(i)];
@@ -205,10 +205,10 @@ for i=1:channels
 	
 end
 
-features_status=features_status(1:13+ncoeffs)
-features_all=features_all(1:13+ncoeffs)
+features_status=features_status(1:13+ncoeffs);
+features_all=features_all(1:13+ncoeffs);
 
-active_features=find(features_status)
+active_features=find(features_status);
 
 property_names={};
 for i=1:channels
@@ -228,8 +228,10 @@ if any(strcmp('isi',lower(features)))
 
 end
 
+spike_data(isnan(spike_data))=0;
+
 main_window=figure('Visible','off','Position',[360,500,700,600],'Name','Data Plotter','NumberTitle','off');
-plot_axis=axes('Units','pixels','Position',[50,50,400,400]);
+plot_axis=axes('Units','pixels','Position',[50,50,425,425]);
 
 pop_up_x= uicontrol('Style','popupmenu',...
 	'String',property_names,...
@@ -280,12 +282,12 @@ rows=ceil(length(property_names)/5);
 
 i=1;
 while i<=length(property_names)
-	row=ceil(i/5);
-	column=mod(i,5);
-	if column==0, column=5; end
+	row=ceil(i/7);
+	column=mod(i,7);
+	if column==0, column=7; end
 	cluster_data_check{i}=uicontrol('Style','checkbox',...
 		'String',property_names{i},...
-		'Value',i==1,'Position',[50+column*60,600-row*35,70,25]);
+		'Value',i==1,'Position',[5+column*60,600-row*35,70,25]);
 	set(cluster_data_check{i},'Units','Normalized')
 	i=i+1;
 end

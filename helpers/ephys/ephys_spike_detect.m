@@ -81,7 +81,7 @@ visualize='y';
 fs=25e3;
 realign='y';
 interpolate=1; % do we want to interpolate for realignment and subsequent sorting (default 'y');
-interpolate_fs=50e3; % what fs should we intepolate to? (50e3 has worked in my hands, consider going higher for low SNR)
+interpolate_fs=200e3; % what fs should we intepolate to? (50e3 has worked in my hands, consider going higher for low SNR)
 align='min'; % you'll want to use COM here, others seem a bit unreliable
 jitter=3; % how much jitter do we allow before tossing out a spike (in samples of original fs)?
 peak_frac=.6; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
@@ -285,7 +285,7 @@ for j=1:length(abs_times)
 					end
 				end
 				
-				left_edge=k+1;
+				left_edge=k;
 
 				for k=loc:length(interp_window)
 					if interp_window(k,1)>-THRESH
@@ -293,7 +293,7 @@ for j=1:length(abs_times)
 					end
 				end
 
-				right_edge=k-1;
+				right_edge=k;
 
 				peakind=left_edge:right_edge;
 
@@ -328,15 +328,12 @@ for j=1:length(abs_times)
 				% just take the min
 
 				[val loc]=min(interp_window(:,1));
-
 				
 				alignpoint=loc;
 
 				if abs(alignpoint-frame_center)>jitter
 					continue;
 				end
-
-
 
 			case 'max'
 
