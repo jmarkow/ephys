@@ -1,4 +1,4 @@
-function [LABELS TRIALS ISI WINDOWS CLUSTERSTATS]=ephys_spike_cluster_auto(SPIKEWINDOWS,SPIKETIMES,varargin)
+function [LABELS TRIALS ISI WINDOWS CLUSTERSTATS CLUSTERPOINTS]=ephys_spike_cluster_auto(SPIKEWINDOWS,SPIKETIMES,varargin)
 %automated spike clustering using a GMM with EM
 %
 %
@@ -56,6 +56,7 @@ for i=1:2:nparams
 	end
 end
 
+% TODO: chi2 test for dealing with outliers (simply take residuals and use chi2 CDF)
 % need to deal with cell input (multiple trials), convert input to big matrix
 % and spit out trial number
 
@@ -388,10 +389,14 @@ disp(['Will use ' num2str(nclust) ' clusters']);
 
 warning('off','stats:gmdistribution:FailedToConverge');
 testobj=gmdistribution.fit(spike_data,nclust,'Regularize',1,'Options',options,'replicates',10);
-CLUSTERSTATS=testobj;
 warning('on','stats:gmdistribution:FailedToConverge');
 
 [idx,nlogl,P]=cluster(testobj,spike_data);
+
+% assign output variables, garbage collection
+
+CLUSTERSTATS=testobj;
+clear testobj;
 
 % instead, get mean and covariances, project onto FLD, assess cluster quality and then 
 % use outlier cutoff per Hill et al. (2011)
@@ -425,11 +430,18 @@ end
 
 % make the number contiguous and sort by number of spikes, descending
 
-LABLES=zeros(size(idx));
+LABELS=zeros(size(idx));
 
 for i=1:length(clusters)
 	LABELS(idx==clusters(loc(i)))=i;	
 end
+
+
+for i=1:length(clusters)
+	CLUSTERPOINTS{i}=spike_data(LABELS==i,:);
+end
+
+clear spike_data;
 
 % resort labels by number of spikes, first vector is cluster id, and the second the 
 % point where those labels end (e.g. 1 1 1 2 2 2 2 would return 1 2 and 3 7)

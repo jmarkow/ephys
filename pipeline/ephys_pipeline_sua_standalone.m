@@ -8,7 +8,7 @@ function ephys_lfp_standalone(PROCDIR,CONFIG)
 parameters=ephys_pipeline_readconfig(CONFIG);
 
 fprintf('Parameters\n\n%-10s%-10s%-10s%-10s\n\n','Sigma_t','Align','FS','Comp.');
-fprintf('%-10d%-10s%-10d%-10d\n\n\n',parameters.sigma_t,parameters.spike_align,parameters.spike_fs,parameters.mode_selection);
+fprintf('%-10d%-10s%-10d%-10s\n\n\n',parameters.sigma_t,parameters.spike_align,parameters.spike_fs,parameters.mode_selection);
 
 % load in agg data and histogram
 
