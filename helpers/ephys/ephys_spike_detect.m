@@ -122,7 +122,18 @@ for i=1:2:nparams
 	end
 end
 
+% TODO: cleanup and more intelligent placement of frame center to account
+% for asymmetric windows
+
 [samples,traces]=size(DATA);
+
+if samples==1
+	warning('Either data is in wrong format or only contains 1 sample!');
+end
+
+if window(1)~=window(2)
+	error('Asymmetric windows are not currently supported!');
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -172,7 +183,7 @@ spike_window_center=floor(median([1:spike_window_length]));
 if lower(method(1))=='b' || lower(method(1))=='a'
 	
 	abs_times=[pos_times(:);neg_times(:)];
-	abs_isneg=[zeros(size(pos_times));ones(size(neg_times))];
+	abs_isneg=[zeros(size(pos_times(:)));ones(size(neg_times(:)))];
 	[abs_times idx]=sort(abs_times);
 	abs_isneg=abs_isneg(idx);
 
@@ -216,7 +227,13 @@ for j=1:length(abs_times)
 
 		% find the absolute min in the window
 
-		[val loc]=min(tmp_window(:,1));
+		switch lower(align)
+			case 'max'
+				[val loc]=max(tmp_window(:,1));
+			otherwise
+				[val loc]=min(tmp_window(:,1));
+		end
+
 		peak_time=tmp_time-frame(1)+(loc(1)-1);
 
 		% need to grab new time based on absolute peak, grab extra samples for jitter
