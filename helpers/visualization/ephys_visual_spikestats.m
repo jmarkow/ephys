@@ -85,7 +85,7 @@ end
 
 subplot(3,1,1);
 plot(timevec,SPIKEWINDOWS,'m-');
-ylabel('Voltage (in $\mu$V)','FontName','Helvetica','FontSize',13,'Interpreter','Latex');
+ylabel('Voltage (microVolts)','FontName','Helvetica','FontSize',13);
 box off
 axis tight;
 

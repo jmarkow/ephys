@@ -9,6 +9,7 @@ function multi_fig_save(fighandle,save_dir,filename,formats,varargin)
 %
 
 renderer='painters';
+res=300;
 
 nparams=length(varargin);
 
@@ -20,10 +21,13 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'renderer'
 			renderer=varargin{i+1};
+		case 'res'
+			res=varargin{i+1};
 	end
 end
 
 renderer=[ '-' renderer];
+res=[ '-r' num2str(res)];
 
 if nargin<4
 	formats='eps,fig,png';
@@ -58,11 +62,11 @@ try
 	%print(fighandle,'-dtiffn','-r300',fullfile(save_dir,[filename '.tif']));
 
 	if ~isempty(findstr('tiff',formats)) || strcmp(formats,'all')
-		print(fighandle,'-dtiff',renderer,'-r300',fullfile(save_dir,[filename '.tiff']));
+		print(fighandle,'-dtiff',renderer,res,fullfile(save_dir,[filename '.tiff']));
 	end
 
 	if ~isempty(findstr('png',formats)) || strcmp(formats,'all')
-		print(fighandle,'-dpng',renderer,'-r300',fullfile(save_dir,[filename '.png']));
+		print(fighandle,'-dpng',renderer,res,fullfile(save_dir,[filename '.png']));
 	end
 
 	if ~isempty(findstr('fig',formats)) || strcmp(formats,'all')

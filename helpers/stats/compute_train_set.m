@@ -6,7 +6,6 @@ function compute_train_set(FILES,varargin)
 
 
 nparams=length(varargin);
-spike_fs=100e3;
 bootstrap=0; % get additional estimates through bootstrapping trials
 isibins=linspace(0,.05,200);
 
@@ -16,8 +15,6 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'spike_fs'
-			tail=varargin{i+1};
 		case 'labels'
 			labels=varargin{i+1};
 		case 'bootstrap'
@@ -92,6 +89,8 @@ if nargin<1 | isempty(FILES)
 	close(selectfig);
 
 	FILES.match.name=FILES.match.name(selected_files);
+	FILES.match.idx=FILES.match.idx(selected_files);
+	FILES.match.clustidx=FILES.match.clustidx(selected_files);
 
 	flag=0;
 
@@ -141,6 +140,7 @@ if nargin<1 | isempty(FILES)
 	close(selectfig);
 
 	FILES.nomatch.name=FILES.nomatch.name(selected_files);
+	FILES.nomatch.clustidx=FILES.nomatch.clustidx(selected_files);
 
 end
 
@@ -215,7 +215,6 @@ for i=1:length(ncells)
 
 
 	end
-
 
 
 	for j=1:length(FILES.nomatch.name)

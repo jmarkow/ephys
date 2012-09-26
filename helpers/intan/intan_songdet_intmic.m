@@ -92,14 +92,14 @@ maxfs=6e3; % the song 'band'
 ratio_thresh=4; % power ratio between song and non-song band
 window=250; % window to calculate ratio in (samples)
 noverlap=0; % just do no overlap, faster
-song_thresh=.3; % between .2 and .3 seems to work best (higher is more exlusive)
+song_thresh=.25; % between .2 and .3 seems to work best (higher is more exlusive)
 songduration=.8; % moving average of ratio
 low=5;
 high=10;
 colors=hot;
 disp_minfs=1;
 disp_maxfs=10e3;
-filtering=100; % changed to 100 from 700 as a more sensible default
+filtering=[]; % changed to 100 from 700 as a more sensible default, leave empty to filter later
 intan_fs=25e3;
 audio_pad=.2; % pad on either side of the extraction
 

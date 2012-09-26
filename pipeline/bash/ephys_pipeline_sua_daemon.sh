@@ -18,7 +18,6 @@ while true; do
 
 	echo 'Seconds elapsed since last run: ' $ELAPSED >> $1
 
-
 	T="$(date +%s)"
 
 	# what has changed since the last time we ran?
@@ -28,7 +27,6 @@ while true; do
 	# wait to see what's changed since last time
 
 	# now in each directory compute multi-unit rasters with standalone script
-
 	
 	let COUNTER=1
 

@@ -1,4 +1,5 @@
-function [LABELS TRIALS ISI WINDOWS CLUSTERSTATS CLUSTERPOINTS]=ephys_spike_cluster_auto(SPIKEWINDOWS,SPIKETIMES,varargin)
+function [LABELS TRIALS ISI WINDOWS CLUSTERPOINTS OUTLIERS]=...
+		ephys_spike_cluster_auto(SPIKEWINDOWS,SPIKETIMES,varargin)
 %automated spike clustering using a GMM with EM
 %
 %
@@ -24,12 +25,16 @@ use_spiketime=0; % use spiketime as a clustering feature (usually helps if SNR i
 nparams=length(varargin);
 maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
 wavelet_method='bi';
-wavelet_mpca=0;
+wavelet_mpca=1;
 outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
-clust_choice='mdl'; % knee is more tolerant, choice BIC (b) or AIC (a) for more sensitive clustering
-nfeatures=10; % number of features to use, ranked by dimreduction technique
+clust_choice='bic'; % knee is more tolerant, choice BIC (b) or AIC (a) for more sensitive clustering
+nfeatures=20; % number of features to use, ranked by dimreduction technique
 dim_reduce='bi';
-red_cutoff=.1;
+red_cutoff=.2;
+outlier_detect=1;
+kfolds=2;
+cv_sim=50;
+merge=.5;
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -53,6 +58,14 @@ for i=1:2:nparams
 			nfeatures=varargin{i+1};
 		case 'dim_reduce'
 			dim_reduce=varargin{i+1};
+		case 'red_cutoff'
+			red_cutoff=varargin{i+1};
+		case 'outlier_detect'
+			outlier_detect=varargin{i+1};
+		case 'kfolds'
+			kfolds=varargin{i+1};
+		case 'merge'
+			merge=varargin{i+1};
 	end
 end
 
@@ -66,13 +79,16 @@ disp(['MPCA ' num2str(wavelet_mpca)]);
 disp(['GMM mode selection method:  ' clust_choice]);
 disp(['All dimensionality reduction method:  ' dim_reduce]);
 disp(['Redundancy cutoff:  ' num2str(red_cutoff)]);
-
+disp(['Outlier detection:  ' num2str(outlier_detect)]);
+disp(['Merge cutoff (Bhattacharyya distance):  ' num2str(merge)]);
 
 spikewindows=[];
 spiketimes=[];
 spikeifr=[];
 trialnum=[];
 spike_data=[];
+
+cv_flag=(lower(clust_choice(1))=='c');
 
 % use ifr as a clustering feature
 
@@ -122,7 +138,6 @@ else
 	trialnum=repmat(1,trials,1);
 end
 
-TRIALS=trialnum;
 
 [samples,trials]=size(spikewindows);
 
@@ -149,23 +164,23 @@ disp('Computing PCA...');
 
 spike_data=[spike_data score(:,1:10)];
 
-% compute geometric measures
+% compute geometric measures (not working so well, leaving out for now) [9/20/12 JM]
 
-disp('Computing geometric features...');
-[coef]=get_geometric_coefficients(spikewindows);
+%disp('Computing geometric features...');
+%[coef]=get_geometric_coefficients(spikewindows);
+%
+%% remove features with NaN
+%
+%todel=[];
+%for i=1:size(coef,2)
+%	if sum(isnan(coef(:,i)))>0
+%		todel(end+1)=i;
+%	end
+%end
 
-% remove features with NaN
+%coef(:,todel)=[];
+%spike_data=[spike_data coef];
 
-todel=[];
-for i=1:size(coef,2)
-	if sum(isnan(coef(:,i)))>0
-		todel(end+1)=i;
-	end
-end
-
-coef(:,todel)=[];
-
-spike_data=[spike_data coef];
 nbins=sqrt(trials);
 
 for i=1:size(spike_data,2)
@@ -207,6 +222,7 @@ for i=1:size(spike_data,2)
 
 	negentropy(i)=[normentropy-obsentropy];
 	coeffbimodal(i)=(1+skewness(testpoints)^2)/(kurtosis(testpoints)+((3*(trials-1)^2)/((trials-2)*(trials-3))));
+	ksstat(i)=max(abs(fx_pdf-gx_pdf));
 
 	% if the skewness is too high, reject
 	% if the skewness exceeds roughly .4 this estimate becomes highly unstable
@@ -225,6 +241,8 @@ switch lower(dim_reduce(1))
 		[val loc]=sort(negentropy,'descend');
 	case 'b'
 		[val loc]=sort(coeffbimodal,'descend');
+	case 'k'
+		[val loc]=sort(ksstat,'descend');
 end
 
 % take 3 extra features
@@ -274,7 +292,7 @@ end
 options=statset('Display','off');
 obj_fcn=[];
 
-clustnum=2:7;
+clustnum=1:7;
 [datapoints,features]=size(spike_data);
 if datapoints<=features
 	warning('ephysPipeline:spikesort:toofewspikes','Too few spikes to fit');
@@ -284,56 +302,122 @@ end
 % gaussian mixture seems to work better than fcm
 % may also want to check for stats toolbox, fall back on kmeans perhaps
 
-parfor i=1:length(clustnum)
+kmeans_labels=zeros(datapoints,length(clustnum));
 
+if matlabpool('size')>0
+	pctRunOnAll warning('off','stats:gmdistribution:FailedToConverge');
+	pctRunOnAll warning('off','stats:kmeans:FailedToConverge');
+else
 	warning('off','stats:gmdistribution:FailedToConverge');
-	testobj=gmdistribution.fit(spike_data,clustnum(i),'Regularize',1,'Options',options,'replicates',10);
-	warning('on','stats:gmdistribution:FailedToConverge');
-
-	%[center,u,obj_fcn]=fcm(spike_data,clustnum(i),[NaN NaN NaN 0]);
-	
-	% compute the partition coefficient, simply all membership indices squared and summed
-
-	%partition_coef(i)=sum(sum(u.^2))/datapoints;
-
-	AIC(i)=testobj.AIC;
-	logl(i)=testobj.NlogL;
-	BIC(i)=testobj.BIC;
-	disp([ num2str(clustnum(i)) ' clusters']);
-	disp([ 'AIC ' num2str(testobj.AIC)]) % Akaike information criterion
-	disp([ 'BIC ' num2str(testobj.BIC)]) % Bayes information criterion
-
-	% grab the variance for each dimension in K components
-
-	K=testobj.NComponents;
-	M=testobj.NDimensions;
-
-	variance=[];
-
-	for j=1:K
-		variance(j)=sqrt(det(testobj.Sigma(:,:,j)));
-	end
-
-	% fuzzy hypervolume
-	
-	FHV(i)=sum(variance);
-
-	% evidence density
-
-	ED(i)=-logl(i)/FHV(i);
-
-	% minimum description length
-
-	L=K*(1+M+(((M+1)*M)/2))-1; % nparameters
-	MDL(i)=logl(i)+((L)/2)*log(trials*M);
-	
-	disp([ 'FHV ' num2str(FHV(i))]);	
-	disp([ 'ED ' num2str(ED(i))]);
-	disp([ 'MDL ' num2str(MDL(i))]);
-
+	warning('off','stats:kmeans:FailedToConverge');
 end
 
-secondderiv=diff(diff(logl));
+if cv_flag
+
+	% randomize or not?
+
+	%trialpool=[1:datapoints];
+
+	foldpoints=floor(datapoints/kfolds);
+
+	for i=1:cv_sim
+
+		% divide set into k partitions, test on rest
+
+		trialpool=randperm(datapoints);
+		testset{i}=trialpool(1:foldpoints);
+		trainset{i}=setdiff(trialpool,testset{i});
+
+	end
+end
+
+CVNLOGL=zeros(length(clustnum),1);
+
+if ~cv_flag
+	parfor i=1:length(clustnum)
+
+		% first use kmeans to get a good starting point
+
+
+		kmeans_labels(:,i)=kmeans(spike_data,clustnum(i),'replicates',5);
+		testobj=gmdistribution.fit(spike_data,clustnum(i),'Regularize',1,...
+			'Options',options,'replicates',1,'start',kmeans_labels(:,i));	
+		
+		AIC(i)=testobj.AIC;
+		logl(i)=testobj.NlogL;
+		BIC(i)=testobj.BIC;
+
+		disp([ num2str(clustnum(i)) ' clusters']);
+
+		disp([ 'AIC ' num2str(testobj.AIC)]) % Akaike information criterion
+		disp([ 'BIC ' num2str(testobj.BIC)]) % Bayes information criterion
+
+		% grab the variance for each dimension in K components
+
+		K=testobj.NComponents;
+		M=testobj.NDimensions;
+
+		variance=[];
+
+		for j=1:K
+			variance(j)=sqrt(det(testobj.Sigma(:,:,j)));
+		end
+
+		% fuzzy hypervolume
+
+		FHV(i)=sum(variance);
+
+		% evidence density
+
+		ED(i)=-logl(i)/FHV(i);
+
+		% minimum description length
+
+		L=K*(1+M+(((M+1)*M)/2))-1; % nparameters
+		MDL(i)=logl(i)+((L)/2)*log(trials*M);
+
+		disp([ 'FHV ' num2str(FHV(i))]);	
+		disp([ 'ED ' num2str(ED(i))]);
+		disp([ 'MDL ' num2str(MDL(i))]);
+
+	end
+else
+
+	% cross-validated likelihood, slower than BIC and generally worse...
+
+	for i=1:length(clustnum)
+
+		testnlogl=[];
+		newtestnlogl=[];
+
+		parfor j=1:cv_sim
+
+			% k-fold validation
+			
+			[kmeanslabels]=kmeans(spike_data(trainset{j},:),clustnum(i),'replicates',2);
+			testobj=gmdistribution.fit(spike_data(trainset{j},:),clustnum(i),...
+				'replicates',1,'regularize',1,'Options',options,'start',kmeanslabels);
+
+			% cluster the test set and get the test likelihood (need to verify this number)
+
+			[tmpidx,testnlogl(j),p,logpdf]=cluster(testobj,spike_data(testset{j},:));
+
+		end
+
+		CVNLOGL(i)=mean(testnlogl);
+		disp([ 'CVNLOGL ' num2str(CVNLOGL(i))]);
+
+	end
+end
+
+if matlabpool('size')>0
+	pctRunOnAll warning('on','stats:gmdistribution:FailedToConverge');
+	pctRunOnAll warning('on','stats:kmeans:FailedToConverge');
+else
+ 	warning('on','stats:gmdistribution:FailedToConverge');
+	warning('on','stats:kmeans:FailedToConverge');
+end
+
 
 % AIC and BIC have worked miserably here, simply using the elbow of the log-likelihood
 % decided to use fuzzy hypervolume or scaled likelihood, pretty stable (8/7/2012)
@@ -356,6 +440,7 @@ switch lower(clust_choice(1))
 
 		% logl knee
 
+		secondderiv=diff(diff(logl));
 		x=clustnum(3:end);
 		[val,loc]=max(secondderiv); % maximum derivative in log-likelihood over k
 		nclust=x(loc(1));
@@ -381,43 +466,37 @@ switch lower(clust_choice(1))
 		[val loc]=min(MDL);
 		nclust=clustnum(loc);
 
+	case 'c'
+
+		[val loc]=min(CVNLOGL);
+		nclust=clustnum(loc);
+
 	otherwise
-		error('ephysPipeline:autoclust:badnclustchoice','Did not understand nclust choice method!')
+		error('ephysPipeline:autoclust:badnclustchoice','Did not understand nclust choice method!');
 end
 
 disp(['Will use ' num2str(nclust) ' clusters']);
 
 warning('off','stats:gmdistribution:FailedToConverge');
-testobj=gmdistribution.fit(spike_data,nclust,'Regularize',1,'Options',options,'replicates',10);
+warning('off','stats:kmeans:FailedToConverge');
+[kmeanslabels]=kmeans(spike_data,nclust,'replicates',100);
+testobj=gmdistribution.fit(spike_data,nclust,'Regularize',1,...
+	'Options',options,'replicates',1,'start',kmeanslabels);
 warning('on','stats:gmdistribution:FailedToConverge');
+warning('on','stats:kmeans:FailedToConverge');
 
 [idx,nlogl,P]=cluster(testobj,spike_data);
 
 % assign output variables, garbage collection
 
-CLUSTERSTATS=testobj;
 clear testobj;
 
 % instead, get mean and covariances, project onto FLD, assess cluster quality and then 
 % use outlier cutoff per Hill et al. (2011)
 
-%[center,u,obj_fcn]=fcm(spike_data,nclust,[NaN NaN NaN 0]);
-% place all points with posterior probability <cutoff in the same junk cluster
+% for outliers take membership assignment and compute the integral
+% of the residuals, this should follow a chi2 distribution N degrees of freedom
 
-counter=1;
-for i=1:datapoints
-
-	%[membership(i),idx(i)]=max(u(:,i)); % take posterior probability of the chosen cluster
-						% given observation i as the measure of "membership"
-	membership(i)=P(i,idx(i));
-
-	if membership(i)<outlier_cutoff
-		idx(i)=nclust+1; % assign new "junk cluster"
-		counter=counter+1;
-	end
-end
-
-disp([ num2str(counter) ' outliers']);
 clusters=unique(idx);
 
 % number of spikes per cluster is simply the number of labels
@@ -436,11 +515,149 @@ for i=1:length(clusters)
 	LABELS(idx==clusters(loc(i)))=i;	
 end
 
+if merge>0
+	
+	% use exp(-d), where d is Battacharyya distance to find clusters for potential merging
 
-for i=1:length(clusters)
-	CLUSTERPOINTS{i}=spike_data(LABELS==i,:);
+	count=1;
+
+	while count>0 && length(clusters)>1
+
+		clustpairs=nchoosek(1:length(clusters),2);
+		clustdist=zeros(size(clustpairs,1),1);
+		count=0;
+
+		for i=1:size(clustpairs,1)
+
+			c1=clustpairs(i,1);
+			c2=clustpairs(i,2);
+
+			m1=mean(spike_data(LABELS==c1,:))';
+			m2=mean(spike_data(LABELS==c2,:))';
+			cov1=cov(spike_data(LABELS==c1,:));
+			cov2=cov(spike_data(LABELS==c2,:));
+
+			mcov=(cov1+cov2)/2;
+
+			dist=(1/8)*(m1-m2)'*inv(mcov)*(m1-m2)+...
+				(1/2)*log((det(mcov))/(sqrt(det(cov1)*det(cov2))));
+
+			clustdist(i)=exp(-dist);
+
+			fprintf('Exp(-d) between %g and %g:\t%.3f\n',c1,c2,clustdist(i));
+
+		end
+
+		count=sum(clustdist>merge);
+
+		if count>0
+	
+			[val loc]=max(clustdist);
+
+			merge1=clustpairs(loc(1),1);
+			merge2=clustpairs(loc(1),2);
+
+			fprintf('Merging clusters %g and %g\n',merge1,merge2);
+			
+			if merge1<merge2
+				LABELS(LABELS==merge2)=merge1;
+			else
+				LABELS(LABELS==merge1)=merge2;
+			end
+
+			% ensure the labeling is contiguous again
+
+			idx=LABELS;
+			clusters=unique(idx);
+			LABELS=zeros(size(LABELS));
+
+			for i=1:length(clusters)
+				LABELS(idx==clusters(i))=i;
+			end
+
+			clusters=unique(LABELS);
+
+		end
+
+	end
+
 end
 
+% resort by number of spikes
+
+idx=LABELS;
+clusters=unique(idx);
+
+% number of spikes per cluster is simply the number of labels
+
+nspikes=[];
+for i=1:length(clusters)
+	nspikes(i)=sum(idx==clusters(i));
+end
+
+[val loc]=sort(nspikes,'descend');
+
+% make the number contiguous and sort by number of spikes, descending
+
+LABELS=zeros(size(idx));
+
+for i=1:length(clusters)
+	LABELS(idx==clusters(loc(i)))=i;	
+end
+
+if outlier_detect
+	for i=1:length(clusters)
+
+		clusterlocs=find(LABELS==i);
+
+		% get spike coordinates for trialnumber and spikewindow
+		% matrices
+
+		CLUSTERPOINTS{i}=spike_data(clusterlocs,:);
+
+		% find outliers
+
+		clustermean=mean(CLUSTERPOINTS{i});
+		clusterinvcov=inv(cov(CLUSTERPOINTS{i}));
+
+		% get the residuals
+
+		[nclusttrials,dims]=size(CLUSTERPOINTS{i});
+		residuals=zeros(nclusttrials,1);
+
+		for j=1:nclusttrials
+			residuals(j)=(CLUSTERPOINTS{i}(j,:)-clustermean)...
+				*clusterinvcov*(CLUSTERPOINTS{i}(j,:)-clustermean)';
+		end
+
+		% cutoff point
+
+		cutoff=chi2inv(1-1/nclusttrials,dims);
+		outliers=find(residuals>cutoff);
+
+		% display percentage outliers per cluster
+
+		disp(['Cluster ' num2str(i) ' % outliers: '...
+			num2str(length(outliers)*100/nclusttrials)]);
+
+		% store outlier windows in a separate cell array, or just 
+
+		trialnum(clusterlocs(outliers))=[];
+
+		CLUSTERPOINTS{i}(outliers,:)=[];
+		OUTLIERS{i}=spikewindows(:,clusterlocs(outliers));
+		spikewindows(:,clusterlocs(outliers))=[];
+		spiketimes(clusterlocs(outliers))=[];
+
+		% give outliers a new cluster identity, or delete
+
+		LABELS(clusterlocs(outliers))=[];
+	
+
+	end
+end
+
+TRIALS=trialnum;
 clear spike_data;
 
 % resort labels by number of spikes, first vector is cluster id, and the second the 
@@ -454,7 +671,6 @@ trial_boundary=[0;trial_boundary];
 for i=1:length(clusters)
 
 	WINDOWS{i}=spikewindows(:,LABELS==i);
-
 	spikeisitmp=[];
 
 	for j=1:length(uniq_trial)
@@ -470,11 +686,9 @@ for i=1:length(clusters)
 		% spike times for this cluster
 
 		currtrial=currtrial(currlabels==clusters(i));
-
-		currisi=(diff(currtrial)); 
+		currisi=(diff(currtrial));
 		spikeisitmp=[spikeisitmp;currisi(:)];
 	end
-
 
 	ISI{i}=spikeisitmp; 
 end

@@ -61,6 +61,16 @@ end
 
 % multiple numbers in config file are read in as strings
 
+% if we have designated to skip coherence, that's it
+
+if ~isfield(unit_parameters,'coh')
+	disp('Not computing coherence, returning...');
+	return;
+elseif ~unit_parameters.coh
+	disp('Not computing coherence, returning...');
+	return;
+end
+
 if length(unit_parameters.lfp_channels)>1
 	lfp_channels=str2num(unit_parameters.lfp_channels);
 else

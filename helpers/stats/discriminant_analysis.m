@@ -1,4 +1,4 @@
-function [C]=discriminant_analysis(TESTDATA,TRAINDATA,CLASS,varargin)
+function [C,FP,FN]=discriminant_analysis(TESTDATA,TRAINDATA,CLASS,varargin)
 %Simple wrapper for MATLAB's classify function, only supports two classes
 %at the moment
 %
@@ -10,7 +10,7 @@ function [C]=discriminant_analysis(TESTDATA,TRAINDATA,CLASS,varargin)
 
 nparams=length(varargin);
 spike_fs=100e3;
-type='quadratic';
+type='linear';
 xres=600;
 yres=600;
 colors=[ 0 1 1 ; 1 .6445 0 ];
@@ -30,11 +30,15 @@ for i=1:2:nparams
 			labels=varargin{i+1};
 		case 'colors'
 			colors=varargin{i+1};
+		case 'x_label'
+			x_label=varargin{i+1};
+		case 'y_label'
+			y_label=varargin{i+1};
 	end
 end
 
-xrange=[ min(TRAINDATA(:,1)) max(TRAINDATA(:,1)) ];
-yrange=[ min(TRAINDATA(:,2)) max(TRAINDATA(:,2)) ];
+xrange=[ min([TRAINDATA(:,1);TESTDATA(:,1)]) max([TRAINDATA(:,1);TESTDATA(:,1)]) ];
+yrange=[ min([TRAINDATA(:,2);TESTDATA(:,2)]) max([TRAINDATA(:,2);TESTDATA(:,2)]) ];
 
 if isempty(TESTDATA)
 	[X Y]=meshgrid(linspace(xrange(1),xrange(2),xres),...
@@ -50,14 +54,23 @@ end
 
 [C,err,P,logp,coeff]=classify(TRAINDATA(CLASS==2,:),TRAINDATA,CLASS,type);
 
-threshold=quantile(P(:,1),.95);
+threshold=quantile(P(:,1),.98);
 n=(2*threshold)/(1+2*threshold);
 p=1/(1+2*threshold);
 priors=[ n p ];
+priors=[ .5 .5 ];
+
+[C,err,P,logp,coeff]=classify(TRAINDATA,TRAINDATA,CLASS,type,priors);
+
+% false positives
+
+FP=sum(C==2&CLASS==1);
+
+% false negatives
+
+FN=sum(C==1&CLASS==2);
 
 [C,err,P,logp,coeff]=classify(TESTDATA,TRAINDATA,CLASS,type,priors);
-
-err
 
 % finally classify the testing data
 
@@ -91,41 +104,42 @@ end
 % figure suitable for publication
 
 figure();
+subplot(1,2,1);
 points=find(CLASS==1);
-scatter(TRAINDATA(points,1),TRAINDATA(points,2),100,[ 1 0 1 ],'x');
+scatter(TRAINDATA(points,1),TRAINDATA(points,2),100,[ .5 .5 .5 ],'x');
 hold on
 
 points=find(CLASS==2);
-scatter(TRAINDATA(points,1),TRAINDATA(points,2),100,[ 0 1 0 ],'filled');
+scatter(TRAINDATA(points,1),TRAINDATA(points,2),60,[ 0 0 0 ]);
 
 boundaryline=ezplot(f,[ xrange yrange ]);
-set(boundaryline,'Color',[.4 .4 .4],'linewidth',2);
+set(boundaryline,'Color','k','linewidth',2);
 
-axis tight
+axis([ xrange yrange ]);
 
 xlabel(x_label);
 ylabel(y_label);
-title('')
-prettify_axis(gca,'FontSize',12,'TickLength',[.025 .025],'linewidth',2,'FontName','Helvetica');
-prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+title('Training labels')
+prettify_axis(gca,'FontSize',15,'TickLength',[.025 .025],'linewidth',2,'FontName','Helvetica');
+prettify_axislabels(gca,'FontSize',20,'FontName','Helvetica');
 
-figure();
+subplot(1,2,2);
 points=find(C==1);
-scatter(TESTDATA(points,1),TESTDATA(points,2),100,[ 1 0 1 ],'x');
+scatter(TESTDATA(points,1),TESTDATA(points,2),100,[ .5 .5 .5 ],'x');
 hold on
 
 points=find(C==2);
-scatter(TESTDATA(points,1),TESTDATA(points,2),100,[ 0 1 0 ],'filled');
+scatter(TESTDATA(points,1),TESTDATA(points,2),60,[ 0 0 0 ]);
 
 boundaryline=ezplot(f,[ xrange yrange ]);
-set(boundaryline,'Color',[.4 .4 .4],'linewidth',2);
+set(boundaryline,'Color','k','linewidth',2);
 
-axis tight
 
+axis([ xrange yrange ]);
 xlabel(x_label);
 ylabel(y_label);
-title('')
-prettify_axis(gca,'FontSize',12,'TickLength',[.025 .025],'linewidth',2,'FontName','Helvetica');
-prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+title('Testing labels')
+prettify_axis(gca,'FontSize',15,'TickLength',[.025 .025],'linewidth',2,'FontName','Helvetica');
+prettify_axislabels(gca,'FontSize',20,'FontName','Helvetica');
 
 

@@ -101,6 +101,12 @@ if nargin<1 | isempty(FILES)
 	uiwait(selectfig);
 
 	selected_files=get(test,'value');
+
+	FILES.name=FILES.name(selected_files);
+	FILES.clustidx=FILES.clustidx(selected_files);
+	FILES.idx=FILES.idx(selected_files);
+	FILES.date=FILES.date(selected_files);
+
 	close(selectfig);
 
 

@@ -110,10 +110,16 @@ interpolate_fs=200e3; % 200 has worked best here
 channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
-wavelet_method='bi'; % ks or bimodal have been sucessful
+wavelet_method='ks'; % ks or bimodal have been sucessful
 wavelet_mpca=0; % mpca seems to help...
-wavelet_coeffs=10; % 10 has worked well (3-5 for mpca)
+wavelet_coeffs=20; % 10 has worked well (3-5 for mpca)
 clust_choice='mdl'; % fuzzy hypervolume and MDL has outperformed everything else at this point
+red_cutoff=0;
+outlier_detect=1;
+nfeatures=20;
+merge=.5;
+
+% remove eps generation, too slow here...
 
 colors={'b','r','g','c','m','y','k','r','g','b'};
 
@@ -169,6 +175,14 @@ for i=1:2:nparams
 			wavelet_method=varargin{i+1};
 		case 'interpolate_fs'
 			interpolate_fs=varargin{i+1};
+		case 'outlier_detect'
+			outlier_detect=varargin{i+1};
+		case 'red_cutoff'
+			red_cutoff=varargin{i+1};
+		case 'nfeatures'
+			nfeatures=varargin{i+1};
+		case 'merge'
+			merge=varargin{i+1};
 	end
 end
 
@@ -369,10 +383,11 @@ for i=1:length(channels)
 
 	if sort
 		if auto_clust
-			[clusterid clustertrial clusterisi clusterwindows clusterstats clusterpoints]=...
+			[clusterid clustertrial clusterisi clusterwindows clusterpoints outliers]=...
 				ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},...
-				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca,'clust_choice',clust_choice,...
-				'maxcoeffs',wavelet_coeffs);
+				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca,...
+				'clust_choice',clust_choice,'maxcoeffs',wavelet_coeffs,'outlier_detect',outlier_detect,...
+				'red_cutoff',red_cutoff,'nfeatures',nfeatures,'merge',merge);
 		else
 			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},...
 				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca);
@@ -519,7 +534,7 @@ for i=1:length(channels)
 			set(stats_fig,'PaperPositionMode','auto');
 
 			multi_fig_save(stats_fig,savedir,...
-				[ savefilename_stats num2str(uniq_clusters(j))],'eps,png');
+				[ savefilename_stats num2str(uniq_clusters(j))],'png','res',200);
 			close([stats_fig]);
 
 		end
@@ -532,7 +547,7 @@ for i=1:length(channels)
 		set(stats_fig,'PaperPositionMode','auto');
 
 		multi_fig_save(stats_fig,savedir,...
-			[ savefilename_stats 'clustresults' ],'eps,png');
+			[ savefilename_stats 'clustresults' ],'png','res',200);
 		close([stats_fig]);
 	end
 
@@ -623,7 +638,7 @@ for i=1:length(channels)
 				ylabel('Voltage ($\mu$V)','FontName','Helvetica','FontSize',13,'interpreter','latex');
 				box off
 				axis tight
-				multi_fig_save(singletrialfig,singletrialdir,['trial' num2str(idx)],'png');
+				multi_fig_save(singletrialfig,singletrialdir,['trial' num2str(idx)],'png','res',150);
 
 				close([singletrialfig]);
 
@@ -638,7 +653,7 @@ end
 if sort & auto_clust 
 	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows','fs','interpolate_fs',...
 		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','clust_spike_vec','smooth_spikes',...
-		'spikeless','IFR','subtrials','clusterstats','clusterpoints');
+		'spikeless','IFR','subtrials','clusterpoints','outliers');
 elseif sort
 	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows','fs','interpolate_fs',...
 		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','clust_spike_vec','smooth_spikes',...

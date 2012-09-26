@@ -100,6 +100,6 @@ end
 
 % width seems unreliable, along with pos and neg grad
 
-COEFFS=[pospeak' negpeak' posenergy negenergy totalenergy' neo width posgrad neggrad];
+COEFFS=[pospeak' negpeak' log(posenergy) log(negenergy) log(totalenergy') neo width posgrad neggrad];
 
 
