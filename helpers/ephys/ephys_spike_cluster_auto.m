@@ -28,13 +28,13 @@ wavelet_method='bi';
 wavelet_mpca=1;
 outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
 clust_choice='bic'; % knee is more tolerant, choice BIC (b) or AIC (a) for more sensitive clustering
-nfeatures=20; % number of features to use, ranked by dimreduction technique
+nfeatures=10; % number of features to use, ranked by dimreduction technique
 dim_reduce='bi';
-red_cutoff=.2;
+red_cutoff=.5;
 outlier_detect=1;
 kfolds=2;
 cv_sim=50;
-merge=.5;
+merge=.4;
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -260,24 +260,36 @@ features=length(loc);
 
 disp(['Using features ' num2str(loc) ' for clustering']);
 
+% remove all correlated features
+
 for i=2:features
 
-	jsd=[];
+	similarity=[];
 
 	for j=1:i-1
-		jsd(j)=sqrt(kld(spike_data(:,i),spike_data(:,j),'jsd',1));
+
+		% get covariance matrix
+
+		covmat=cov(spike_data(:,i),spike_data(:,j));
+
+		% get corrcoef
+		% take abs value, don't wait perfectly anti-correlated features...
+
+		similarity(j)=abs(covmat(1,2)/(sqrt(covmat(1,1)*covmat(2,2))));
 	end
 
-	[redundancy(i-1) newloc(i-1)]=min(jsd);
+	[redundancy(i-1) newloc(i-1)]=max(similarity);
 end
 
-redundant_dims=find(redundancy<red_cutoff);
+redundant_dims=find(redundancy>red_cutoff);
 
 disp(['Will remove the following redundant dimensions: ' num2str(redundant_dims+1)]);
 
-if length(redundant_dims)<size(spike_data,2)
-	spike_data(:,redundant_dims+1)=[];
+if length(redundant_dims)==size(spike_data,2)
+	redundant_dims=redundant_dims(1:size(spike_data,2)-1);
 end
+
+spike_data(:,redundant_dims+1)=[];
 
 % TODO:  include projection pursuit as an option after it has been thoroughly vetted...
 
@@ -479,7 +491,7 @@ disp(['Will use ' num2str(nclust) ' clusters']);
 
 warning('off','stats:gmdistribution:FailedToConverge');
 warning('off','stats:kmeans:FailedToConverge');
-[kmeanslabels]=kmeans(spike_data,nclust,'replicates',100);
+[kmeanslabels]=kmeans(spike_data,nclust,'replicates',10);
 testobj=gmdistribution.fit(spike_data,nclust,'Regularize',1,...
 	'Options',options,'replicates',1,'start',kmeanslabels);
 warning('on','stats:gmdistribution:FailedToConverge');

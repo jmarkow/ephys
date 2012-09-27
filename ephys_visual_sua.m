@@ -110,14 +110,14 @@ interpolate_fs=200e3; % 200 has worked best here
 channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
-wavelet_method='ks'; % ks or bimodal have been sucessful
-wavelet_mpca=0; % mpca seems to help...
+wavelet_method='bi'; % ks or bimodal have been sucessful
+wavelet_mpca=1; % mpca seems to help...
 wavelet_coeffs=20; % 10 has worked well (3-5 for mpca)
-clust_choice='mdl'; % fuzzy hypervolume and MDL has outperformed everything else at this point
-red_cutoff=0;
+clust_choice='bic'; % with merging, BIC works just fine...
+red_cutoff=.8;
 outlier_detect=1;
-nfeatures=20;
-merge=.5;
+nfeatures=10;
+merge=.47;
 
 % remove eps generation, too slow here...
 
