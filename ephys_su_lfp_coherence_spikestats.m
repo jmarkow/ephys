@@ -22,6 +22,7 @@ freq_range=[25 100];
 singletrials=1:10; % default to 1-20
 time_range=[]; % if defined only visualize data in this subregion
 
+
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
@@ -82,6 +83,43 @@ if isempty(fig_title)
 end
 
 
+colorline=figure('visible','off');
+
+x=[1:samples]./ifr_fs;
+x=[x;x];
+
+y=zscore(mean(lfp_data));
+y=[y;y];
+
+z=zeros(size(x));
+
+col=mean(ifr_data);
+col=[col;col];
+
+surface(x,y,z,col,'facecol','no','edgecol','interp','linew',2);
+
+grays=colormap('gray');
+grays(1:10,:)=[];
+
+colormap(1-grays);
+
+ylabel('Mean LFP (STD)');
+xlabel('Time (s)');
+box off
+
+axis tight;
+prettify_axis(gca,'LineWidth',2,'TickLength',[.025 .025],'FontName','Helvetica','FontSize',20);
+prettify_axislabels(gca,'FontName','Helvetica','FontSize',20);
+savedir=fullfile(savedir,'coherence',[ 'spikestats (ch' num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER) ')' ]);
+
+if ~exist(savedir,'dir')
+	mkdir(savedir);
+end
+
+multi_fig_save(colorline,savedir,[ savename '_colorline' ],'eps,png');
+
+close([colorline]);
+
 % single trials
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SINGLE TRIALS %%%%%%%%%%%%%%%%%%%%%%
@@ -91,11 +129,6 @@ trialperm=trialvec(randperm(trials));
 
 % add an options to isolate a given time region and color code according to phase if the user wants
 
-savedir=fullfile(savedir,'coherence',[ 'spikestats (ch' num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER) ')' ]);
-
-if ~exist(savedir,'dir')
-	mkdir(savedir);
-end
 
 singletrialsavedir=fullfile(savedir,'singletrials');
 

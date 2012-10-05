@@ -24,6 +24,7 @@ fig_title=[];
 scale='log';
 scalelabel=[];
 colorbarsize=.02; % normalized units, height of the colorbar
+smoothplot=1;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -53,6 +54,8 @@ for i=1:2:nparams
 			scalelabel=varargin{i+1};
 		case 'tf_clim'
 			tf_clim=varargin{i+1};
+		case 'smoothplot'
+			smoothplot=varargin{i+1};
 	end
 end
 
@@ -109,17 +112,40 @@ title([fig_title],'FontSize',18,'FontName','Helvetica');
 
 ax(2)=subaxis(4,1,1,3,1,2,'spacingvert',0.05,'margin',0.12,'paddingbottom',0);
 
-switch lower(scale)
-	case 'log'
-		disp('Log scale');
-		imagesc(TFIMAGE.t,TFIMAGE.f(tf_startidx:tf_stopidx),...
-			20*log10(TFIMAGE.image(tf_startidx:tf_stopidx,:)+eps));
-	case 'linear'
-		disp('Linear scale');
-		imagesc(TFIMAGE.t,TFIMAGE.f(tf_startidx:tf_stopidx),...
-			TFIMAGE.image(tf_startidx:tf_stopidx,:));
-	otherwise
-		error('Did not understand the scale parameters (must be log or linear)');
+if smoothplot
+
+	switch lower(scale)
+		case 'log'
+			disp('Log scale');
+			surf(TFIMAGE.t,TFIMAGE.f(tf_startidx:tf_stopidx),...
+				20*log10(TFIMAGE.image(tf_startidx:tf_stopidx,:)./max(max(TFIMAGE.image(tf_startidx:tf_stopidx,:)))+eps));
+		case 'linear'
+			disp('Linear scale');
+			surf(TFIMAGE.t,TFIMAGE.f(tf_startidx:tf_stopidx),...
+				TFIMAGE.image(tf_startidx:tf_stopidx,:));
+		otherwise
+			error('Did not understand the scale parameters (must be log or linear)');
+	end
+
+	axis xy;
+	view(2);
+	shading interp;
+
+else
+
+	switch lower(scale)
+		case 'log'
+			disp('Log scale');
+			imagesc(TFIMAGE.t,TFIMAGE.f(tf_startidx:tf_stopidx),...
+				20*log10(TFIMAGE.image(tf_startidx:tf_stopidx,:)./max(max(TFIMAGE.image(tf_startidx:tf_stopidx,:)))+eps));
+		case 'linear'
+			disp('Linear scale');
+			imagesc(TFIMAGE.t,TFIMAGE.f(tf_startidx:tf_stopidx),...
+				TFIMAGE.image(tf_startidx:tf_stopidx,:));
+		otherwise
+			error('Did not understand the scale parameters (must be log or linear)');
+	end
+
 end
 		
 axis tight;

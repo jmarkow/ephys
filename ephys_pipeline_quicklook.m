@@ -68,6 +68,7 @@ end
 channels=[1];
 colors='jet';
 fs=25e3;
+interp_fs=[];
 t=[1:length(MIC_DATA)]./fs;
 min_f=0;
 max_f=8e3;
@@ -76,12 +77,13 @@ figtitle=[];
 figsave=[];
 noise='none';
 car_exclude=[];
-freq_range=[];
+freq_range=[800];
 n=1024;
 overlap=1e3;
 nfft=1024;
 type='s';
 ylim_match=0;
+filt_type='high';
 
 % high pass the mic trace
 
@@ -102,6 +104,8 @@ for i=1:2:nparams
 			colors=varargin{i+1};
 		case 'fs'
 			fs=varargin{i+1};
+		case 'interp_fs'
+			interp_fs=varargin{i+1};
 		case 'n'
 			n=varargin{i+1};
 		case 'overlap'
@@ -147,7 +151,7 @@ plot_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_
 % condition the signal according to data type
 
 if ~isempty(freq_range)
-	plot_data=ephys_condition_signal(plot_data,type,'freq_range',freq_range);
+	plot_data=ephys_condition_signal(plot_data,type,'freq_range',freq_range,'filt_type','high');
 else
 	plot_data=ephys_condition_signal(plot_data,type);
 end
@@ -214,6 +218,27 @@ prettify_axis(gca,'FontSize',15,'FontName','Helvetica','Linewidth',2,'TickLength
 prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
 
 set(gca,'tickdir','out','xtick',[],'ytick',[],'xcolor',get(quickfig,'color'));
+
+if ~isempty(interp_fs)
+	
+	interpfactor=interp_fs/fs;
+
+	disp(['Interpolating ephys vector to ' num2str(interp_fs) ' samples/s ']);
+
+	% interpolation points
+
+	oldt=t;
+	t=linspace(t(1),t(end),length(t)*interpfactor);
+
+	tmp=plot_data;
+	clear plot_data;
+
+
+	for i=1:length(channels)
+		plot_data(:,i)=spline(oldt,tmp(:,i),t);
+	end
+
+end
 
 for i=1:length(channels)
 

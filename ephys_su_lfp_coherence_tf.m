@@ -79,15 +79,16 @@ colors='jet';
 phasecolors='hsv';
 debug=0;
 nfft=10000;
-n=6250;
-overlap=6000;
-min_f=15;
+n=4000;
+overlap=3800;
+min_f=20;
 max_f=100;
-w=2.5;
+w=2;
 alpha=[.001 .01 .05];
+smoothplot=0;
 
 ntapers=[];
-beta=1.5; % parameter for z-transforming coherence
+beta=23/20; % parameter for z-transforming coherence
 freq_range=[300]; % let's just refilter
 lfp_fs=25e3; % default Intan sampling rate
 trial_range=[];
@@ -297,7 +298,7 @@ end
 disp('Computing spectra and coherence');
 
 [coh,t,f,lfp_spect_mean,spike_spect_mean,stats]=ephys_tfcoherence(lfp_data,binspike_data,'fs',lfp_fs,...
-	'nfft',nfft,'n',n,'overlap',overlap,'ntapers',ntapers,'alpha',alpha);
+	'nfft',nfft,'n',n,'overlap',overlap,'ntapers',ntapers,'alpha',alpha,'w',w);
 
 fig_title=['LFPCH' num2str(LFPCHANNEL) ' SUCH' num2str(SUCHANNEL)...
        	' SUCL' num2str(SUCLUSTER) ' NTAP' num2str(stats.ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
@@ -347,8 +348,9 @@ spike_spect.t=t;
 spike_spect.f=f;
 
 time_frequency_raster(HISTOGRAM,spike_spect,'tf_min_f',min_f,'tf_max_f',max_f,'scale','log',...
-	'fig_num',spike_fig,'scalelabel','dB','fig_title',fig_title,'tfimage_colors',colors);
+	'fig_num',spike_fig,'scalelabel','dB','fig_title',fig_title,'tfimage_colors',colors,'smoothplot',smoothplot);
 
+set(spike_fig,'PaperPositionMode','auto');
 multi_fig_save(spike_fig,savedir,[savefilename '_spikespectrogram' ],'eps,png');
 
 close([spike_fig]);
@@ -362,8 +364,9 @@ lfp_spect.t=t;
 lfp_spect.f=f;
 
 time_frequency_raster(HISTOGRAM,lfp_spect,'tf_min_f',min_f,'tf_max_f',max_f,'scale','log',...
-	'fig_num',lfp_fig,'scalelabel','dB','fig_title',fig_title,'tfimage_colors',colors);
+	'fig_num',lfp_fig,'scalelabel','dB','fig_title',fig_title,'tfimage_colors',colors,'smoothplot',smoothplot);
 
+set(lfp_fig,'PaperPositionMode','auto');
 multi_fig_save(lfp_fig,savedir,[savefilename '_lfpspectrogram' ],'eps,png');
 
 close([lfp_fig]);
@@ -377,10 +380,25 @@ plotabscoh.t=t;
 plotabscoh.f=f;
 
 time_frequency_raster(HISTOGRAM,plotabscoh,'tf_min_f',min_f,'tf_max_f',max_f,'scale','linear',...
-	'fig_num',spect_fig,'scalelabel','Coherence','fig_title',fig_title,'tfimage_colors',colors,'tf_clim',clim);
+	'fig_num',spect_fig,'scalelabel','Coherence','fig_title',fig_title,'tfimage_colors',colors,'tf_clim',clim,'smoothplot',smoothplot);
 
 set(spect_fig,'PaperPositionMode','auto');
 multi_fig_save(spect_fig,savedir,savefilename,'eps,png','renderer','painters');
+close([spect_fig]);
+
+% z-transform
+
+spect_fig=figure('Visible','off','position',[0 0 round(600*nsamples/lfp_fs) 800]);
+
+plotabscoh.image=zabscoh;
+plotabscoh.t=t;
+plotabscoh.f=f;
+
+time_frequency_raster(HISTOGRAM,plotabscoh,'tf_min_f',min_f,'tf_max_f',max_f,'scale','linear',...
+	'fig_num',spect_fig,'scalelabel','Coherence','fig_title',fig_title,'tfimage_colors',colors,'tf_clim',clim,'smoothplot',smoothplot);
+
+set(spect_fig,'PaperPositionMode','auto');
+multi_fig_save(spect_fig,savedir,[savefilename 'ztrans'],'eps,png','renderer','painters');
 close([spect_fig]);
 
 % also show phase angle
@@ -392,7 +410,7 @@ plotabscoh.image=phasecoh;
 % plot phase with HSV
 
 time_frequency_raster(HISTOGRAM,plotabscoh,'tf_min_f',min_f,'tf_max_f',max_f,'scale','linear',...
-	'fig_num',phase_fig,'scalelabel','Phase','fig_title',fig_title,'tfimage_colors',phasecolors);
+	'fig_num',phase_fig,'scalelabel','Phase','fig_title',fig_title,'tfimage_colors',phasecolors,'smoothplot',smoothplot);
 
 set(phase_fig,'PaperPositionMode','auto');
 multi_fig_save(phase_fig,savedir,[savefilename '_phase' ],'eps,png','renderer','painters');
@@ -411,10 +429,11 @@ end
 %
 stopidx=min([find(f>=max_f)]);
 
-% now bin at the frequencies we're interested in
+% now bin at the frequencies we're interested in, after removing all spurious (coherence <p=.05)
 
 fvec=startidx:stopidx;
 amp_weighted_histogram=zeros(length(fvec),length(phase_edges));
+cutoff=stats.null(stats.alpha==.05);
 
 for i=1:length(fvec)
 
@@ -427,7 +446,10 @@ for i=1:length(fvec)
 		% where are points that are in this bin?
 
 		currpoints=find(phasebins==j);
-		amp_weighted_histogram(i,j)=sum(abscoh(fvec(i),currpoints));
+		tmp=abscoh(fvec(i),currpoints);
+		tmp(tmp<cutoff)=0;
+
+		amp_weighted_histogram(i,j)=sum(tmp);
 
 	end
 

@@ -64,7 +64,7 @@ if isempty(ntapers)
     ntapers=2*(w)-1;
 end
 
-STATS.dof=ntapers*ntrials;
+STATS.dof=2*ntapers*ntrials; % correction added 10/2/12 (forgot 2)
 [tapers,lambda]=dpss(n,w,ntapers);
 
 if isempty(nfft)
@@ -107,7 +107,7 @@ STATS.null_boncorrected=sqrt(1-(alpha./STATS.ncomp).^2).^(1/(STATS.dof/2-1));
 
 % compute the variance according to the asymptotic measure
 
-STATS.var=1.96/(sqrt(STATS.dof));
+STATS.var=1.96/(sqrt(STATS.dof/2));
 STATS.tapers=tapers;
 STATS.lambda=lambda;
 STATS.ntapers=ntapers;
