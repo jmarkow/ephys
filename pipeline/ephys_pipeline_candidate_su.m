@@ -45,7 +45,8 @@ noise='none'; % common-average reference for noise removal
 car_exclude=[];
 filtering='y'; % if defined then filtering filter the traces
 savedir=pwd;
-freq_range=[500 8e3]; % frequency range for filtering
+freq_range=[800]; % frequency range for filtering
+filt_type='high';
 snr_threshold=1.1;
 exclude_channels=[];
 channels=CHANNELS;
@@ -70,7 +71,7 @@ end
 [samples,ntrials,nchannels]=size(EPHYS_DATA);
 
 proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
-proc_data=ephys_condition_signal(proc_data,'s','freq_range',freq_range);
+proc_data=ephys_condition_signal(proc_data,'s','freq_range',freq_range,'filt_type',filt_type);
 
 clear EPHYS_DATA;
 
@@ -117,8 +118,8 @@ for i=1:length(channels)
 
 		% compute the peak to peak of the mean waveform
 	
-		mean_waveform=mean(spikes_pp.abs.windows,2);
-		peaktopeak=max(mean_waveform)-min(mean_waveform);
+		%mean_waveform=mean(spikes_pp.abs.windows,2);
+		%peaktopeak=max(mean_waveform)-min(mean_waveform);
 		curr_data=proc_data(:,j,i);
 
 		for k=1:nspikes
@@ -135,11 +136,15 @@ for i=1:length(channels)
 		end
 
 		noise_est=6*std(curr_data);
-		snr(j)=peaktopeak/noise_est;
+		peaktopeak=max(spikes_pp.abs.windows,[],2)-min(spikes_pp.abs.windows,[],2);
+		fullsnr=peaktopeak(:)./noise_est;
+
+		snr(j)=prctile(fullsnr,95); % check the top spikes at 99th percentile to 
+					    % avoid using outliers (from max)
 
 	end
 
-	SNR(i)=mean(snr); % take the average over all trials
+	SNR(:,i)=snr; % for all the spikes, how does the upper end of the distribution look?
 
 	if any(snr>snr_threshold)
 

@@ -132,11 +132,11 @@ else
 	[path,name,ext]=fileparts(savedir);
 end
 savename=[ name '_lfpch_' num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_clust' num2str(SUCLUSTER) '_freqs' num2str(freq_range)];
-load(fullfile(filedir,'aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
+load(fullfile(pwd,'../../aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
 
 % first let's get the smooth spike traces and IFR (use IFR on a trial by trial basis)
 
-sua_mat=fullfile(filedir,'sua',['sua_channels ' num2str(SUCHANNEL) '.mat']);
+sua_mat=fullfile(pwd,'sua',['sua_channels ' num2str(SUCHANNEL) '.mat']);
 load(sua_mat,'smooth_spikes','IFR','TIME','clust_spike_vec','subtrials'); % smooth spikes
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

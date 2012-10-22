@@ -13,10 +13,10 @@ function [COEFFS SCORES]=pp_negentropy(DATA,varargin)
 
 % first, sphere the data
 
-projections=6; % number of dimensions to return, should retest for 
+projections=5; % number of dimensions to return, should retest for 
          % negentropy of coefficient of bimodality
 
-maxiter=400;
+maxiter=1000;
 epsilon=1e-4;
 
 nparams=length(varargin);
@@ -48,33 +48,34 @@ data_mean=mean(DATA);
 demeaned_data=DATA-ones(m,1)*data_mean;
 sphered_data=demeaned_data./repmat(std(demeaned_data),m,1);
 
-sphered_data=sphered_data';
+%sphered_data=sphered_data';
 
 % return to dimensions x observations
 
 for i=1:projections+1
 
-	w=randn(1,m);
+	w=randn(m,1);
 	w=w/norm(w);
 
 	for j=1:maxiter
 
-		y=sphered_data*w';
+		y=w'*sphered_data;
 
 		% add options for other functions
 
-		g=repmat(y.^3,1,m);
-		gprime=repmat(3.*y.^2,1,m);
-		
-		% calculate the gradient
+		leftside=mean(sech(y).^2).*w;
 
-		leftside=mean(sphered_data.*g);
+		% calculate the gradient
 
 		% derivative on w
 
-		rightside=mean(gprime).*w;
-		
+		size(y)
+		pause();
+
+		rightside=mean(sphered_data.*repmat(tanh(y),m,1),2);
+	
 		wplus=leftside-rightside;
+		
 		wnew=wplus/norm(wplus);
 
 		tmp=[];
@@ -86,13 +87,21 @@ for i=1:projections+1
 			% inner product of wnew and other vectors
 			% .* COEFFS(:,k)
 
-			tmp(k,:)=(COEFFS(k,:)*wnew').*COEFFS(k,:);
+			tmp(:,k)=(wnew'*COEFFS(:,k)).*COEFFS(:,k);
 		end
 
 		if i>1
-			wnew=wnew-sum(tmp,1);
+
+			wnew=wnew-sum(tmp,2);
 			wnew=wnew/norm(wnew);	
 		end
+
+	
+		i	
+		[w wnew]
+		pause();
+
+		1-(sum(wnew.*w))
 
 		if 1-(sum(wnew.*w))<epsilon
 			w=wnew;
@@ -104,7 +113,7 @@ for i=1:projections+1
 
 	end
 
-	COEFFS(i,:)=w;
+	COEFFS(:,i)=w;
 
 end
 
@@ -114,10 +123,4 @@ end
 SCORES=zeros(m,projections);
 
 % take the projections with maximum non-normality
-
-for i=1:n
-	for j=1:projections
-		SCORES(i,j)=COEFFS(j,:)*sphered_data(i,:)';
-	end
-end
 

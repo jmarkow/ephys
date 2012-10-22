@@ -1,4 +1,4 @@
-function [LABELS TRIALS ISI WINDOWS CLUSTERPOINTS OUTLIERS]=...
+function [LABELS TRIALS ISI WINDOWS CLUSTERPOINTS STATS OUTLIERS]=...
 		ephys_spike_cluster_auto(SPIKEWINDOWS,SPIKETIMES,varargin)
 %automated spike clustering using a GMM with EM
 %
@@ -501,7 +501,7 @@ warning('on','stats:kmeans:FailedToConverge');
 
 % assign output variables, garbage collection
 
-clear testobj;
+%clear testobj;
 
 % instead, get mean and covariances, project onto FLD, assess cluster quality and then 
 % use outlier cutoff per Hill et al. (2011)
@@ -629,18 +629,20 @@ if outlier_detect
 
 		% find outliers
 
-		clustermean=mean(CLUSTERPOINTS{i});
-		clusterinvcov=inv(cov(CLUSTERPOINTS{i}));
+		%clustermean=mean(CLUSTERPOINTS{i});
+		%clusterinvcov=inv(cov(CLUSTERPOINTS{i}));
 
 		% get the residuals
 
 		[nclusttrials,dims]=size(CLUSTERPOINTS{i});
-		residuals=zeros(nclusttrials,1);
+		%residuals=zeros(nclusttrials,1);
 
-		for j=1:nclusttrials
-			residuals(j)=(CLUSTERPOINTS{i}(j,:)-clustermean)...
-				*clusterinvcov*(CLUSTERPOINTS{i}(j,:)-clustermean)';
-		end
+		%for j=1:nclusttrials
+		%	residuals(j)=(CLUSTERPOINTS{i}(j,:)-clustermean)...
+		%		*clusterinvcov*(CLUSTERPOINTS{i}(j,:)-clustermean)';
+		%end
+
+		residuals=mahal(CLUSTERPOINTS{i},CLUSTERPOINTS{i});
 
 		% cutoff point
 
@@ -670,6 +672,38 @@ if outlier_detect
 end
 
 TRIALS=trialnum;
+
+% now assess the cluster quality ,
+% take each cluster and check the FP and FN rate
+
+% use l ratio of .05
+
+for i=1:length(clusters)
+	
+	clusterlocs=find(LABELS==i);
+	otherlocs=find(LABELS~=i);
+	% get the feature data
+
+	clusterpoints=spike_data(clusterlocs,:);
+	otherpoints=spike_data(otherlocs,:);
+
+	% l ratio is the sum inv chi2cdf of mahal distance of all other points over
+	% n spikes
+
+	nclustpoints=size(clusterpoints,1);
+
+	mahaldist=mahal(otherpoints,clusterpoints);
+	STATS.lratio(i)=sum(1-chi2cdf(mahaldist.^2,features))/nclustpoints;
+
+	if length(mahaldist)>=nclustpoints
+		sortmahal=sort(mahaldist.^2,'ascend');
+		STATS.isod(i)=sortmahal(nclustpoints);
+	else
+		STATS.isod(i)=NaN;
+	end
+
+end
+
 clear spike_data;
 
 % resort labels by number of spikes, first vector is cluster id, and the second the 

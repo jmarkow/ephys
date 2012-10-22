@@ -65,6 +65,10 @@ try
 		print(fighandle,'-dtiff',renderer,res,fullfile(save_dir,[filename '.tiff']));
 	end
 
+	if ~isempty(findstr('pdf',formats)) || strcmp(formats,'all')
+		print(fighandle,'-dpdf',renderer,res,fullfile(save_dir,[filename '.pdf']));
+	end
+
 	if ~isempty(findstr('png',formats)) || strcmp(formats,'all')
 		print(fighandle,'-dpng',renderer,res,fullfile(save_dir,[filename '.png']));
 	end

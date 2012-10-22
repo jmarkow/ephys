@@ -18,35 +18,23 @@ fig_num=[];
 spike_fs=50e3;
 
 colors=[...	
-	0 .5 0;... % green	
-	1 0 1;... % magenta	
-	0 1 1;... % cyan		
-	1 0 0;... % red		
-	1 1 0;... % yellow
+	1 .6445 0;... % orange	
+	1 0 1;... % magenta
+	0 1 1;... % cyan	
+	1 0 0;... % red				
 	0 0 1;... % blue		
-	.6445 .1641 .1641; ... % brown
-	1 .6445 0;... % orange		
-	0 0 0;... % black
-	.1953 .8008 .1953;... % lime-green
-	0 0 .5;... % navy
-	0 .5 .5;... % teal	
 	.5 0 .5; ... % purple		
-	.9542 .6406 .3750;... % sandy brown
-	1 .2695 0;... % orange red	
-	.5 .5 0;... % olive	
-	.5 .5 .5;... % silver	
+	.6445 .1641 .1641; ... % brown
+	1 1 0;... % yellow
+	.1953 .8008 .1953;... % lime-green
 	.1328 .5430 .1328;... % forest green
-	.4 .4 .4;... % gray	
-	.2930 0 .5078;... % indigo	
-	.1797 .5430 .3398;... % sea green
-	.5430 0 .5430;... % dark magenta
-	.2 .2 .2;... % dark gray		
-	.6 .6 .6;... % lighter
-	.7188 .5234 .0430;... % dark goldenrod
-	.5938 .9833 .5938;... % pale green
+	0 0 .5;... % navy
+	0 .5 .5;... % teal
+	.5430 .2695 .0742;... % saddle-brown
+	1 .2695 0;... % orange red
 	]; 
 
-
+legend_labels=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -56,17 +44,18 @@ for i=1:2:nparams
 			fig_num=varargin{i+1};
 		case 'colors'
 			colors=varargin{i+1};
+		case 'legend_labels'
+			legend_labels=varargin{i+1};
 	end
 end
 
 [nclust]=length(SPIKEWINDOWS);
-
 [samples,trials]=size(SPIKEWINDOWS{1});
 
 timevec=([1:samples]./spike_fs)*1e3;
 
 if isempty(fig_num)
-	fig_num=figure('Visible','on');
+	fig_num=figure('Visible','on','renderer','painters');
 end
 
 % organize cluster by p2p
@@ -82,15 +71,45 @@ end
 
 [val plotorder]=sort(p2p,'descend');
 
-for i=1:nclust
-	plot(timevec,SPIKEWINDOWS{plotorder(i)},'-','color',colors(i,:));
+% instead simply plot mean and std, then color code everything
+% and show--(1) waveforms, (2) fisher projections, (3) auto-correlations, and (4) cross-correlations
+
+patchx=[ timevec fliplr(timevec) ];
+hsvcolors=rgb2hsv(colors);
+
+for i=plotorder
+
+	meanwave=mean(SPIKEWINDOWS{i},2)';
+	varwave=std(SPIKEWINDOWS{i},0,2)';
+	patchy=[ meanwave-varwave fliplr(meanwave+varwave) ];
+
+	patchcolor=hsv2rgb(hsvcolors(i,:));
+	edgecolor=hsv2rgb(hsvcolors(i,:)-[0 0 .3]);
+	linecolor=hsv2rgb(hsvcolors(i,:)-[0 0 .4]);
+
+	h(i)=patch(patchx,patchy,1,'facecolor',...
+		patchcolor,'edgecolor',edgecolor,'facealpha',1);
+
 	hold on;
+	plot(timevec,meanwave,'-','color',linecolor,'linewidth',2);
+
 end
 
-ylabel('Voltage (in $\mu$V)','FontName','Helvetica','FontSize',13,'Interpreter','Latex');
-xlabel('Time (ms)','FontName','Helvetica','FontSize',13);
+ylabel('microVolts');
+xlabel('Time (ms)');
 box off
 axis tight;
 
-prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
+if ~isempty(legend_labels)
+	L=legend(h,legend_labels);
+	legend boxoff;
+end
+
+prettify_axis(gca,'FontSize',17,'FontName','Helvetica');
 prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+
+if ~isempty(legend_labels)
+	set(L,'location','SouthEast','FontSize',10);
+end
+
+set(gca,'layer','top');

@@ -20,6 +20,7 @@ patch_color=[1 .6 0];
 noise_p2p=[];
 y_res=200;
 spike_fs=50e3;
+note=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -37,6 +38,8 @@ for i=1:2:nparams
 			y_res=varargin{i+1};
 		case 'isi_method'
 			isi_method=varargin{i+1};
+		case 'note'
+			note=varargin{i+1};
 	end
 end
 
@@ -50,7 +53,7 @@ end
 % isi bin edges (msec)
 % also plot 2D histogram
 
-isipoints=[0:.01:10];
+isipoints=[0:.1:100];
 
 % need the upper/lower edges for the 2D histogram
 
@@ -86,6 +89,7 @@ end
 subplot(3,1,1);
 plot(timevec,SPIKEWINDOWS,'m-');
 ylabel('Voltage (microVolts)','FontName','Helvetica','FontSize',13);
+set(gca,'layer','top');
 box off
 axis tight;
 
@@ -136,7 +140,7 @@ if isempty(SPIKEISI);
 end
 
 [density,xi]=ksdensity((SPIKEISI/fs)*1e3,isipoints,'support','positive');
-density=density./sum(density);
+%density=density./sum(density); % normalization UNNECESSARY w/ ksdensity
 
 %density=histc((SPIKEISI/fs)*1e3,isipoints);
 %h=bar(isipoints,density,'histc');
@@ -149,16 +153,16 @@ violations=sum((SPIKEISI/fs)<.001)/length(SPIKEISI);
 
 violations=round(1000*violations)/10;
 
-plot(xi,density,'r-','linewidth',3);
+semilogx(xi,density,'r-','linewidth',3);
 hline=findobj(gca,'type','line');
 set(hline,'clipping','off');
 box off
 %set(h,'FaceColor',[.7 .7 .7],'EdgeColor','k','LineWidth',1.5);
-xlabel(['ISI (ms), ' num2str(violations) '% < 1 ms']);
-ylabel('Probability density');
+xlabel({['ISI (ms), ' num2str(violations) '% < 1 ms '];[note]});
+ylabel('P(ISI)');
 
 ylimits(1)=min(density);
-ylimits(2)=ceil(max(density)*1e3)/1e3;
+ylimits(2)=ceil(max(density)*1e2)/1e2;
 
 if ylimits(1)<ylimits(2)
 	set(gca,'YLim',ylimits,'YTick',ylimits);
@@ -166,6 +170,8 @@ end
 
 prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
 prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+set(gca,'layer','top');
 xlim([xi(1) xi(end)]);
+set(gca,'XTick',[ .1 1 10 100 ],'XTickLabel',[ .1 1 10 100 ],'XMinorTick','off');
 
 %linkaxes(ax,'x');

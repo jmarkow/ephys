@@ -18,27 +18,27 @@ unit_parameters=ephys_pipeline_readconfig(UNITFILE);
 [path,file,ext]=fileparts(UNITFILE);
 tokens=regexp(path,filesep,'split');
 
-if length(tokens)<12
-	error('ephysPipeline:singleunitpostproc:wrongdir','Unit file in wrong directory for post processing.');
-end
+%if length(tokens)<12
+%	error('ephysPipeline:singleunitpostproc:wrongdir','Unit file in wrong directory for post processing.');
+%end
 
 % TODO:  deal with non-default directory structures (or, simply enforce the standard ones more rigorously)
 
-extractionstring=tokens{end-2};
-datestring=tokens{end-4};
-recstring=tokens{end-5};
-birdidstring=tokens{end-6};
+extractionstring=tokens{end-4};
+datestring=tokens{end-6};
+recstring=tokens{end-7};
+birdidstring=tokens{end-8};
 
-bookkeeping_dir=fullfile(filesep,tokens{1:end-6},recstring,global_parameters.bookkeeping_dir);
-savedir=fullfile(bookkeeping_dir,unit_parameters.cellid,[ datestring ' (' extractionstring ')']);
+bookkeeping_dir=fullfile(global_parameters.bookkeeping_dir);
+savedir=fullfile(bookkeeping_dir,birdidstring,unit_parameters.cellid,[ datestring ' (' extractionstring ')']);
 
 disp(['Post-processing ' unit_parameters.cellid]);
 disp(['Will save in directory ' savedir]);
 
 filedir=path;
 
-if exist(fullfile(path,'histogram.mat'))
-	load(fullfile(path,'histogram.mat'),'HISTOGRAM');
+if exist(fullfile(path,'..','..','histogram.mat'))
+	load(fullfile(path,'..','..','histogram.mat'),'HISTOGRAM');
 else
 	error('ephysPipeline:singleunitpostproc:nohistogram','No histogram in same directory as unit file.');
 end
@@ -49,12 +49,20 @@ if ~exist(fullfile(savedir,'raster'),'dir')
 	mkdir(fullfile(savedir,'raster'));
 end
 
+fid=fopen(fullfile(savedir,'cellinfo.txt'),'w');
+
+fprintf(fid,'Bird ID:\t%s\nDate:\t\t%s\nCell ID:\t%s\nExtraction:\t%s\nChannel:\t%g\nCluster:\t%g\nLFP Channels:\t',...
+	birdidstring,datestring,unit_parameters.cellid,extractionstring,unit_parameters.channel,unit_parameters.cluster);
+fprintf(fid,'%g ',str2num(unit_parameters.lfp_channels));
+
+fclose(fid);
+
 try
-	copyfile(fullfile(filedir,'sua',['ephys_sua_freqrange*electrode_' num2str(unit_parameters.channel) ...
+	copyfile(fullfile(filedir,['ephys_sua_freqrange*electrode_' num2str(unit_parameters.channel) ...
 		'_raster_cluster_' num2str(unit_parameters.cluster) '*' ]),fullfile(savedir,'raster'));
-	copyfile(fullfile(filedir,'sua',['ephys_sua_freqrange*electrode_' num2str(unit_parameters.channel) ...
-		'_stats_cluster_' num2str(unit_parameters.cluster) '*' ]),fullfile(savedir,'raster'));
-	copyfile(fullfile(filedir,'sua',['sua_channels*' num2str(unit_parameters.channel) '.mat']),fullfile(savedir,'raster'));
+	copyfile(fullfile(filedir,['ephys_sua_freqrange*electrode_' num2str(unit_parameters.channel) ...
+		'_stats_cluster_*' ]),fullfile(savedir,'raster'));
+	copyfile(fullfile(filedir,['sua_channels*' num2str(unit_parameters.channel) '.mat']),fullfile(savedir,'raster'));
 catch
 	warning('ephysPipeline:singleunitpostproc:nocopy','Could not copy single unit raster file');
 end
@@ -80,7 +88,6 @@ end
 tmpvec=[0:25:100];
 bands_to_check=[1 tmpvec(2:end)];
 
-
 for i=lfp_channels
 
 	fprintf('SU Channel:\t%i\n',unit_parameters.channel);
@@ -95,7 +102,6 @@ for i=lfp_channels
 	for j=1:length(bands_to_check)-1
 
 		fprintf('FS band:\t%g-%g\n',bands_to_check(j),bands_to_check(j+1));
-
 
 		startidx=max(find(freqs<=bands_to_check(j)));
 
@@ -117,12 +123,10 @@ for i=lfp_channels
 
 			disp(['Computing IFR-triggered LFPs for the following frequency band:  '...
 			       	num2str(bands_to_check(j:j+1))]);
-
 			ephys_su_lfp_coherence_ifr(i,unit_parameters.channel,unit_parameters.cluster,'filedir',filedir,...
 				'savedir',savedir,'freq_range',[bands_to_check(j) bands_to_check(j+1)]);
 			ephys_su_lfp_coherence_spikestats(i,unit_parameters.channel,unit_parameters.cluster,'filedir',filedir,...
 				'savedir',savedir,'freq_range',[bands_to_check(j) bands_to_check(j+1)]);
-
 		end
 
 
@@ -131,8 +135,4 @@ for i=lfp_channels
 	ephys_su_lfp_coherence_tf(i,unit_parameters.channel,unit_parameters.cluster,HISTOGRAM,'filedir',filedir,'savedir',savedir);
 
 end
-
-
-
-
 

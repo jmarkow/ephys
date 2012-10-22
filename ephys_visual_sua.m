@@ -118,6 +118,7 @@ red_cutoff=.8;
 outlier_detect=1;
 nfeatures=10;
 merge=.47;
+savename=''; % add if doing multiple manual sorts, will append a name to the filename
 
 % remove eps generation, too slow here...
 
@@ -183,6 +184,8 @@ for i=1:2:nparams
 			nfeatures=varargin{i+1};
 		case 'merge'
 			merge=varargin{i+1};
+		case 'savename'
+			savename=varargin{i+1};
 	end
 end
 
@@ -205,6 +208,11 @@ if isempty(subtrials)
 	subtrials=1:ntrials;
 end
 
+if isempty(figtitle)
+	figtitle=['Trials ' num2str(subtrials(1)) ' to ' num2str(subtrials(end))];
+end
+
+
 TIME=[1:samples]./fs; % time vector for plotting
 
 % kernel density estimate of smooth firing rate
@@ -219,7 +227,6 @@ if exist('normpdf')>0
 else
 	kernel=(1/(sigma*sqrt(2*pi)))*exp((-(kernedges-0).^2)./(2*sigma^2));
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
@@ -371,7 +378,19 @@ disp(['Will save to directory:  ' savedir]);
 [path,name,ext]=fileparts(fullfile(savedir));
 savefilename=[ name '_sua_freqrange_' num2str(freq_range) '_electrode_' ];
 
+if ~auto_clust & ~isempty(savename)
+	savefilename=[ savefilename savename '_'];
+end
+
 savedir=fullfile(savedir,'sua');
+
+if isdeployed
+	savedir=fullfile(savedir,'pipeline');
+elseif auto_clust
+	savedir=fullfile(savedir,'auto');
+else
+	savedir=fullfile(savedir,'manual');
+end
 
 if ~exist(savedir,'dir')
 	mkdir(fullfile(savedir));
@@ -383,7 +402,7 @@ for i=1:length(channels)
 
 	if sort
 		if auto_clust
-			[clusterid clustertrial clusterisi clusterwindows clusterpoints outliers]=...
+			[clusterid clustertrial clusterisi clusterwindows clusterpoints clusterstats outliers]=...
 				ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},...
 				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca,...
 				'clust_choice',clust_choice,'maxcoeffs',wavelet_coeffs,'outlier_detect',outlier_detect,...
@@ -510,7 +529,7 @@ for i=1:length(channels)
 		delete(fullfile(savedir,[savefilename_stats '*.png']));
 		delete(fullfile(savedir,[savefilename_stats '*.eps']));
 
-		for j=1:length(uniq_clusters)
+		for j=1:nplots
 
 			% estimate SNR from 6*std of spikeless trace
 
@@ -524,10 +543,18 @@ for i=1:length(channels)
 			mean_noise_p2p=mean(noise_p2p);
 			
 			stats_fig=figure('Visible','off');
-			
+		
+			note=[];
+
+			if auto_clust
+				note=['L-ratio ' sprintf('%.2f',clusterstats.lratio(j)) ...
+					' IsoD ' sprintf('%.2f',clusterstats.isod(j)) ];
+			end
+
 			stats_fig=ephys_visual_spikestats(clusterwindows{uniq_clusters(j)},clusterisi{uniq_clusters(j)},...
-				'noise_p2p',mean_noise_p2p,'fs',fs,'spike_fs',interpolate_fs,'fig_num',stats_fig);
-			
+				'noise_p2p',mean_noise_p2p,'fs',fs,'spike_fs',interpolate_fs,'fig_num',stats_fig,'note',note);
+		
+
 			% TODO:  function for cluster stats (Fisher test, etc.)
 
 			set(stats_fig,'Position',[0 0 450 600]);
@@ -539,16 +566,26 @@ for i=1:length(channels)
 
 		end
 
-		stats_fig=figure('Visible','off');
+		stats_fig=figure('Visible','off','renderer','painters');
 
-		stats_fig=ephys_visual_clustresults(clusterwindows,'spike_fs',interpolate_fs,'fig_num',stats_fig);
+		stats=[];
 
-		set(stats_fig,'Position',[0 0 600 400]);
+		if auto_clust
+			stats=clusterstats;
+		end
+
+		stats_fig=ephys_visual_cluststats(clusterwindows,clust_spike_vec{i},...
+			'spike_fs',interpolate_fs,'fig_num',stats_fig,'stats',stats);
+
+		set(stats_fig,'Position',[0 0 250+500*nplots 250+500*nplots]);
 		set(stats_fig,'PaperPositionMode','auto');
 
 		multi_fig_save(stats_fig,savedir,...
-			[ savefilename_stats 'clustresults' ],'png','res',200);
+			[ savefilename_stats 'stats' ],'eps,png','res',150,'renderer','painters');
+
 		close([stats_fig]);
+
+
 	end
 
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -653,7 +690,7 @@ end
 if sort & auto_clust 
 	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows','fs','interpolate_fs',...
 		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','clust_spike_vec','smooth_spikes',...
-		'spikeless','IFR','subtrials','clusterpoints','outliers');
+		'spikeless','IFR','subtrials','clusterpoints','outliers','clusterstats');
 elseif sort
 	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows','fs','interpolate_fs',...
 		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','clust_spike_vec','smooth_spikes',...

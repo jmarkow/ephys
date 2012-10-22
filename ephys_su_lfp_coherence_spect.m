@@ -122,9 +122,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA COLLECTION %%%%%%%%%%%%%%%%%%%%
 
 
-sua_mat=fullfile(filedir,'sua',['sua_channels ' num2str(SUCHANNEL) '.mat']);
+sua_mat=fullfile(pwd,['sua_channels ' num2str(SUCHANNEL) '.mat']);
 
-load(fullfile(filedir,'aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
+load(fullfile(pwd,'../../aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
 load(sua_mat,'smooth_spikes','clust_spike_vec','subtrials'); % smooth spikes
 
 if isempty(find(LFPCHANNEL==CHANNELS))

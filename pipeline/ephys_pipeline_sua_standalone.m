@@ -44,7 +44,38 @@ delete(fullfile(PROCDIR,'snr_channel_*'));
 disp('Computing SNR on all channels');
 SNR=ephys_pipeline_candidate_su(EPHYS_DATA,CHANNELS,'savedir',PROCDIR,'snr_threshold',parameters.snr_cutoff);
 
-candidate_channels=CHANNELS(SNR>=parameters.snr_cutoff); % channels with average SNR over cutoff for all trials
+% check for contiguous windows with SNR>SNR_min
+
+candidate_channels=[];
+trials=[];
+
+for i=1:nchannels
+	
+	snrvec=SNR(:,i);
+
+	strvec=[0;snrvec>parameters.snr_cutoff;0]';
+
+	startidx=strfind(strvec,[0 1]);
+	stopidx=strfind(strvec,[1 0])-1;
+	
+	[maxregion loc]=max(stopidx-startidx);
+
+	if length(maxregion>1)
+		maxregion=maxregion(1);
+		loc=loc(1);
+	end
+
+	if maxregion>parameters.snr_trials
+		
+		candidate_channels=[candidate_channels;CHANNELS(i)];
+		trials=[trials;[startidx(loc) stopidx(loc)]];
+	
+	end
+
+end
+
+%candidate_channels=CHANNELS(SNR>=parameters.snr_cutoff); % channels with average SNR over cutoff for all trials
+
 %	get processed
 
 for i=1:length(candidate_channels)
@@ -55,7 +86,7 @@ for i=1:length(candidate_channels)
 		'wavelet_coeffs',parameters.wavelet_coeffs,'clust_choice',parameters.mode_selection,...
 		'interpolate_fs',parameters.spike_fs,'filt_type',parameters.spike_filt_type,'freq_range',parameters.spike_freq_range,...
 		'outlier_detect',parameters.outlier_detect,'red_cutoff',parameters.red_cutoff,'nfeatures',parameters.spike_nfeatures,...
-		'merge',parameters.spike_merge);
+		'merge',parameters.spike_merge,'subtrials',[trials(i,1):trials(i,2)]);
 end
 
 
