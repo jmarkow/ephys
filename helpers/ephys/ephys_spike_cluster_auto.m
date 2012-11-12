@@ -693,7 +693,12 @@ for i=1:length(clusters)
 	nclustpoints=size(clusterpoints,1);
 
 	mahaldist=mahal(otherpoints,clusterpoints);
-	STATS.lratio(i)=sum(1-chi2cdf(mahaldist.^2,features))/nclustpoints;
+	
+	if length(otherpoints>0)
+		STATS.lratio(i)=sum(1-chi2cdf(mahaldist.^2,features))/nclustpoints;
+	else
+		STATS.lratio(i)=NaN;
+	end
 
 	if length(mahaldist)>=nclustpoints
 		sortmahal=sort(mahaldist.^2,'ascend');

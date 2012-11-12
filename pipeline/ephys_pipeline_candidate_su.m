@@ -139,7 +139,7 @@ for i=1:length(channels)
 		peaktopeak=max(spikes_pp.abs.windows,[],2)-min(spikes_pp.abs.windows,[],2);
 		fullsnr=peaktopeak(:)./noise_est;
 
-		snr(j)=prctile(fullsnr,95); % check the top spikes at 99th percentile to 
+		snr(j)=prctile(fullsnr,90); % check the top spikes at 90th percentile to 
 					    % avoid using outliers (from max)
 
 	end

@@ -117,8 +117,12 @@ clust_choice='bic'; % with merging, BIC works just fine...
 red_cutoff=.8;
 outlier_detect=1;
 nfeatures=10;
-merge=.47;
+merge=.47; % exp(-d), lower to merge more aggressively
 savename=''; % add if doing multiple manual sorts, will append a name to the filename
+isi_cutoff=.05; % percentage of ISI values <.001
+lratio_cutoff=.2;
+isod_cutoff=20;
+snr_cutoff=1.1;
 
 % remove eps generation, too slow here...
 
@@ -180,6 +184,14 @@ for i=1:2:nparams
 			outlier_detect=varargin{i+1};
 		case 'red_cutoff'
 			red_cutoff=varargin{i+1};
+		case 'isi_cutoff'
+			isi_cutoff=varargin{i+1};
+		case 'isod_cutoff'
+			isod_cutoff=varargin{i+1};
+		case 'lratio_cutoff'
+			lratio_cutoff=varargin{i+1};
+		case 'snr_cutoff'
+			snr_cutoff=varargin{i+1};
 		case 'nfeatures'
 			nfeatures=varargin{i+1};
 		case 'merge'
@@ -521,7 +533,12 @@ for i=1:length(channels)
 	% delete all old files
 
 	delete(fullfile(savedir,[ '*_sua_freqrange*electrode_' num2str(channels(i)) '*']));
-	
+
+	% delete old candidate files
+
+	delete(fullfile(savedir,[ 'candidate_unit_ch' num2str(channels(i)) '*']));
+	delete(fullfile(savedir,[ '.*_sua_channels ' num2str(channels(i)) '*']));
+
 	if ~isempty(clusterid)
 
 		% delete old stats figures if they exist
@@ -541,24 +558,45 @@ for i=1:length(channels)
 
 			noise_p2p(isnan(noise_p2p))=[];
 			mean_noise_p2p=mean(noise_p2p);
+			mean_wave=mean(clusterwindows{uniq_clusters(j)},2);
+			max_wave=max(mean_wave);
+			min_wave=min(mean_wave);
+
+			clusterstats.snr(uniq_clusters(j))=[ abs(max_wave-min_wave)/mean_noise_p2p ];
 			
 			stats_fig=figure('Visible','off');
 		
 			note=[];
 
 			if auto_clust
-				note=['L-ratio ' sprintf('%.2f',clusterstats.lratio(j)) ...
-					' IsoD ' sprintf('%.2f',clusterstats.isod(j)) ];
+				note=['L-ratio ' sprintf('%.2f',clusterstats.lratio(uniq_clusters(j))) ...
+					' IsoD ' sprintf('%.2f',clusterstats.isod(uniq_clusters(j))) ];
 			end
 
 			stats_fig=ephys_visual_spikestats(clusterwindows{uniq_clusters(j)},clusterisi{uniq_clusters(j)},...
 				'noise_p2p',mean_noise_p2p,'fs',fs,'spike_fs',interpolate_fs,'fig_num',stats_fig,'note',note);
 		
-
 			% TODO:  function for cluster stats (Fisher test, etc.)
 
 			set(stats_fig,'Position',[0 0 450 600]);
 			set(stats_fig,'PaperPositionMode','auto');
+		
+			% label candidate units if they meet our criteria
+			% isi intervals < absolute refractory period
+
+			isi_violations=sum(clusterisi{uniq_clusters(j)}./fs)<.001;
+			isi_violations=isi_violations/length(clusterisi{uniq_clusters(j)});
+
+			if clusterstats.snr(uniq_clusters(j))>=snr_cutoff && ...
+					(isnan(clusterstats.lratio(uniq_clusters(j))) || ...
+					clusterstats.lratio(uniq_clusters(j))<=lratio_cutoff) &&  ...
+					isi_violations<isi_cutoff 
+				if isnan(clusterstats.isod(uniq_clusters(j))) || clusterstats.isod(uniq_clusters(j))>=isod_cutoff
+					fid=fopen(fullfile(savedir,['candidate_unit_ch' num2str(channels(i)) ... 
+						'_cl' num2str(uniq_clusters(j))]),'w');
+					fclose(fid);
+				end
+			end
 
 			multi_fig_save(stats_fig,savedir,...
 				[ savefilename_stats num2str(uniq_clusters(j))],'png','res',200);
@@ -581,10 +619,9 @@ for i=1:length(channels)
 		set(stats_fig,'PaperPositionMode','auto');
 
 		multi_fig_save(stats_fig,savedir,...
-			[ savefilename_stats 'stats' ],'eps,png','res',150,'renderer','painters');
+			[ savefilename_stats 'clstats' ],'eps,png','res',150,'renderer','painters');
 
 		close([stats_fig]);
-
 
 	end
 
@@ -688,14 +725,17 @@ for i=1:length(channels)
 end
 
 if sort & auto_clust 
-	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows','fs','interpolate_fs',...
+	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),...
+		'clusterid','clustertrial','clusterisi','clusterwindows','fs','interpolate_fs',...
 		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','clust_spike_vec','smooth_spikes',...
 		'spikeless','IFR','subtrials','clusterpoints','outliers','clusterstats');
 elseif sort
-	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'clusterid','clustertrial','clusterisi','clusterwindows','fs','interpolate_fs',...
+	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),...
+		'clusterid','clustertrial','clusterisi','clusterwindows','fs','interpolate_fs',...
 		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','clust_spike_vec','smooth_spikes',...
 		'spikeless','IFR','subtrials');
 else
-	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),'threshold','CHANNELS','channels','TIME','proc_data','freq_range','fs');
+	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),...
+		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','fs');
 end
 

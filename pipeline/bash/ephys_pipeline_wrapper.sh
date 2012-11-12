@@ -13,11 +13,13 @@ echo 'Starting ephys daemons:  ' $EXEC_SUA_D
 echo 'Starting ephys daemons:  ' $EXEC_MUA_D
 echo 'Starting ephys daemons:  ' $EXEC_LFP_D
 echo 'Starting ephys daemons:  ' $EXEC_POSTPROC_D
+echo 'Starting ephys daemons:  ' $EXEC_TRACK_D
 echo 'Log:  ' $LOG_AGGREGATE
 echo 'Log:  ' $LOG_SUA
 echo 'Log:  ' $LOG_MUA
 echo 'Log:  ' $LOG_LFP
 echo 'Log:  ' $LOG_POSTPROC
+echo 'Log:  ' $LOG_TRACK
 
 $EXEC_AGGREGATE_D $LOG_AGGREGATE &
 AGGREGATE_PID=$! 
@@ -33,6 +35,9 @@ LFP_PID=$!
 
 $EXEC_POSTPROC_D $LOG_POSTPROC &
 POSTPROC_PID=$!
+
+$EXEC_TRACK_D $LOG_TRACK &
+TRACK_PID=$!
 
 echo 'Starting cluster daemon:  ' $EXEC_CLUSTER_D
 echo 'Log:  ' $LOG_CLUSTER

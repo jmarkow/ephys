@@ -34,6 +34,7 @@ FILES.nomatch.clustidx=[];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA COLLECTION
 
 counter=1;
+cellidx=0;
 if nargin<1 | isempty(FILES)
 
 	% get the match directory
@@ -44,14 +45,52 @@ if nargin<1 | isempty(FILES)
 
 	while ~flag
 
-		[filelist clusterids]=recursive_file_find(pwd,'sua_channels','Choose directories FOR ONE CELL for MATCH');
+		[filelist]=recursive_file_find(pwd,'sua_channels','Choose directories FOR ONE CELL for MATCH');
+
+		containers={};
+		filedate={};
+		clusterids=[];
 
 		for j=1:length(filelist)
-			FILES.match.name{end+1}=filelist{j};
-			FILES.match.clustidx(end+1)=clusterids(j);
-			FILES.match.idx(end+1)=counter;
+
+			% strip the last two directories to get the "container"
+
+			[path,name,ext]=fileparts(filelist{j});
+
+			tokens=regexp(path,filesep,'split');
+
+			newpath='';
+
+			for k=1:length(tokens)-2
+				newpath=[ newpath tokens{k} filesep ];
+			end
+
+			containers{j}=newpath;
+
+			fid=fopen(fullfile(path,'..','cellinfo.txt'),'r');
+			
+			readdata=textscan(fid,'%s%[^\n]','commentstyle','#',...
+				'delimiter','\t','MultipleDelimsAsOne',1);	
+	
+			fclose(fid);
+
+			filedate{j}=readdata{2}{find(strcmpi(readdata{1},'date:'))};
+			clusterids(j)=str2num(readdata{2}{find(strcmpi(readdata{1},'cluster:'))});
+
 		end
 
+		% unique root directories
+
+		uniq_dirs=unique(containers)
+
+		for j=1:length(filelist)
+			containers{j}
+			FILES.match.name{end+1}=filelist{j};
+			FILES.match.clustidx(end+1)=clusterids(j);
+			FILES.match.idx(end+1)=find(strcmp(containers{j},uniq_dirs))+cellidx;
+		end
+
+		cellidx=cellidx+length(uniq_dirs);
 		response=[];
 
 		while isempty(response)
@@ -98,12 +137,49 @@ if nargin<1 | isempty(FILES)
 
 	while ~flag
 
-		[filelist clusterids]=recursive_file_find(pwd,'sua_channels','Choose root directory for NON-MATCH');
+		[filelist]=recursive_file_find(pwd,'sua_channels','Choose root directory for NON-MATCH');
+
+		containers={};
+		filedate={};
+		clusterids=[];
+
+		for j=1:length(filelist)
+
+			% strip the last two directories to get the "container"
+
+			[path,name,ext]=fileparts(filelist{j});
+
+			tokens=regexp(path,filesep,'split');
+
+			newpath='';
+
+			for k=1:length(tokens)-2
+				newpath=[ newpath tokens{k} filesep ];
+			end
+
+			containers{j}=newpath;
+
+			fid=fopen(fullfile(path,'..','cellinfo.txt'),'r');
+			
+			readdata=textscan(fid,'%s%[^\n]','commentstyle','#',...
+				'delimiter','\t','MultipleDelimsAsOne',1);	
+	
+			fclose(fid);
+
+			filedate{j}=readdata{2}{find(strcmpi(readdata{1},'date:'))};
+			clusterids(j)=str2num(readdata{2}{find(strcmpi(readdata{1},'cluster:'))});
+
+		end
+
+		% unique root directories
+
+		uniq_dirs=unique(containers);
 
 		for j=1:length(filelist)
 			FILES.nomatch.name{end+1}=filelist{j};
 			FILES.nomatch.clustidx(end+1)=clusterids(j);
 		end
+
 
 		response=[];
 
@@ -188,8 +264,6 @@ for i=1:length(ncells)
 
 	for j=2:length(idxs)
 
-		% definitely need to bootstrap here, too few datapoints...
-
 		[wavescore isiscore ifrscore]=get_scores(templatewave,templateisi,templateifr,...
 			FILES.match.name{idxs(j)},currclusters(j),isibins,bootstrap);
 		
@@ -237,9 +311,14 @@ save('training_data.mat','train_matrix','class','FILES');
 
 end
 
-function [LIST CLUSTERID]=recursive_file_find(ROOTDIR,FILTER,DIALOG)
+function [LIST]=recursive_file_find(ROOTDIR,FILTER,DIALOG)
 
 rootfolder=uigetdir(ROOTDIR,DIALOG);
+
+if rootfolder==0
+	LIST={};
+	return;
+end
 
 subfolders_pre=genpath(rootfolder);
 subfolders=regexp(subfolders_pre,pathsep,'split');
@@ -253,19 +332,6 @@ for i=1:length(subfolders)
 	filelisting={filelisting_pre(:).name};
 
 	% read files in order, look for first file with cluster in the filename
-
-	for j=1:length(filelisting)
-		
-		% also get the cluster number!
-
-		if findstr(filelisting{j},'cluster') 
-			[junk1 junk2 junk3 match]=regexp(filelisting{j},'cluster_([0-9]+)','match');
-			CLUSTERID(end+1)=str2num(filelisting{j}(match{1}(1):match{1}(2)));
-			break;
-		end
-
-	end
-
 
 	for j=1:length(filelisting)
 		

@@ -25,7 +25,7 @@ end
 FILES.name={};
 FILES.clustidx=[];
 FILES.idx=[];
-FILES.date=[];
+FILES.date={};
 
 % collect two primary file lists, allow the user to multi-select at the end 
 
@@ -41,33 +41,48 @@ if nargin<1 | isempty(FILES)
 
 	while ~flag
 
-		[filelist clusterids containers]=recursive_file_find(pwd,'sua_channels','Choose directories with cells to MATCH');
+		[filelist]=recursive_file_find(pwd,'sua_channels','Choose directories with cells to MATCH');
 
 		% in this case we need to strip the last directory from the container
 
-		for j=1:length(containers)
-			tokens=regexp(containers{j},filesep,'split');
+		for j=1:length(filelist)
+
+			% strip the last two directories to get the "container"
+
+			[path,name,ext]=fileparts(filelist{j});
+
+			tokens=regexp(path,filesep,'split');
 
 			newpath='';
+
 			for k=1:length(tokens)-2
-				newpath=[newpath tokens{k} filesep];
+				newpath=[ newpath tokens{k} filesep ];
 			end
 
-			filedate{j}=datenum(regexp(tokens{end-1},'^\d+-\d+-\d+','match'),'yyyy-mm-dd');
 			containers{j}=newpath;
+
+			fid=fopen(fullfile(path,'..','cellinfo.txt'),'r');
+			
+			readdata=textscan(fid,'%s%[^\n]','commentstyle','#',...
+				'delimiter','\t','MultipleDelimsAsOne',1);	
+	
+			fclose(fid);
+
+			filedate{j}=readdata{2}{find(strcmpi(readdata{1},'date:'))};
+			clusterids(j)=str2num(readdata{2}{find(strcmpi(readdata{1},'cluster:'))});
 
 		end
 
 		% unique root directories
-		% also collect the dates!
 
 		uniq_dirs=unique(containers);
 
 		for j=1:length(filelist)
+
 			FILES.name{end+1}=filelist{j};
 			FILES.clustidx(end+1)=clusterids(j);
 			FILES.idx(end+1)=find(strcmp(containers{j},uniq_dirs))+cellidx;
-			FILES.date(end+1)=filedate{j};
+			FILES.date{end+1}=filedate{j};
 		end
 
 		cellidx=cellidx+length(uniq_dirs);
@@ -77,7 +92,6 @@ if nargin<1 | isempty(FILES)
 			response=input('(D)one choosing root folders or (c)ontinue?  ','s');
 
 			switch lower(response(1))
-
 
 				case 'd'
 					flag=1;
@@ -138,9 +152,10 @@ test_matrix=[];
 class=[];
 
 ATTRIBUTES.daysince=[];
-ATTRIBUTES.date=[];
+ATTRIBUTES.date={};
 ATTRIBUTES.filename={};
 ATTRIBUTES.cellidx=[];
+ATTRIBUTES.ifr={};
 
 for i=1:length(ncells)
 
@@ -160,16 +175,24 @@ for i=1:length(ncells)
 
 	for j=2:length(idxs)
 
+		load(FILES.name{idxs(j)},'clust_spike_vec','clusterwindows','IFR');
+
+		scorewave=mean(clusterwindows{currclusters(j)},2);
+		scorewave=zscore(scorewave);
+		scoreisi=get_isi(clust_spike_vec{1}{currclusters(j)});
+		scoreifr=mean(IFR{1}{currclusters(j)});
+		scoreifr=zscore(scoreifr);
+
 		[wavescore isiscore ifrscore]=get_scores(templatewave,templateisi,templateifr,...
-			FILES.name{idxs(j)},currclusters(j),isibins);
-		
+			scorewave,scoreisi,scoreifr,isibins);
+
 		test_matrix=[test_matrix;[wavescore isiscore ifrscore]];
 
-		ATTRIBUTES.daysince(end+1)=daysdif(FILES.date(idxs(1)),FILES.date(idxs(j)));
-		ATTRIBUTES.date(end+1)=FILES.date(idxs(j));
+		ATTRIBUTES.daysince(end+1)=daysdif(FILES.date{idxs(1)},FILES.date{idxs(j)});
+		ATTRIBUTES.date{end+1}=FILES.date{idxs(j)};
 		ATTRIBUTES.filename{end+1}=FILES.name{idxs(j)};
 		ATTRIBUTES.cellidx(end+1)=FILES.idx(idxs(j));
-
+		ATTRIBUTES.ifr{end+1}=downsample(smooth(scoreifr,.01*25e3),10); % probably want to smooth the estimate, trying raw first...
 	end
 
 end
@@ -181,7 +204,7 @@ save('testing_data.mat','test_matrix','FILES','ATTRIBUTES');
 
 end
 
-function [LIST CLUSTERID CONTAINER]=recursive_file_find(ROOTDIR,FILTER,DIALOG)
+function [LIST]=recursive_file_find(ROOTDIR,FILTER,DIALOG)
 
 rootfolder=uigetdir(ROOTDIR,DIALOG);
 
@@ -197,26 +220,8 @@ for i=1:length(subfolders)
 	filelisting_pre=dir(subfolders{i});
 	filelisting={filelisting_pre(:).name};
 
-	% read files in order, look for first file with cluster in the filename
-
 	for j=1:length(filelisting)
-		
-		% also get the cluster number!
 
-		if findstr(filelisting{j},'cluster') 
-			
-			[junk1 junk2 junk3 match]=regexp(filelisting{j},'cluster_([0-9]+)','match');
-			CLUSTERID(end+1)=str2num(filelisting{j}(match{1}(1):match{1}(2)));
-			CONTAINER{end+1}=subfolders{i};
-
-			break;
-		end
-
-	end
-
-
-	for j=1:length(filelisting)
-		
 		if findstr(filelisting{j},FILTER)
 			LIST{end+1}=fullfile(subfolders{i},filelisting{j});
 			break;
@@ -229,27 +234,20 @@ end
 end
 
 function [WAVESCORE ISISCORE IFRSCORE]=...
-		get_scores(TEMPLATEWAVE,TEMPLATEISI,TEMPLATEIFR,FILE,CLUSTER,ISIBINS)
+	get_scores(TEMPLATEWAVE,TEMPLATEISI,TEMPLATEIFR,...
+	SCOREWAVE,SCOREISI,SCOREIFR,ISIBINS)
 
 
-load(FILE,'clust_spike_vec','clusterwindows','IFR');
-
-scorewave=mean(clusterwindows{CLUSTER},2);
-scorewave=zscore(scorewave);
-scoreisi=get_isi(clust_spike_vec{1}{CLUSTER});
-scoreifr=mean(IFR{1}{CLUSTER});
-scoreifr=zscore(scoreifr);
-
-[r,lags]=xcov(scorewave,TEMPLATEWAVE,'coeff');
+[r,lags]=xcov(SCOREWAVE,TEMPLATEWAVE,'coeff');
 
 WAVESCORE=max(r);
 
-[r,lags]=xcov(TEMPLATEIFR,scoreifr,'none');
+[r,lags]=xcov(TEMPLATEIFR,SCOREIFR,'none');
 
-r=r./(norm(TEMPLATEIFR)*norm(scoreifr));
+r=r./(norm(TEMPLATEIFR)*norm(SCOREIFR));
 IFRSCORE=max(r);
 
-ISISCORE=sqrt(kld(scoreisi,TEMPLATEISI,'jsd',1,'bins',ISIBINS));
+ISISCORE=sqrt(kld(SCOREISI,TEMPLATEISI,'jsd',1,'bins',ISIBINS));
 
 end
 

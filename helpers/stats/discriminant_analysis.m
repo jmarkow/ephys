@@ -54,11 +54,11 @@ end
 
 [C,err,P,logp,coeff]=classify(TRAINDATA(CLASS==2,:),TRAINDATA,CLASS,type);
 
-threshold=quantile(P(:,1),.98);
+threshold=quantile(P(:,1),.9);
 n=(2*threshold)/(1+2*threshold);
 p=1/(1+2*threshold);
 priors=[ n p ];
-priors=[ .5 .5 ];
+%priors=[ .5 .5 ];
 
 [C,err,P,logp,coeff]=classify(TRAINDATA,TRAINDATA,CLASS,type,priors);
 
