@@ -584,7 +584,7 @@ for i=1:length(channels)
 			% label candidate units if they meet our criteria
 			% isi intervals < absolute refractory period
 
-			isi_violations=sum(clusterisi{uniq_clusters(j)}./fs)<.001;
+			isi_violations=sum((clusterisi{uniq_clusters(j)}./fs)<.001);
 			isi_violations=isi_violations/length(clusterisi{uniq_clusters(j)});
 
 			if clusterstats.snr(uniq_clusters(j))>=snr_cutoff && ...
