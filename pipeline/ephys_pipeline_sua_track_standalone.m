@@ -1,4 +1,4 @@
-function ephys_pipeline_sua_track_standalone(TEMPLATEFILE,TEMPLATECONFIG,CANDIDATEFILE,CANDIDATECLUST,CONFIG)
+function ephys_pipeline_sua_track_standalone(CANDIDATEFILE,CANDIDATECLUST,CONFIG)
 %
 %
 %
@@ -12,8 +12,6 @@ function ephys_pipeline_sua_track_standalone(TEMPLATEFILE,TEMPLATECONFIG,CANDIDA
 % CLUSTER for the CANDIDATE must be specified (parse with sed)
 % need global config for location of boundary points
 
-disp([num2str(nargin)]);
-
 if isdeployed
 	tmp=CANDIDATECLUST;
 	clear CANDIDATECLUST;
@@ -21,69 +19,53 @@ if isdeployed
 	clear tmp;
 end
 
-disp([TEMPLATEFILE])
-disp([TEMPLATECONFIG])
-disp([CANDIDATEFILE])
-disp([num2str(CANDIDATECLUST)])
-disp([CONFIG])
-
 global_parameters=ephys_pipeline_readconfig(CONFIG);
-unit_parameters=ephys_pipeline_readconfig(TEMPLATECONFIG);
-
-[path,file,ext]=fileparts(TEMPLATEFILE);
-
-tokens=regexp(file,'[0-9]+','match');
-channel=str2num(tokens{1});
-
-tokens=regexp(path,filesep,'split');
-
-% path containing the unit file is the CELLID
-
-cellid=tokens{end};
 
 [path,file,ext]=fileparts(CANDIDATEFILE);
+tokens=regexp(file,'[0-9]+','match');
+candidate_channel=str2num(tokens{1});
+
 tokens=regexp(path,filesep,'split');
+
+% check for other templates this could match, if no template exists
+% create a new directory
 
 % unit file simply specifies what cluster to look in, perhaps later add option to hook
 % into postproc for LFP and coherence processing
 
 % TODO:  deal with non-default directory structures (or, simply enforce the standard ones more rigorously)
 
-suatype=tokens{end}
-extractionstring=tokens{end-4}
-datestring=tokens{end-6}
-recstring=tokens{end-7}
-birdidstring=tokens{end-8}
+suatype=tokens{end};
+extractionstring=tokens{end-4};
+datestring=tokens{end-6};
+recstring=tokens{end-7};
+birdidstring=tokens{end-8};
 
 % cellid is the directory that contains the templatefile
 
 bookkeeping_dir=fullfile(global_parameters.bookkeeping_dir);
-savedir=fullfile(bookkeeping_dir,birdidstring,cellid,...
-	[ datestring ' (' extractionstring ',' lower(suatype) ')']);
+savedir=fullfile(bookkeeping_dir,birdidstring,['ch' num2str(candidate_channel) ]);
 
-disp(['Post-processing ' cellid]);
-disp(['Will save in directory ' savedir]);
+% check for any possible templates in the channel
+%%%%%
 
-filedir=path;
+savedir_list=dir(savedir);
+template_list={};
 
-% copy any single unit rasters for safe keeping...
+for i=1:length(savedir_list)
+	if savedir_list(i).isdir && savedir_list(i).name(1)~='.'
+		template_list{end+1}=fullfile(savedir,savedir_list(i).name);
+	end
+end
 
-template=load(TEMPLATEFILE,'clusterwindows','clusterisi');
+template_status=zeros(1,length(template_list),'int8');
+
 candidate=load(CANDIDATEFILE,'clusterwindows','clusterisi');
-
-template_wave=zscore(mean(template.clusterwindows{unit_parameters.cluster},2));
-template_isi=template.clusterisi{unit_parameters.cluster};
-
-% candidate cluster is read in by filename tagging (meets all simple criteria)
 
 candidate_wave=zscore(mean(candidate.clusterwindows{CANDIDATECLUST},2));
 candidate_isi=candidate.clusterisi{CANDIDATECLUST};
 
-% check peak correlation of scaled waveforms
-
-[r,lags]=xcov(template_wave,candidate_wave,'coeff');
-wavescore=atanh(max(r));
-isiscore=sqrt(kld(template_isi,candidate_isi,'jsd',1));
+% load the training data, specify the cluster boundary
 
 load(fullfile(global_parameters.bookkeeping_dir,'train_data','training_data.mat'),...
 	'train_matrix','class');
@@ -95,8 +77,6 @@ traindata(:,2)=train_matrix(:,2);
 
 class=class+1;
 
-%[C]=classify([wavescore isiscore],traindata,class+1)
-
 [C,err,P,logp,coeff]=classify(traindata(class==2,:),traindata,class,'quadratic');
 
 threshold=quantile(P(:,1),.9);
@@ -105,44 +85,125 @@ p=1/(1+2*threshold);
 priors=[ n p ];
 %priors=[ .5 .5 ];
 
-[C]=classify([wavescore isiscore],traindata,class,'quadratic',priors);
+filedir=path;
 
-% create a dotfile at the end of this
+for i=1:length(template_list)
+
+	% in each directory use the earliest extraction as the template
+
+	extract_list={};
+	cellid_list={};
+	template_extraction=dir(template_list{i});
+
+	for j=1:length(template_extraction)
+		if template_extraction(j).isdir && template_extraction(j).name(1)~='.'
+			extract_list{end+1}=fullfile(template_list{i},template_extraction(j).name);
+			cellid_list{end+1}=template_extraction(j).name;
+		end
+	end
+
+	% check for any potential matches
+
+	for j=1:length(extract_list)
+
+		fid=fopen(fullfile(extract_list{j},'cellinfo.txt'),'r');
+
+		readdata=textscan(fid,'%s%[^\n]','commentstyle','#',...
+			'delimiter','\t','MultipleDelimsAsOne',1);	
+
+		fclose(fid);
+
+		% read in cluster and channel number from cellinfo.txt
+
+		cluster=str2num(readdata{2}{find(strcmpi(readdata{1},'cluster:'))});
+		channel=str2num(readdata{2}{find(strcmpi(readdata{1},'channel:'))});
+		
+		% sua file should match, otherwise skip
+
+		clustfile=fullfile(extract_list{j},'raster',['sua_channels ' num2str(channel) '.mat']);
+
+		if exist(clustfile,'file')	
+			template=load([clustfile],'clusterwindows','clusterisi');
+		else
+			warning('ephysPipeline:singleunittrack:nosuafile','Could not find sua file at %s',clustfile);
+			continue;
+		end
+
+		template_wave=zscore(mean(template.clusterwindows{cluster},2));
+		template_isi=template.clusterisi{cluster};
+
+		[r,lags]=xcov(template_wave,candidate_wave,'coeff');
+		wavescore=atanh(max(r));
+		isiscore=sqrt(kld(template_isi,candidate_isi,'jsd',1));
+
+		[C]=classify([wavescore isiscore],traindata,class,'quadratic',priors);
+
+		% break after we read the template, presumably the first file
+
+		break; 
+
+	end
+
+	template_status(i)=C;
+
+end
+
+namebase=global_parameters.unit_name;
+template_status=template_status>1;
+
+if all(template_status==0) || isempty(template_status)
+	dirnum=length(template_list)+1;
+	cellid=[ namebase '_' num2str(dirnum) ];
+	fprintf('New cell found, cluster number %i\n\n',dirnum);
+elseif sum(template_status)==1
+	dirnum=find(template_status);
+	[path,file,ext]=fileparts(template_list{dirnum});
+	cellid=file;
+	fprintf('Match found in %s\n\n',template_list{i});
+elseif sum(template_status)>1
+	disp('More than one match, using first match!');
+	dirnum=find(template_status)
+	dirnum=dirnum(1);
+	[path,file,ext]=fileparts(template_list{dirnum});
+	cellid=file;
+	fprintf('Match found in %s\n\n',template_list{i});
+end
+
+savedir=fullfile(savedir,cellid,[ datestring ' (' extractionstring ',' lower(suatype) ')']);
+
+% copy any single unit rasters for safe keeping...
+
 % 2 is accept, 1 reject
 
-if C==2
+if ~exist(fullfile(savedir,'raster'),'dir')
+	mkdir(fullfile(savedir,'raster'));
+end
 
-	disp('Single-unit match');
-	
-	if ~exist(fullfile(savedir,'raster'),'dir')
-		mkdir(fullfile(savedir,'raster'));
-	end
+fprintf('Extraction:\t%s\nDate:\t%s\nRec:\t%s\nBird:\t%s\n\n',...
+	extractionstring,datestring,recstring,birdidstring);
 
-	
-	fprintf('Extraction:\t%s\nDate:\t%s\nRec:\t%s\nBird:\t%s\n\n',...
-		extractionstring,datestring,recstring,birdidstring);
+fid=fopen(fullfile(savedir,'cellinfo.txt'),'w');
 
-	fid=fopen(fullfile(savedir,'cellinfo.txt'),'w');
+fprintf(fid,'Bird ID:\t%s\nDate:\t\t%s\nCell ID:\t%s\nExtraction:\t%s\nChannel:\t%g\nCluster:\t%g',...
+	birdidstring,datestring,cellid,extractionstring,candidate_channel,CANDIDATECLUST);
 
-	fprintf(fid,'Bird ID:\t%s\nDate:\t\t%s\nCell ID:\t%s\nExtraction:\t%s\nChannel:\t%g\nCluster:\t%g',...
-		birdidstring,datestring,cellid,extractionstring,channel,CANDIDATECLUST);
+fclose(fid);
 
-	fclose(fid);
-
-	try
-		copyfile(fullfile(filedir,['ephys_sua_freqrange*electrode_' num2str(channel) ...
-			'_raster_cluster_' num2str(CANDIDATECLUST) '.*' ]),fullfile(savedir,'raster'));
-		copyfile(fullfile(filedir,['ephys_sua_freqrange*electrode_' num2str(channel) ...
-			'_stats_cluster_*' ]),fullfile(savedir,'raster'));
-		copyfile(fullfile(filedir,['sua_channels ' num2str(channel) '.mat']),fullfile(savedir,'raster'));
-	catch
-		warning('ephysPipeline:singleunitpostproc:nocopy','Could not copy single unit raster file');
-	end
+try
+	copyfile(fullfile(filedir,['ephys_sua_freqrange*electrode_' num2str(candidate_channel) ...
+		'_raster_cluster_' num2str(CANDIDATECLUST) '.*' ]),fullfile(savedir,'raster'));
+	copyfile(fullfile(filedir,['ephys_sua_freqrange*electrode_' num2str(candidate_channel) ...
+		'_stats_cluster_*' ]),fullfile(savedir,'raster'));
+	copyfile(fullfile(filedir,['sua_channels ' num2str(candidate_channel) '.mat']),fullfile(savedir,'raster'));
+catch
+	warning('ephysPipeline:singleunitpostproc:nocopy','Could not copy single unit raster file');
 end
 
 % print out filename with . in front to signal that we've processed it
 
-fid=fopen(fullfile(filedir,[ '.' cellid '_' file ext]),'w');
+[path,file,ext]=fileparts(CANDIDATEFILE);
+
+fid=fopen(fullfile(filedir,[ '.' file ext]),'w');
 fclose(fid);
 
 % multiple numbers in config file are read in as strings

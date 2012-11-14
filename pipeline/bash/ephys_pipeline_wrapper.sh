@@ -55,4 +55,4 @@ kill -9 $MUA_PID
 kill -9 $LFP_PID
 kill -9 $CLUSTER_PID
 kill -9 $POSTPROC_PID
-
+kill -9 $TRACK_PID

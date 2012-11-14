@@ -34,68 +34,74 @@ while true; do
 
 	for BIRD in ${BIRDLIST[@]}; do 
 
-		TEMPLATEBASELIST=( `find $ROOTDIR/$BIRD -type d -name "templates"` )
-		for TEMPLATEBASE in ${TEMPLATEBASELIST[@]}; do
+		if [ ! -d $ROOTDIR/$BIRD/templates ]; then
+			continue;
+		fi
 
-			# check for files that have not been processed for this template
+		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*score.mat" | grep -v '/\.'` )
 
-			# the files processed should have a dotfile in a subdir that matches
-			# the template directory
+		# check for files that have not been processed for this template
 
-			# all the files we have spectral features for
+		# the files processed should have a dotfile in a subdir that matches
+		# the template directory
 
-			TEMPLATELIST=( `find $TEMPLATEBASE -type f -name "template_data.mat" -maxdepth 2` )
+		# all the files we have spectral features for
 
-			for TEMPLATE in ${TEMPLATELIST[@]}; do
+		TEMPLATELIST=( `find $ROOTDIR/$BIRD/templates -type f -name "template_data.mat" -maxdepth 2` )
 
-				#source ephys_pipeline_wrapper.cfg
+		for TEMPLATE in ${TEMPLATELIST[@]}; do
 
-				# extract the toplevel directory from the template listing
+			#source ephys_pipeline_wrapper.cfg
 
-				TEMPLATEDIRNAME=( `dirname $TEMPLATE` )
-				TEMPLATETOPDIR=( `basename $TEMPLATEDIRNAME` )
+			# extract the toplevel directory from the template listing
 
-				# exclude dot files what we want to check
+			TEMPLATEDIRNAME=( `dirname $TEMPLATE` )
+			TEMPLATETOPDIR=( `basename $TEMPLATEDIRNAME` )
 
-				FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*score.mat" | grep -v '/\.'` )
+			if [ ! -e "$TEMPLATEDIRNAME/classify_data.mat" ]; then
+				echo 'No classify_data.mat in ' $TEMPLATEDIRNAME >> $OUTPUT
+				continue;
+			fi
 
-				let COUNTER=1
+			# exclude dot files what we want to check
 
-				for FILE in ${FILELIST[@]}; do
+			let COUNTER=1
 
-					FILENAME=( `basename $FILE` )
-					DIRNAME=( `dirname $FILE` )
+			for FILE in ${FILELIST[@]}; do
 
-					RESULTSDIR=$DIRNAME/../$TEMPLATETOPDIR
+				FILENAME=( `basename $FILE` )
+				DIRNAME=( `dirname $FILE` )
 
-					#echo $RESULTSDIR/.${FILENAME}
+				RESULTSDIR=$DIRNAME/../$TEMPLATETOPDIR
 
-					if [ ! -e $RESULTSDIR/.$FILENAME ]; then
+				#echo $RESULTSDIR/.${FILENAME}
 
-						echo "Spawning subshell " $COUNTER >> $1
+				if [ ! -e $RESULTSDIR/.$FILENAME ]; then
 
-						# specify template_data file, spectral feature data file then classification object file
+					echo "Spawning subshell " $COUNTER >> $1
 
-						$EXEC_CLUSTER "$TEMPLATE" "$FILE" "$TEMPLATEDIRNAME/classify_data.mat" $CONFIG >> $1 &
+					# specify template_data file, spectral feature data file then classification object file
 
-						let COUNTER+=1
+					$EXEC_CLUSTER "$TEMPLATE" "$FILE" "$TEMPLATEDIRNAME/classify_data.mat" $CONFIG >> $1 &
 
-						if [ $COUNTER -gt $SUBSHELLS_CLUSTER ]; then
-							echo 'Waiting for subshells to finish' >> $1
-							wait
-							let COUNTER=1
-						fi
+					let COUNTER+=1
 
+					if [ $COUNTER -gt $SUBSHELLS_CLUSTER ]; then
+						echo 'Waiting for subshells to finish' >> $1
+						wait
+						let COUNTER=1
 					fi
 
-				done
+				fi
+
 			done
 		done
-
 	done
 
-	date >> $1
-	sleep $INTERVAL_CLUSTER
+done
+
+date >> $1
+sleep $INTERVAL_CLUSTER
 
 done
 

@@ -26,86 +26,37 @@ while true; do
 
 	for BIRD in ${BIRDLIST[@]}; do 
 
-		if [ ! -d $ROOTDIR/$BIRD/spike_templates ]; then
-			continue;
-		fi
+		# only work with files at least 10 hours old (to prevent excessive duplication of effort)
 
-		TEMPLATEBASELIST=( `find $ROOTDIR/$BIRD/spike_templates -type d -maxdepth 1` )
-		
-		for TEMPLATEBASE in ${TEMPLATEBASELIST[@]}; do
+		FILELIST=( `find $ROOTDIR/$BIRD -type f -name "*candidate_unit_ch*" -cmin +600 ` )
 
-			# get the TEMPLATES
-			# check for the CANDIDATE files, parse cluster and channel
-			# if CANDIDATE matches CHANNEL, then pass CHANNEL AND CLUSTER
-			# create a MATCHING DOTFILE to indicate that you're done!
+		for FILE in ${FILELIST[@]}; do
 
-			TEMPLATELIST=( `find $TEMPLATEBASE -type f -name "sua_*.mat" -maxdepth 2` )
+			FILENAME=( `basename $FILE` )
+			DIRNAME=( `dirname $FILE` )
+			CLUSTER=( `echo $FILENAME | sed -n 's/.*cl\([0-9][0-9]\{0,\}\).*/\1/p' ` )
+			CHANNEL=( `echo $FILENAME | sed -n 's/.*ch\([0-9][0-9]\{0,\}\).*/\1/p' ` )
 
-			for TEMPLATE in ${TEMPLATELIST[@]}; do
+			CANDIDATEFILE='sua_channels '$CHANNEL'.mat'
 
-				# extract the toplevel directory from the template listing
+			DONEFILE=$DIRNAME/.$CANDIDATEFILE
+			CANDIDATEFILE=$DIRNAME/$CANDIDATEFILE
 
-				TEMPLATEDIRNAME=( `dirname $TEMPLATE` )
-				TEMPLATETOPDIR=( `basename $TEMPLATEDIRNAME` )
+			# this has to be run one shell at a time
 
-				# exclude dot files what we want to check
+			if [ ! -e $DONEFILE ] && [ -e $CANDIDATEFILE ]; then
 
-				if [ ! -e "$TEMPLATEDIRNAME/template.cfg" ]; then
-					echo 'No template.cfg in ' $TEMPLATEDIRNAME >> $OUTPUT
-					continue;
-				fi
 
-				# read in channel name
+				# SED out cluster and channel pass to ephys_pipeline_sua_track and
+				# you are done
 
-				TMPCHANNEL=( `cat $TEMPLATEDIRNAME/template.cfg | \
-					grep "channel" | sed -n 's/.* \([0-9][0-9]\{0,\}\).*/\1/p' `)
-				TMPCLUSTER=( `cat $TEMPLATEDIRNAME/template.cfg | \
-					grep "cluster" | sed -n 's/.* \([0-9][0-9]\{0,\}\).*/\1/p' `)
+				echo $CANDIDATEFILE >> $OUTPUT
 
-				# need to read in the tempalte config and check for candidate units
-				# on the same channel
+				$EXEC_TRACK "$CANDIDATEFILE" "$CLUSTER" "$CONFIG" >> $OUTPUT &
 
-				FILELIST=( `find $ROOTDIR/$BIRD -name "*candidate_unit_ch${TMPCHANNEL}*" | grep -v '/\.'` )
-
-				let COUNTER=1
-
-				for FILE in ${FILELIST[@]}; do
-
-					FILENAME=( `basename $FILE` )
-					DIRNAME=( `dirname $FILE` )
-					CLUSTER=( `echo $FILENAME | sed -n 's/.*cl\([0-9][0-9]\{0,\}\).*/\1/p' `)
-
-					CANDIDATEFILE='sua_channels '$TMPCHANNEL'.mat'
-
-					# check for CELL ID before filename .CELLID_filename
-
-					DONEFILE=$DIRNAME/.${TEMPLATETOPDIR}_$CANDIDATEFILE
-					CANDIDATEFILE=$DIRNAME/$CANDIDATEFILE
-					
-					if [ ! -e $DONEFILE ]; then
-
-						echo "Spawning subshell " $COUNTER >> $OUTPUT
-
-						# SED out cluster and channel pass to ephys_pipeline_sua_track and
-						# you're done
-
-						$EXEC_TRACK "$TEMPLATE" "${TEMPLATEDIRNAME}/template.cfg" \
-							"$CANDIDATEFILE" "$CLUSTER" "$CONFIG" >> $OUTPUT &
-
-						let COUNTER+=1
-
-						if [ $COUNTER -gt $SUBSHELLS_TRACK ]; then
-							echo 'Waiting for subshells to finish' >> $OUTPUT
-							wait
-							let COUNTER=1
-						fi
-
-					fi
-
-				done
-			done
+				wait
+			fi
 		done
-
 	done
 
 	wait

@@ -537,7 +537,7 @@ for i=1:length(channels)
 	% delete old candidate files
 
 	delete(fullfile(savedir,[ 'candidate_unit_ch' num2str(channels(i)) '*']));
-	delete(fullfile(savedir,[ '.*_sua_channels ' num2str(channels(i)) '*']));
+	delete(fullfile(savedir,[ '.sua_channels ' num2str(channels(i)) '*']));
 
 	if ~isempty(clusterid)
 
