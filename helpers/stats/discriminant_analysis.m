@@ -54,7 +54,7 @@ end
 
 [C,err,P,logp,coeff]=classify(TRAINDATA(CLASS==2,:),TRAINDATA,CLASS,type);
 
-threshold=quantile(P(:,1),.9);
+threshold=quantile(P(:,1),.73);
 n=(2*threshold)/(1+2*threshold);
 p=1/(1+2*threshold);
 priors=[ n p ];
@@ -69,6 +69,8 @@ FP=sum(C==2&CLASS==1);
 % false negatives
 
 FN=sum(C==1&CLASS==2);
+
+FP+FN
 
 [C,err,P,logp,coeff]=classify(TESTDATA,TRAINDATA,CLASS,type,priors);
 

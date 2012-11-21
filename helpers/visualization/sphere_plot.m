@@ -1,4 +1,4 @@
-function FIGNUM=pretty_polar(DATA,LABELS,varargin)
+function FIGNUM=sphere_plot(DATA,LABELS,varargin)
 %wrapper for rose plot for circular histogramming
 %
 %
@@ -12,7 +12,7 @@ if dims>3
 	DATA=DATA(:,1:3);
 end
 
-surfcolor=colormap('hsv');
+surfcolor=colormap('lines');
 x_label='X';
 y_label='Y';
 z_label='Z';
@@ -63,9 +63,46 @@ for i=1:length(uniqlabels)
 	
 	%groupdist=squareform(pdist(grouppoints,'euclidean'));
 
-	if length(grouppoints)<2
-		continue;
+	dist=zeros(1,npoints);
+
+	for j=1:npoints
+		dist(j)=sqrt(sum((groupmat(j,:)-groupmean).^2));
 	end
+
+	r=max(dist);
+
+	% get sphere coordinates
+
+	[x,y,z]=sphere(15);
+
+	h=surf(x*r+groupmean(1),y*r+groupmean(2),z*r+groupmean(3));
+	set(h,'FaceColor',surfcolor(i,:),'FaceAlpha',.95,'EdgeColor',[0 0 0]);
+	hold on;
+
+
+
+	% could use simply mean and scale by max pairwise distance,
+	% or assume that the first point is the center (i.e. how far
+	% do we get from the first point?)
+
+end
+
+xlimits=xlim();
+ylimits=ylim();
+zlimits=zlim();
+
+for i=1:length(uniqlabels)
+
+	grouppoints=find(LABELS==uniqlabels(i));
+	groupmat=DATA(grouppoints,:)
+
+	npoints=length(grouppoints);
+
+	% simple mean should be fine...
+
+	groupmean=mean(groupmat,1)
+	
+	%groupdist=squareform(pdist(grouppoints,'euclidean'));
 
 	dist=zeros(1,npoints);
 
@@ -73,17 +110,28 @@ for i=1:length(uniqlabels)
 		dist(j)=sqrt(sum((groupmat(j,:)-groupmean).^2));
 	end
 
-	r=max(dist)/2;
+	r=max(dist);
 
 	% get sphere coordinates
 
-	[x,y,z]=sphere;
+	[x,y,z]=sphere(15);
 
-	surf(x*r+groupmean(1),y*r+groupmean(2),z*r+groupmean(3));
-	hold on;
+	h=surf(x*r+groupmean(1),y*r+groupmean(2),ones(size(z)).*zlimits(1));
+	set(h,'FaceColor',[.4 .4 .4],'EdgeColor','none','FaceAlpha',.15);
 
-	% could use simply mean and scale by max pairwise distance,
-	% or assume that the first point is the center (i.e. how far
-	% do we get from the first point?)
+	h=surf(ones(size(x)).*xlimits(2),y*r+groupmean(2),z*r+groupmean(3));
+	set(h,'FaceColor',[.4 .4 .4],'EdgeColor','none','FaceAlpha',.15);
+
+	h=surf(x*r+groupmean(1),ones(size(y)).*ylimits(2),z*r+groupmean(3));
+	set(h,'FaceColor',[.4 .4 .4],'EdgeColor','none','FaceAlpha',.15);
 
 end
+
+
+view(-52.5,40);
+box on
+set(gca,'linewidth',2,'FontSize',15,'FontName','Helvetica');
+
+xlabel('PC1','FontSize',15,'FontName','Helvetica');
+ylabel('PC2','FontSize',15,'FontName','Helvetica');
+zlabel('PC3','FontSize',15,'FontName','Helvetica');

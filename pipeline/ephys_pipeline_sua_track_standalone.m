@@ -67,8 +67,13 @@ candidate_isi=candidate.clusterisi{CANDIDATECLUST};
 
 % load the training data, specify the cluster boundary
 
-load(fullfile(global_parameters.bookkeeping_dir,'train_data','training_data.mat'),...
-	'train_matrix','class');
+trainfile=fullfile(global_parameters.bookkeeping_dir,'train_data','training_data.mat');
+
+if exist(trainfile,'file')
+	load(trainfile,'train_matrix','class');
+else
+	error('ephysPipeline:suatracking:notrainingdata','Could not find training data %s',trainfile);
+end
 
 % thumbs up or down?
 
@@ -79,7 +84,7 @@ class=class+1;
 
 [C,err,P,logp,coeff]=classify(traindata(class==2,:),traindata,class,'quadratic');
 
-threshold=quantile(P(:,1),.9);
+threshold=quantile(P(:,1),.73); % with the current training set this produces 5% error rate
 n=(2*threshold)/(1+2*threshold);
 p=1/(1+2*threshold);
 priors=[ n p ];
