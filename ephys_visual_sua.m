@@ -123,6 +123,7 @@ isi_cutoff=.05; % percentage of ISI values <.001
 lratio_cutoff=.2;
 isod_cutoff=20;
 snr_cutoff=1.1;
+spike_window=[.0004 .0004];
 
 % remove eps generation, too slow here...
 
@@ -198,6 +199,8 @@ for i=1:2:nparams
 			merge=varargin{i+1};
 		case 'savename'
 			savename=varargin{i+1};
+		case 'spike_window'
+			spike_window=varargin{i+1};
 	end
 end
 
@@ -294,7 +297,7 @@ for i=1:length(channels)
 		threshold=sigma_t*median(abs(proc_data(:,j,i))/.6745)
 		%disp([num2str(threshold)]);
 		spike_pp=ephys_spike_detect(squeeze(sort_data(:,j,:)),threshold,'fs',fs,'visualize','n','align',align,...
-			'jitter',jitter,'interpolate_fs',interpolate_fs);
+			'jitter',jitter,'interpolate_fs',interpolate_fs,'window',spike_window);
 
 		% after spike detect also collect trace without spikes
 
@@ -420,8 +423,8 @@ for i=1:length(channels)
 				'clust_choice',clust_choice,'maxcoeffs',wavelet_coeffs,'outlier_detect',outlier_detect,...
 				'red_cutoff',red_cutoff,'nfeatures',nfeatures,'merge',merge);
 		else
-			[clusterid clustertrial clusterisi clusterwindows]=ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},...
-				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca);
+			[clusterid clustertrial clusterisi clusterwindows clusterstats]=ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},...
+				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca,'interpolate_fs',interpolate_fs);
 		end
 
 		if isempty(clusterid)
@@ -568,10 +571,8 @@ for i=1:length(channels)
 		
 			note=[];
 
-			if auto_clust
-				note=['L-ratio ' sprintf('%.2f',clusterstats.lratio(uniq_clusters(j))) ...
-					' IsoD ' sprintf('%.2f',clusterstats.isod(uniq_clusters(j))) ];
-			end
+			note=['L-ratio ' sprintf('%.2f',clusterstats.lratio(uniq_clusters(j))) ...
+				' IsoD ' sprintf('%.2f',clusterstats.isod(uniq_clusters(j))) ];
 
 			stats_fig=ephys_visual_spikestats(clusterwindows{uniq_clusters(j)},clusterisi{uniq_clusters(j)},...
 				'noise_p2p',mean_noise_p2p,'fs',fs,'spike_fs',interpolate_fs,'fig_num',stats_fig,'note',note);

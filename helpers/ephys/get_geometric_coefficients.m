@@ -35,10 +35,9 @@ for i=1:trials
 
 	currwave=WAVEFORMS(:,i);
 	
-	posenergy(i)=sum(currwave(currwave>0).^2);
-	negenergy(i)=sum(currwave(currwave<0).^2);
-
 	[val loc]=min(currwave);
+    
+    negenergy(i)=sum(currwave(currwave<0).^2);
 
 	if loc>1 && loc<samples-1
 		neo(i)=currwave(loc)^2-currwave(loc-1)*currwave(loc+1);
@@ -57,13 +56,13 @@ for i=1:trials
 		if currwave(j)>0
 			break;
 		end
-	end
-
-	cross1=j;
+    end
+    
+    cross1=j;
 	maskwave(idx<=j|idx>=loc)=0;
 	midpoint=min(find(maskwave<=.5*val));
-	
-	% get the angle at the midpoint
+    
+    % get the angle at the midpoint
 
 	gradangle=[0;atand(diff(maskwave))];
 	
@@ -71,21 +70,34 @@ for i=1:trials
 		neggrad(i)=NaN;
 	else
 		neggrad(i)=gradangle(midpoint);
-	end
+    end
+    
+    % get the width
+    
+    for j=loc:1:length(currwave)
+        if currwave(j)>0
+            break;
+        end
+    end
+    
+    cross2=j;
+    width(i)=abs(cross1-cross2);
 
 	% get the pos gradient
 
 	[val loc]=max(currwave);
+    
+    posenergy(i)=sum(currwave(currwave>0).^2);
 
 	maskwave=currwave;
 
 	for j=loc:-1:1
-		if currwave(j)<0
+		if currwave(j)<.4*val
 			break;
 		end
 	end
 
-	width(i)=abs(j-cross1);
+	%width(i)=abs(j-cross1);
 	maskwave(idx<=j|idx>=loc)=0;
 	midpoint=min(find(maskwave>=.5*val));
 
@@ -95,7 +107,8 @@ for i=1:trials
 		posgrad(i)=NaN;
 	else
 		posgrad(i)=gradangle(midpoint);
-	end
+    end
+    
 end
 
 % width seems unreliable, along with pos and neg grad

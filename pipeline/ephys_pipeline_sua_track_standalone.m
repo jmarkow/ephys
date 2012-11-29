@@ -44,7 +44,7 @@ birdidstring=tokens{end-8};
 % cellid is the directory that contains the templatefile
 
 bookkeeping_dir=fullfile(global_parameters.bookkeeping_dir);
-savedir=fullfile(bookkeeping_dir,birdidstring,['ch' num2str(candidate_channel) ]);
+savedir=fullfile(bookkeeping_dir,birdidstring,recstring,['ch' num2str(candidate_channel) ]);
 
 % check for any possible templates in the channel
 %%%%%
@@ -189,8 +189,8 @@ fprintf('Extraction:\t%s\nDate:\t%s\nRec:\t%s\nBird:\t%s\n\n',...
 
 fid=fopen(fullfile(savedir,'cellinfo.txt'),'w');
 
-fprintf(fid,'Bird ID:\t%s\nDate:\t\t%s\nCell ID:\t%s\nExtraction:\t%s\nChannel:\t%g\nCluster:\t%g',...
-	birdidstring,datestring,cellid,extractionstring,candidate_channel,CANDIDATECLUST);
+fprintf(fid,'Path:\t\t%s\nRec ID:\t\t%s\nBird ID:\t%s\nDate:\t\t%s\nCell ID:\t%s\nExtraction:\t%s\nChannel:\t%g\nCluster:\t%g',...
+	filedir,recstring,birdidstring,datestring,cellid,extractionstring,candidate_channel,CANDIDATECLUST);
 
 fclose(fid);
 

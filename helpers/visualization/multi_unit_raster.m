@@ -18,6 +18,10 @@ max_f=10e3;
 hist_colors='jet';
 raster_colors='hot';
 fig_num=[];
+scale='linear';
+scalelabel='';
+colorbarsize=.02; % normalized units, height of the colorbar
+show_colorbar=0;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -37,7 +41,20 @@ for i=1:2:nparams
 			fig_num=varargin{i+1};
 		case 'yaxis'
 			yaxis=vararign{i+1};
+		case 'scale'
+			scale=varargin{i+1};
+		case 'scalelabel'
+			scalelabel=varargin{i+1};
+		case 'show_colorbar'
+			show_colorbar=varargin{i+1};
+		case 'colorbarsize'
+			colorbarsize=varargin{i+1};
+
 	end
+end
+
+if isempty(scalelabel)
+	scalelabel='power';
 end
 
 if isempty(fig_num)
@@ -89,6 +106,27 @@ box off
 set(gca,'tickdir','out','linewidth',1.5,'ticklength',[.025 .025],'FontSize',11,'FontName','Helvetica');
 
 linkaxes(ax,'x');
+
+if show_colorbar
+	pos=get(ax(3),'pos');
+	set(ax(3),'pos',[pos(1) pos(2) pos(3)*.95 pos(4)]);
+	pos=get(ax(3),'pos');
+	hc2=colorbar('location','eastoutside','position',[pos(1)+pos(3)+.01 pos(2)+pos(4)/2 colorbarsize pos(4)/2]);
+	set(hc2,'linewidth',2,'FontSize',12,'FontName','Helvetica');
+	ylabel(hc2,scalelabel,'FontSize',15,'FontName','Helvetica');
+
+	% adjust the top axis accordingly
+
+	pos=get(ax(1),'pos');
+	set(ax(1),'pos',[pos(1) pos(2) pos(3)*.95 pos(4)]);
+
+	pos=get(ax(2),'pos');
+	set(ax(2),'pos',[pos(1) pos(2) pos(3)*.95 pos(4)]);
+
+	% make sure the time axes are synced
+
+	linkaxes(ax,'x');
+end
 
 
 

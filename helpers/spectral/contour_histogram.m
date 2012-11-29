@@ -1,7 +1,7 @@
 function [RMASK IMASK F T CONTOURS]=contour_histogram(SIGNALS,varargin)
 %contour_approx computes the contour approximation via Chris' method.
 %
-%	[REMASK IMASK F T CONTOURS]=contour_approx(SIGNAL,varargin)
+%	[REMASK IMASK F T CONTOURS]=contour_histogram(SIGNAL,varargin)
 %
 %	SIGNAL
 %	vector that contains the signal of interest

@@ -40,7 +40,7 @@ end
 
 [samples,ntrials,nchannels]=size(EPHYS_DATA);
 
-mua=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,'savedir',PROCDIR,'sr',parameters.fs);
+mua=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,'savedir',PROCDIR,'fs',parameters.fs);
 
 % check for peak in the mua that exceeds 4*std seems to be a good rule of thumb
 

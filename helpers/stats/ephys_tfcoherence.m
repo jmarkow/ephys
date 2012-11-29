@@ -130,7 +130,6 @@ parfor i=1:ntrials
 	% spectra
 
 	% multi-taper estimate
-
 	% accumulate across tapers to cut down compt time, then we can use parfor
 
 	cross_spect_tmp=zeros(rows,columns);

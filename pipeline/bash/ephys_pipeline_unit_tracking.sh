@@ -26,9 +26,9 @@ while true; do
 
 	for BIRD in ${BIRDLIST[@]}; do 
 
-		# only work with files at least 10 hours old (to prevent excessive duplication of effort)
+		# only work with files at least 24 hours old (to prevent excessive duplication of effort)
 
-		FILELIST=( `find $ROOTDIR/$BIRD -type f -name "*candidate_unit_ch*" -cmin +600 ` )
+		FILELIST=( `find $ROOTDIR/$BIRD -type f -name "*candidate_unit_ch*" -cmin +1440 ` )
 
 		for FILE in ${FILELIST[@]}; do
 

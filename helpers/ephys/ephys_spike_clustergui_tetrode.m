@@ -1,4 +1,4 @@
-function [LABELS TRIALS ISI WINDOWS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,varargin)
+function [LABELS TRIALS ISI WINDOWS STATS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,varargin)
 %GUI for spike cluster cutting
 %
 %
@@ -7,8 +7,9 @@ function [LABELS TRIALS ISI WINDOWS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS
 
 TRIALS=[]; % by default we don't need this, unless input is over multiple trials
 fs=25e3;
-features={'PCA','pose','nege','tote','neggrad','posgrad',...
-	'min','width','ISI','Spiketimes','wavelets'}; % possible features include, min, max, PCA, width
+interpolate_fs=200e3;
+features={'PCA','pose','nege','tote',...
+	'min','max','width','ISI','Spiketimes','wavelets'}; % possible features include, min, max, PCA, width
 				     % energy and wavelet coefficients
 outlier_cutoff=.05;				     
 channel_labels=[];
@@ -22,7 +23,7 @@ WINDOWS={};
 CLUSTERS=[];
 wavelets=10; % chooses top N non-normal wavelets according to either negentropy or KS test
 wavelet_method='bi';
-wavelet_mpca=0;
+wavelet_mpca=1;
 
 if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs!');
@@ -32,6 +33,8 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'fs'
 			fs=varargin{i+1};
+		case 'interpolate_fs'
+			interpolate_fs=varargin{i+1};
 		case 'features'
 			features=varargin{i+1};
 		case 'channel_labels'
@@ -111,10 +114,6 @@ end
 
 clear SPIKEWINDOWS;
 TRIALS=trialnum;
-
-
-
-% take the time vector and expand to 2*fs (from 25k to 50k)
 
 timepoints=[1:samples]';
 
@@ -223,7 +222,7 @@ if any(strcmp('spiketimes',lower(features)))
 end
 
 if any(strcmp('isi',lower(features)))
-	spike_data=[spike_data spikeifr(:)];
+	spike_data=[spike_data log(spikeifr(:))];
 	property_names{end+1}='Spike ISI';
 
 end
@@ -311,9 +310,6 @@ set([main_window,plot_axis,pop_up_x,pop_up_x_text,pop_up_y,pop_up_y_text,pop_up_
 movegui(main_window,'center')
 
 set(main_window,'Visible','On');
-
-
-
 uiwait(main_window);
 
 %% Callbacks
@@ -398,7 +394,7 @@ cluster_data=spike_data(:,dim);
 if ~draw_mode
 	options=statset('Display','off');
 
-	clustnum=2:5;
+	clustnum=2:8;
 	if datapoints<=features
 		disp('Too few spikes to fit');
 		return;
@@ -410,19 +406,21 @@ if ~draw_mode
 
 		parfor i=1:length(clustnum)
 
-			testobj=gmdistribution.fit(cluster_data,clustnum(i),'Regularize',1,'Options',options);
-			
-			AIC(i)=testobj.AIC;
-			logl(i)=testobj.NlogL;
-			disp([ num2str(clustnum(i)) ' clusters']);
+			kmeans_labels(:,i)=kmeans(cluster_data,clustnum(i),'replicates',5);
+			testobj=gmdistribution.fit(cluster_data,clustnum(i),'Regularize',1,...
+				'Options',options,'replicates',1,'start',kmeans_labels(:,i));	
 
-			%disp(['Partition coefficient ' num2str(partition_coef(i))]);
+			AIC(i)=testobj.AIC;
+			BIC(i)=testobj.BIC;
+			logl(i)=testobj.NlogL;
+
+			disp([ num2str(clustnum(i)) ' clusters']);
 			disp([ 'AIC ' num2str(testobj.AIC)]) % Akaike information criterion
-			%disp([ 'BIC ' num2str(testobj.BIC)]) % Bayes information criterion
+			disp([ 'BIC ' num2str(testobj.BIC)]) % Bayes information criterion
 
 		end
 
-		[val,loc]=max(diff(diff(logl))); % maximum derivative in log-likelihood over k
+		[val loc]=min(BIC);
 		nclust=clustnum(loc);
 		CLUSTERS=nclust;
 
@@ -433,25 +431,13 @@ if ~draw_mode
 
 	disp(['Will use ' num2str(CLUSTERS) ' clusters']);
 
-	testobj=gmdistribution.fit(cluster_data,CLUSTERS,'Regularize',1,'Options',options);
+	[kmeanslabels]=kmeans(cluster_data,CLUSTERS,'replicates',10);
+	testobj=gmdistribution.fit(cluster_data,CLUSTERS,'Regularize',1,...
+		'Options',options,'replicates',1,'start',kmeanslabels);
+
+
 	[idx,nlogl,P]=cluster(testobj,cluster_data);
-	%[center,u,obj_fcn]=fcm(cluster_data,CLUSTERS,[NaN NaN NaN 0]);
-
 	counter=1;
-
-	for i=1:datapoints
-
-		%[membership(i),idx(i)]=max(u(:,i)); % take posterior probability of the chosen cluster
-							% given observation i as the measure of "membership"
-		membership(i)=P(i,idx(i));
-
-		if membership(i)<outlier_cutoff
-			idx(i)=CLUSTERS+1; % assign new "junk cluster"
-			counter=counter+1;
-		end
-	end
-
-	disp([ num2str(counter) ' outliers']);
 
 	clusterlabels=unique(idx);
 	CLUSTERS=length(clusterlabels);
@@ -472,25 +458,44 @@ else
 	viewdim(2)=get(pop_up_y,'value');
 
 	view_data=spike_data(:,viewdim);
+	cluster_data=view_data;
 
 	cla;
 	LABELS=ones(datapoints,1);
-	response=[];
 	counter=2;
 
 	plot(view_data(:,1),view_data(:,2),'o','markerfacecolor',colors{1});view(2);
 	hold on
 	disp('Select the corners of the enclosing polygon then press RETURN to continue...');
 	hold off;
+	response=[];
 
 	while isempty(response)
+	
+		response2=[];
 
-		[xv,yv]=ginput;
-		k=convhull(xv,yv);	
-		hold on;
-		plot(xv(k),yv(k),'b-','linewidth',1.25);
-		choice=inpolygon(view_data(:,1),view_data(:,2),xv(k),yv(k));
-		LABELS(choice==1)=counter;
+		while isempty(response2)
+
+			[xv,yv]=ginput;
+			k=convhull(xv,yv);	
+			hold on;
+			plot(xv(k),yv(k),'b-','linewidth',1.25);
+			choice=inpolygon(view_data(:,1),view_data(:,2),xv(k),yv(k));
+			LABELS(choice==1)=counter;
+			response2=input('(D)one drawing or (c)ontinue?  ','s');
+
+			switch lower(response2)
+				case 'd'
+					break;
+				case 'c'
+					response2=[];
+				otherwise
+					response2=[];
+			end
+
+
+		end
+
 		response=input('(D)one clustering or (c)ontinue?  ','s');
 
 		switch lower(response)
@@ -503,8 +508,8 @@ else
 		end
 
 		counter=counter+1;
-
-	end
+	
+	end	
 	
 	CLUSTERS=counter;
 	NDIMS=3;
@@ -523,6 +528,9 @@ end
 
 [uniq_trial trial_boundary trial_group]=unique(trialnum);
 trial_boundary=[0;trial_boundary];
+
+WINDOWS={};
+ISI={};
 
 for i=1:CLUSTERS
 
@@ -555,6 +563,42 @@ for i=1:CLUSTERS
 
 end
 
+% compute remaining stats
+
+STATS.lratio=[];
+STATS.isod=[];
+
+for i=1:CLUSTERS
+	
+	clusterlocs=find(LABELS==i);
+	otherlocs=find(LABELS~=i);
+	
+	% get the feature data
+
+	clusterpoints=cluster_data(clusterlocs,:);
+	otherpoints=cluster_data(otherlocs,:);
+
+	% l ratio is the sum inv chi2cdf of mahal distance of all other points over
+	% n spikes
+
+	nclustpoints=size(clusterpoints,1);
+	mahaldist=mahal(otherpoints,clusterpoints);
+	
+	if length(otherpoints>0)
+		STATS.lratio(i)=sum(1-chi2cdf(mahaldist.^2,features))/nclustpoints;
+	else
+		STATS.lratio(i)=NaN;
+	end
+
+	if length(mahaldist)>=nclustpoints
+		sortmahal=sort(mahaldist.^2,'ascend');
+		STATS.isod(i)=sortmahal(nclustpoints);
+	else
+		STATS.isod(i)=NaN;
+	end
+
+end
+
 change_plot();
 
 end	
@@ -576,7 +620,7 @@ for i=1:CLUSTERS
 	ax(i)=subplot(CLUSTERS,2,counter);
 	[samples,trials]=size(WINDOWS{i});
 
-	plot(([1:samples]./fs)*1e3,WINDOWS{i});
+	plot(([1:samples]./interpolate_fs)*1e3,WINDOWS{i});
 
 	ylabel('microvolts');
 	xlabel('msec');

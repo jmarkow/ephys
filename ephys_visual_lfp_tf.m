@@ -103,17 +103,18 @@ hist_colors='jet';
 lfp_colors='jet';
 lfp_min_f=1; % bring down to 1
 lfp_max_f=100;
-lfp_n=4000; % defined frequency resolution
-lfp_overlap=3750;
-lfp_nfft=8000; % superficial, makes the spectrogram smoother
+lfp_n=300; % defined frequency resolution
+lfp_overlap=290;
+lfp_nfft=1024; % superficial, makes the spectrogram smoother
 lfp_w=2; % time bandwidth product if using multi-taper
 lfp_ntapers=[]; % number of tapers, leave blank to use 2*w-1
+proc_fs=1.25e3;
 
 hist_min_f=1;
 hist_max_f=10e3;
 
 figtitle=[];
-freq_range=[300]; % frequency range for filtering
+freq_range=[5 300]; % frequency range for filtering
 channels=CHANNELS;
 method='mt'; % raw or mt for multi-taper
 scale='log';
@@ -161,17 +162,38 @@ for i=1:2:nparams
 			lfp_nfft=varargin{i+1};
 		case 'lfp_overlap'
 			lfp_overlap=varargin{i+1};
+		case 'proc_fs'
+			proc_fs=varargin{i+1};
 	end
 end
 
 
-[nsamples,ntrials,nchannels]=size(EPHYS_DATA);
-TIME=[1:nsamples]./fs;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
-% if the window size is greater than the length of the signal
-% make the window size roughly the length of the signal/5
-% and adjust the overlap accordingly
+% denoise and condition the signal
 
+proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
+clear EPHYS_DATA;
+proc_data=double(ephys_condition_signal(proc_data,'l','freq_range',freq_range,'filt_order',3));
+
+downfact=fs/proc_fs;
+
+if mod(downfact,1)>0
+	error('ephysPipeline:spectcoherence:downsamplenotinteger','Need to downsample by integer');
+end
+
+disp(['Downsampling to ' num2str(proc_fs) ]);
+proc_data=downsample(proc_data,downfact);
+
+[nsamples,ntrials,nchannels]=size(proc_data);
+
+% get rows and columns
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% get processing parameters
 
 if lfp_n>nsamples
 	difference=lfp_n-lfp_overlap;
@@ -194,49 +216,32 @@ end
 % check if we're using multi-taper
 
 if lower(method(1))=='m'
-	resolution=lfp_w*1/(lfp_n/fs);
+	resolution=lfp_w*1/(lfp_n/proc_fs);
 	
 	if isempty(lfp_ntapers)
 		lfp_ntapers=2*(lfp_w)-1;
 	end
+
 	[tapers,lambda]=dpss(lfp_n,lfp_w,lfp_ntapers);
 else
 	lfp_ntapers='';
-	resolution=lfp_n/fs;
+	resolution=lfp_n/proc_fs;
 	tapers=[];
 end
 
 disp(['Resolution:  ' num2str(resolution)  ' Hz']);
 disp(['NFFT:  ' num2str(lfp_nfft)]);
 
-
-% get rows and columns
-
-
-[t,f,lfp_startidx,lfp_stopidx]=getspecgram_dim(nsamples,lfp_n,lfp_overlap,lfp_nfft,fs,lfp_min_f,lfp_max_f);
+[t,f,lfp_startidx,lfp_stopidx]=getspecgram_dim(nsamples,lfp_n,lfp_overlap,lfp_nfft,proc_fs,lfp_min_f,lfp_max_f);
 
 rows=length(f);
 columns=length(t);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
-
-% preallocate matrices
 
 SPECT_AVE.t=t;
 SPECT_AVE.f=f;
 SPECT_AVE.image=zeros(length(f),length(t),length(channels),'single');
 
-% denoise and condition the signal
-
-proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
-clear EPHYS_DATA;
-proc_data=double(ephys_condition_signal(proc_data,'l','freq_range',freq_range));
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PLOTTING CODE %%%%%%%%%%%%%%%%%%%%%%
 
 % create output directory
@@ -326,7 +331,7 @@ for i=1:length(channels)
 			ylabel('Hz','FontSize',13,'FontName','Helvetica');
 			box off;
 			set(singletrialfig,'PaperPositionMode','auto')
-			multi_fig_save(singletrialfig,savedir_st,['trial' num2str(j)],'eps,png');
+			multi_fig_save(singletrialfig,savedir_st,['trial' num2str(j)],'png');
 			close([singletrialfig]);
 
 			parsave(fullfile(savedir_st,[ 'trial' num2str(j)]),t,f,spect);
@@ -340,7 +345,7 @@ for i=1:length(channels)
 	spect_ave_plot.t=SPECT_AVE.t;
 	spect_ave_plot.f=SPECT_AVE.f;
 
-	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(800*nsamples/fs) 800]);
+	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(800*nsamples/proc_fs) 800]);
 	
 	fig_title=['CH' num2str(channels(i)) ' NTAP' num2str(lfp_ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
 
@@ -350,7 +355,7 @@ for i=1:length(channels)
 	set(spect_fig,'PaperPositionMode','auto');
 
 	multi_fig_save(spect_fig,savedir,...
-		[ savefilename num2str(channels(i)) ],'eps,png');
+		[ savefilename num2str(channels(i)) ],'png');
 	close([spect_fig]);
 
 end
@@ -360,7 +365,6 @@ save(fullfile(savedir,'lfp_tf_data.mat'),'CHANNELS','channels','SPECT_AVE');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARFOR SAVING %%%%%%%%%%%%%%%%%%%%%%
 
 function parsave(FILE,t,f,spect)

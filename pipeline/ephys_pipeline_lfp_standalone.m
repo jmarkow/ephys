@@ -7,10 +7,10 @@ function ephys_lfp_standalone(PROCDIR,CONFIG)
 
 parameters=ephys_pipeline_readconfig(CONFIG);
 
-fprintf('Parameters\n\n%-10s%-10s%-10s%-10s%-10s%-10s%-10s%-10s\n\n','NFFT','N','Overlap','Method','W','FS','Scale','Downsampling');
+fprintf('Parameters\n\n%-10s%-10s%-10s%-10s%-10s%-10s%-10s%-10s\n\n','NFFT','N','Overlap','Method','W','FS','Scale','Proc FS');
 fprintf('%-10d%-10d%-10d%-10s%-10d%-10d%-10s%-10d\n\n\n',...
 	parameters.lfp_nfft,parameters.lfp_n,parameters.lfp_overlap,parameters.lfp_method,...
-	parameters.lfp_w,parameters.fs,parameters.lfp_scale,parameters.lfp_downsampling);
+	parameters.lfp_w,parameters.fs,parameters.lfp_scale,parameters.proc_fs);
 
 % load in agg data and histogram
 
@@ -53,9 +53,12 @@ disp('Computing spectrograms...');
 samplemin=parameters.lfp_n/2+(parameters.lfp_minhops*(parameters.lfp_n-parameters.lfp_overlap));
 
 if samples>samplemin
-	ephys_visual_lfp_tf(EPHYS_DATA,HISTOGRAM,CHANNELS,'method',parameters.lfp_method,'savedir',PROCDIR,'lfp_min_f',parameters.lfp_min_f,'lfp_max_f',...
-		parameters.lfp_max_f,'lfp_n',parameters.lfp_n,'lfp_nfft',parameters.lfp_nfft,'lfp_overlap',parameters.lfp_overlap,'scale',parameters.lfp_scale,...
-		'lfp_ntapers',parameters.lfp_ntapers,'lfp_w',parameters.lfp_w,'SR',parameters.fs);
+	ephys_visual_lfp_tf(EPHYS_DATA,HISTOGRAM,CHANNELS,...
+		'method',parameters.lfp_method,'savedir',PROCDIR,'lfp_min_f',...
+		parameters.lfp_min_f,'lfp_max_f',parameters.lfp_max_f,'lfp_n',...
+		parameters.lfp_n,'lfp_nfft',parameters.lfp_nfft,'lfp_overlap',...
+		parameters.lfp_overlap,'scale',parameters.lfp_scale,...
+		'lfp_ntapers',parameters.lfp_ntapers,'lfp_w',parameters.lfp_w,'fs',parameters.fs,'proc_fs',parameters.proc_fs);
 else
 	disp([' Number of samples ' num2str(samples) ' less than samplemin ' num2str(samplemin)]);
 end
@@ -63,5 +66,6 @@ end
 disp('Computing LFP amplitudes...');
 
 for i=1:length(parameters.freq_range)
-	ephys_visual_lfp_amp(EPHYS_DATA,HISTOGRAM,CHANNELS,'freq_range',parameters.freq_range{i},'savedir',PROCDIR,'SR',parameters.fs);	
+	ephys_visual_lfp_amp(EPHYS_DATA,HISTOGRAM,CHANNELS,...
+		'freq_range',parameters.freq_range{i},'savedir',PROCDIR,'fs',parameters.fs,'proc_fs',parameters.proc_fs);
 end

@@ -77,9 +77,10 @@ min_f=1;
 max_f=10e3;
 hist_colors='jet';
 mua_colors='hot';
+mua_colors_phase='hsv';
 figtitle='';
 freq_range=[10 80]; % frequency range for filtering
-downsampling=2;
+proc_fs=1.25e3;
 channels=CHANNELS;
 medfilt_scale=1.5; % median filter scale (in ms)
 hampel=3;
@@ -116,13 +117,12 @@ for i=1:2:nparams
 			medfilt_scale=varargin{i+1};
 		case 'hampel'
 			hampel=varargin{i+1};
+		case 'proc_fs'
+			proc_fs=varargin{i+1};
 	end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-[nsamples,ntrials,nchannels]=size(EPHYS_DATA);
-TIME=[1:nsamples]./fs;
 
 % denoise and condition signal
 
@@ -132,33 +132,36 @@ proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_
 clear EPHYS_DATA;
 proc_data=single(ephys_condition_signal(proc_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale));
 
+downfact=fs/proc_fs;
+
+if mod(downfact,1)>0
+	error('ephysPipeline:spectcoherence:downsamplenotinteger','Need to downsample by integer');
+end
+
+disp(['Downsampling to ' num2str(proc_fs) ]);
+proc_data=downsample(proc_data,downfact);
+
+[nsamples,ntrials,nchannels]=size(proc_data);
+LFP_RASTER.t=[1:nsamples]./proc_fs;
+LFP_RASTER.trials=[1:ntrials];
+
 % are we downsampling
 % downsampling is done by skipping samples, straightforward
 
-if ~isempty(downsampling)
+LFP_RASTER.image_amp=zeros(ntrials,nsamples,nchannels);
+LFP_RASTER.image_phase=zeros(size(LFP_RASTER.image_amp));
 
-	LFP_RASTER.t=downsample(TIME,downsampling);
-	LFP_RASTER.image=zeros(ntrials,length(LFP_RASTER.t),length(channels),'single');
-
-	for i=1:length(channels)
-		LFP_RASTER.image(:,:,i)=downsample(proc_data(:,:,i),downsampling)';
-	end
-
-else
-	LFP_RASTER.t=TIME;
-	LFP_RASTER.image=zeros(ntrials,length(LFP_RASTER.t),length(channels),'single');
-
-	for i=1:length(channels)
-		LFP_RASTER.image(:,:,i)=proc_data(:,:,i)';
+for i=1:length(channels)
+	for j=1:ntrials
+		currdata=hilbert(proc_data(:,j,i));
+		LFP_RASTER.image_phase(j,:,i)=mod(unwrap(angle(currdata)),2*pi);
+		LFP_RASTER.image_amp(j,:,i)=proc_data(:,j,i);
 	end
 end
-LFP_RASTER.trials=[1:ntrials];
 
 clear proc_data;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PLOTTING CODE %%%%%%%%%%%%%%%%%%%%%%
 
 disp('Generating figures...');
@@ -181,7 +184,7 @@ if ~exist(fullfile(savedir,subdir),'dir')
 	mkdir(fullfile(savedir,subdir));
 end
 
-savefilename=[ name '_lfpamp_freqrange_' num2str(freq_range) '_electrode_'];
+savefilename=[ name '_lfp_freqrange_' num2str(freq_range) '_electrode_'];
 
 % delete any old rasters
 
@@ -195,13 +198,13 @@ for i=1:length(channels)
 
 	reject=[];
 	if ~isempty(hampel)	
-		reject=hampel_filter(LFP_RASTER.image(:,:,i)','hampel_factor',hampel);
+		reject=hampel_filter(LFP_RASTER.image_amp(:,:,i)','hampel_factor',hampel);
 	end
 	goodtrials=setdiff(LFP_RASTER.trials,reject);
 
 	PLOTLFP=LFP_RASTER;
 	PLOTLFP.trials=PLOTLFP.trials(goodtrials);
-	PLOTLFP.image=PLOTLFP.image(goodtrials,:,i);
+	PLOTLFP.image=PLOTLFP.image_amp(goodtrials,:,i);
 
 	multi_unit_raster(HISTOGRAM,PLOTLFP,'fs',fs,...
 		'fig_num',raster_fig,'fig_title',{[figtitle];[ 'Channel ' num2str(channels(i))]},...
@@ -209,7 +212,23 @@ for i=1:length(channels)
 
 	set(raster_fig,'PaperPositionMode','auto')
 	multi_fig_save(raster_fig,fullfile(savedir,subdir),...
-		[ savefilename num2str(channels(i)) ],'eps,png');
+		[ savefilename num2str(channels(i)) '_amp' ],'eps,png');
+	
+	close([raster_fig]);
+
+	raster_fig=figure('visible','off','Units','Pixels','Position',[0 0 700 1e3]);
+
+	PLOTLFP.image=PLOTLFP.image_phase(goodtrials,:,i);
+
+	multi_unit_raster(HISTOGRAM,PLOTLFP,'fs',fs,...
+		'fig_num',raster_fig,'fig_title',{[figtitle];[ 'Channel ' num2str(channels(i))]},...
+		'min_f',min_f,'max_f',max_f,'raster_colors',mua_colors_phase,'hist_colors',hist_colors,...
+		'show_colorbar',1,'scalelabel','Phase');
+
+	set(raster_fig,'PaperPositionMode','auto')
+	multi_fig_save(raster_fig,fullfile(savedir,subdir),...
+		[ savefilename num2str(channels(i)) '_phase' ],'eps,png');
+
 	close([raster_fig]);
 
 end
