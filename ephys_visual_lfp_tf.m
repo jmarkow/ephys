@@ -100,27 +100,32 @@ noise='none'; % common-average reference for noise removal
 car_exclude=[];
 savedir=pwd;
 hist_colors='jet';
-lfp_colors='jet';
+lfp_colors='hot';
 lfp_min_f=1; % bring down to 1
 lfp_max_f=100;
-lfp_n=300; % defined frequency resolution
-lfp_overlap=290;
-lfp_nfft=1024; % superficial, makes the spectrogram smoother
+lfp_n=256; % defined frequency resolution
+lfp_overlap=255;
+lfp_nfft=256; % superficial, makes the spectrogram smoother
 lfp_w=2; % time bandwidth product if using multi-taper
 lfp_ntapers=[]; % number of tapers, leave blank to use 2*w-1
-proc_fs=1.25e3;
+proc_fs=500;
 
 hist_min_f=1;
 hist_max_f=10e3;
 
 figtitle=[];
-freq_range=[5 300]; % frequency range for filtering
+freq_range=[20 100]; % frequency range for filtering
+filt_order=5;
 channels=CHANNELS;
 method='mt'; % raw or mt for multi-taper
-scale='log';
-scalelabel='dB';
+scale='linear';
+scalelabel='Mag.';
 singletrials=5;
 medfilt_scale=1.5; % median filter scale (in ms)
+
+angles=-pi/4:pi/16:pi/4; % for contour image
+ts=50:20:150; %timescales in milliseconds;
+contour_thresh=98;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -136,6 +141,8 @@ for i=1:2:nparams
 			figtitle=varargin{i+1};
 		case 'freq_range'
 			freq_range=varargin{i+1};
+		case 'filt_order'
+			filt_order=varargin{i+1};
 		case 'channels'
 			channels=varargin{i+1};
 		case 'method'
@@ -173,18 +180,28 @@ end
 
 % denoise and condition the signal
 
-proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
-clear EPHYS_DATA;
-proc_data=double(ephys_condition_signal(proc_data,'l','freq_range',freq_range,'filt_order',3));
-
 downfact=fs/proc_fs;
 
 if mod(downfact,1)>0
 	error('ephysPipeline:spectcoherence:downsamplenotinteger','Need to downsample by integer');
 end
 
-disp(['Downsampling to ' num2str(proc_fs) ]);
+proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
+
+[b,a]=butter(2,[200/(fs/2)],'low');
+
+for i=1:size(proc_data,3)
+	proc_data(:,:,i)=filtfilt(b,a,double(proc_data(:,:,i)));
+end
+
 proc_data=downsample(proc_data,downfact);
+
+size(proc_data)
+
+proc_data=ephys_condition_signal(proc_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale,'medfilt',1,...
+	'fs',proc_fs,'filt_order',filt_order);
+proc_data=squeeze(proc_data);
+clear EPHYS_DATA;
 
 [nsamples,ntrials,nchannels]=size(proc_data);
 
@@ -225,7 +242,7 @@ if lower(method(1))=='m'
 	[tapers,lambda]=dpss(lfp_n,lfp_w,lfp_ntapers);
 else
 	lfp_ntapers='';
-	resolution=lfp_n/proc_fs;
+	resolution=proc_fs/lfp_n;
 	tapers=[];
 end
 
@@ -248,6 +265,23 @@ SPECT_AVE.image=zeros(length(f),length(t),length(channels),'single');
 
 [path,name,ext]=fileparts(savedir);
 savedir=fullfile(savedir,'lfp_tf');
+
+switch lower(method(1))
+
+	case 'r'
+		savedir=fullfile(savedir,'spectrogram');
+
+	case 'm'
+		
+		savedir=fullfile(savedir,'slepian');
+
+	case 'g'
+		savedir=fullfile(savedir,'gabor');
+
+	case 'c'
+		savedir=fullfile(savedir,'contour');
+end
+
 
 if ~exist(savedir,'dir')
 	mkdir(fullfile(savedir));
@@ -276,31 +310,73 @@ for i=1:length(channels)
 	parfor j=1:ntrials
 	
 		currdata=proc_data(:,j,i);
+		spect=[];
 
-		if lower(method(1))=='r'
+		switch lower(method(1))
+			case 'r'
 
-			[spect]=spectrogram(currdata,lfp_n,lfp_overlap,lfp_nfft);
-			spect=abs(spect);
+				[spect]=spectrogram(currdata,lfp_n,lfp_overlap,lfp_nfft);
 
-		else
+			case 'm'
+				% average over tapers
 
-			% average over tapers
+				spect=zeros(rows,columns);
 
-			spect=zeros(rows,columns);
+				for k=1:lfp_ntapers
 
-			for k=1:lfp_ntapers
+					spect_tmp=spectrogram(currdata,tapers(:,k),lfp_overlap,lfp_nfft);
+					
+					% reduce instead to save memory
 
-				spect_tmp=spectrogram(currdata,tapers(:,k),lfp_overlap,lfp_nfft);
-				spect_tmp=spect_tmp.*conj(spect_tmp);
+					spect=spect+spect_tmp./lfp_ntapers;
 
-				% reduce instead to save memory
+				end
 
-				spect=spect+spect_tmp./lfp_ntapers;
+			case 'c'
 
-			end
+				% contours
 
+				spect=zeros(rows,columns);
+
+				% get the displacement image for each time scale,
+				
+				% then compute contours at all angles
+
+				for jj=1:length(ts)
+
+					% combine timescales and angles
+
+					[dxsub sonosub]=chirp2(0,ts(jj),currdata,proc_fs,lfp_overlap,lfp_nfft);
+
+					for jjj=1:length(angles)
+
+						a_consensus=chirp_consensus(currdata,proc_fs,contour_thresh,...
+							angles(jjj),lfp_nfft,dxsub,0,jjj,1);
+
+						spect_tmp=sonosub.*a_consensus;
+						spect=spect+spect_tmp./(length(angles)*length(ts));
+
+					end
+				end
+
+			case 'g'
+
+				% gabor
+
+				spect=zeros(rows,columns);
+
+				for jj=1:length(ts)
+					spect_tmp=chirp2(0,ts(1),currdata,proc_fs,lfp_overlap,lfp_nfft);
+					spect=spect+spect_tmp./length(ts);
+				end
+			
+			otherwise
+
+				error('Did not understand method!');
+
+			
 		end
-	
+
 		% reduction to save memory, storing in a large matrix probably not viable for large n...
 		
 		spect_ave_tmp=spect_ave_tmp+spect./ntrials;
@@ -311,12 +387,11 @@ for i=1:length(channels)
 
 			% just plot a simple spectrogram and save
 
-
 			switch lower(scale)
 				case 'linear'
-					imagesc(t,f(lfp_startidx:lfp_stopidx),spect(lfp_startidx:lfp_stopidx,:));
+					imagesc(t,f(lfp_startidx:lfp_stopidx),abs(spect(lfp_startidx:lfp_stopidx,:)));
 				case 'log'
-					imagesc(t,f(lfp_startidx:lfp_stopidx),20*log10(spect(lfp_startidx:lfp_stopidx,:)+eps));
+					imagesc(t,f(lfp_startidx:lfp_stopidx),20*log10(abs(spect(lfp_startidx:lfp_stopidx,:)+eps)));
 				otherwise
 					error('Did not understand scale, must be log or linear!');
 			end
@@ -340,22 +415,23 @@ for i=1:length(channels)
 		
 	end
 
-	SPECT_AVE.image(:,:,i)=single(spect_ave_tmp); % for saving
-	spect_ave_plot.image=spect_ave_tmp./max(spect_ave_tmp(:)); % normalize so max is 0 db
+	SPECT_AVE.data(:,:,i)=spect_ave_tmp; % for saving
+	spect_ave_plot.image=abs(spect_ave_tmp)./max(abs(spect_ave_tmp(:))); % normalize so max is 0 db
 	spect_ave_plot.t=SPECT_AVE.t;
 	spect_ave_plot.f=SPECT_AVE.f;
 
-	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(800*nsamples/proc_fs) 800]);
+	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(600*nsamples/proc_fs) 800]);
 	
 	fig_title=['CH' num2str(channels(i)) ' NTAP' num2str(lfp_ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
 
 	spect_fig=time_frequency_raster(HISTOGRAM,spect_ave_plot,'fig_num',spect_fig,'fig_title',fig_title,'scale',scale,...
-		'scalelabel',scalelabel,'hist_min_f',hist_min_f,'hist_max_f',hist_max_f,'tf_min_f',lfp_min_f,'tf_max_f',lfp_max_f);
+		'scalelabel',scalelabel,'hist_min_f',hist_min_f,'hist_max_f',hist_max_f,'tf_min_f',lfp_min_f,'tf_max_f',lfp_max_f,...
+		'hist_colors',hist_colors,'tfimage_colors',lfp_colors);
 
 	set(spect_fig,'PaperPositionMode','auto');
 
 	multi_fig_save(spect_fig,savedir,...
-		[ savefilename num2str(channels(i)) ],'png');
+		[ savefilename num2str(channels(i)) ],'png','res',100);
 	close([spect_fig]);
 
 end

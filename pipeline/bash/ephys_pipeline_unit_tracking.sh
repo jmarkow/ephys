@@ -28,7 +28,7 @@ while true; do
 
 		# only work with files at least 24 hours old (to prevent excessive duplication of effort)
 
-		FILELIST=( `find $ROOTDIR/$BIRD -type f -name "*candidate_unit_ch*" -cmin +1440 ` )
+		FILELIST=( `find $ROOTDIR/$BIRD -type f -name "*candidate_unit_ch*" -cmin +600 ` )
 
 		for FILE in ${FILELIST[@]}; do
 

@@ -1,5 +1,5 @@
-function [COH,T,F,SPECT1,SPECT2,STATS]=ephys_tfcoherence(SIGNAL1,SIGNAL2,varargin)
-%
+function [COH,T,F,SPECT1,SPECT2,STATS,FORCINGFUNCTION]=ephys_tfcoherence(SIGNAL1,SIGNAL2,varargin)
+%Slepian-based time-frequency coherence
 %
 %
 %
@@ -124,8 +124,8 @@ parfor i=1:ntrials
 
 	% should be zero mean in the first place
 
-	curr1=SIGNAL1(i,:)-mean(SIGNAL1(1,:));
-	curr2=SIGNAL2(i,:)-mean(SIGNAL2(2,:));
+	curr1=SIGNAL1(i,:)-mean(SIGNAL1(i,:));
+	curr2=SIGNAL2(i,:)-mean(SIGNAL2(i,:));
 
 	% spectra
 
@@ -165,6 +165,10 @@ parfor i=1:ntrials
 
 end
 
+
+% phase correction
+%sono(1:low_cutoff,:)=0; % high pass filter
+
 SPECT1=spect1_mean;
 SPECT2=spect2_mean;
 
@@ -173,4 +177,28 @@ SPECT2=spect2_mean;
 COH=cross_spect_mean./sqrt(spect1_mean.*spect2_mean);
 
 % display is user selects to display
+
+disp('Computing forcing function');
+
+forcing=zeros(rows,columns);
+parfor i=1:ntrials
+	for j=1:ntapers
+		spect=spectrogram(SIGNAL1(i,:),tapers(:,j)',overlap,nfft);
+		forcing=forcing+(spect.*abs(COH))./(ntrials*ntapers);
+	end
+end
+
+absv=abs(forcing);
+preang=angle(forcing);
+
+% phase shift every other line by pi
+
+for jj=1:2:size(preang,1)
+	preang(jj,:) = preang(jj,:) + pi;
+end
+
+preang = mod(preang,2*pi);
+sono = absv.*(cos(preang)+1i*sin(preang));
+
+FORCINGFUNCTION=sum(real(sono));
 

@@ -8,17 +8,19 @@ function IFRVEC=ephys_ifr(SPIKETIMES,TIMEVECTOR,FS)
 % provide spikes in samples
 % supply the length of the full vector to estimate over
 
-SPIKETIMES=SPIKETIMES(:);
+SPIKETIMES=round(SPIKETIMES(:));
 
 % shouldn't be any spike samples before 1, also add end of timevector
+
+SPIKETIMES(SPIKETIMES>TIMEVECTOR)=[];
 
 if length(SPIKETIMES==1)<1
 	SPIKETIMES=[1;SPIKETIMES];
 end
 
-if length(SPIKETIMES==length(TIMEVECTOR))<1
-	SPIKETIMES=[SPIKETIMES;length(TIMEVECTOR)];
-end
+%if length(SPIKETIMES)~=length(TIMEVECTOR)
+%	SPIKETIMES=[SPIKETIMES;length(TIMEVECTOR)];
+%end
 
 IFRVEC=zeros(TIMEVECTOR,1);
 

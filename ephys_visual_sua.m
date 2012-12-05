@@ -78,6 +78,8 @@ function ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
+% TODO:  remove multi-channel support
+
 if nargin<3
 	error('ephysPipeline:suavis:notenoughparams','Need 3 arguments to continue, see documentation');
 end
@@ -116,6 +118,7 @@ wavelet_coeffs=20; % 10 has worked well (3-5 for mpca)
 clust_choice='bic'; % with merging, BIC works just fine...
 red_cutoff=.8;
 outlier_detect=1;
+outlier_cutoff=75;
 nfeatures=10;
 merge=.47; % exp(-d), lower to merge more aggressively
 savename=''; % add if doing multiple manual sorts, will append a name to the filename
@@ -151,6 +154,8 @@ for i=1:2:nparams
 			car_exclude=varargin{i+1};
 		case 'figtitle'
 			figtitle=varargin{i+1};
+		case 'outlier_cutoff'
+			outlier_cutoff=varargin{i+1};
 		case 'filt_type'
 			filt_type=varargin{i+1};
 		case 'freq_range'
@@ -314,7 +319,9 @@ for i=1:length(channels)
 
 		% if tetrode then check each channel for significant spike
 
-		window=ceil((winsamples-1)/2); % how many samples to the left and right of the spike
+		window=ceil((winsamples-1)/2)+1;
+		
+		% how many samples to the left and right of the spike
 
 		% should we delete?
 
@@ -331,8 +338,9 @@ for i=1:length(channels)
 			spike_point=spike_pp.abs.times(k)-adjust;
 
 			if spike_point-window<1
-				spikeless_data=NaN;
-				break;
+				continue;
+				%spikeless_data=NaN;
+				%break;
 			end
 
 			spikeless_data(spike_point-window:spike_point+window)=[];
@@ -421,10 +429,12 @@ for i=1:length(channels)
 				ephys_spike_cluster_auto(spikewindows{i},spiketimes{i},...
 				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca,...
 				'clust_choice',clust_choice,'maxcoeffs',wavelet_coeffs,'outlier_detect',outlier_detect,...
-				'red_cutoff',red_cutoff,'nfeatures',nfeatures,'merge',merge);
+				'red_cutoff',red_cutoff,'nfeatures',nfeatures,'merge',merge,'outlier_cutoff',outlier_cutoff);
 		else
-			[clusterid clustertrial clusterisi clusterwindows clusterstats]=ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},...
-				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca,'interpolate_fs',interpolate_fs);
+			[clusterid clustertrial clusterisi clusterwindows clusterstats]=...
+				ephys_spike_clustergui_tetrode(spikewindows{i},spiketimes{i},spikeless{i},...
+				'fs',fs,'wavelet_method',wavelet_method,'wavelet_mpca',wavelet_mpca,'interpolate_fs',interpolate_fs,...
+				'template_cutoff',outlier_cutoff);
 		end
 
 		if isempty(clusterid)
@@ -440,7 +450,7 @@ for i=1:length(channels)
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IFR, SMOOTH RATE %%%%%%%%%%%%%%%%%%%
 
 
-	uniq_clusters=unique(clusterid);
+	uniq_clusters=unique(clusterid(~isnan(clusterid)));
 
 	if ~isempty(clusterid)
 	

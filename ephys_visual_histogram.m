@@ -13,7 +13,7 @@ function HISTOGRAM=ephys_visual_histogram(MIC_DATA,varargin)
 %	time scale for Gaussian window for the Gabor transform (in ms, default: 1.5)
 %	
 %	savedir
-%	if defined, saves the results in savedir in histogram.mat (leave blank to skip, default: blank)
+%	if defined, saves the results in savedir in histogram.mat (leave blank to skip, default: pwd)
 %
 %
 %

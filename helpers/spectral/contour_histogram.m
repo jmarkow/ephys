@@ -24,7 +24,7 @@ function [RMASK IMASK F T CONTOURS]=contour_histogram(SIGNALS,varargin)
 N=1025;
 overlap=1000;
 tscale=1.5; % in msecs
-SR=48e3;
+fs=48e3;
 spect_thresh=.2;
 mask_only=0;
 
@@ -42,8 +42,8 @@ for i=1:2:nparams
 			overlap=varargin{i+1};
 		case 'tscale'
 			tscale=varargin{i+1};
-		case 'sr'
-			SR=varargin{i+1};
+		case 'fs'
+			fs=varargin{i+1};
 		case 'spect_thresh'
 			spect_thresh=varargin{i+1};
 		case  'mask_only'
@@ -54,7 +54,7 @@ end
 
 [samples,trials]=size(SIGNALS);
 
-[rmask_pre imask_pre spect]=contour_approx(SIGNALS(:,1),'SR',SR,'N',N,'overlap',overlap,'tscale',tscale);
+[rmask_pre imask_pre spect]=contour_approx(SIGNALS(:,1),'fs',fs,'N',N,'overlap',overlap,'tscale',tscale);
 
 if mask_only
 	RMASK=rmask_pre./trials;
@@ -74,7 +74,7 @@ im_contours(:,:,1)=uint8(imask_pre);
 
 parfor i=1:trials
 	
-	[rmask_pre imask_pre spect]=contour_approx(SIGNALS(:,i),'SR',SR,'N',N,'overlap',overlap,'tscale',tscale);
+	[rmask_pre imask_pre spect]=contour_approx(SIGNALS(:,i),'fs',fs,'N',N,'overlap',overlap,'tscale',tscale);
 
 	re_contours(:,:,i)=uint8(rmask_pre);
 	im_contours(:,:,i)=uint8(imask_pre);
@@ -98,7 +98,7 @@ CONTOURS.im=im_contours;
 
 % should scale 1:fbins * nyquist
 
-F=((1:rows)./rows).*(SR/2);
+F=((1:rows)./rows).*(fs/2);
 
 % starting at 1 one hop is n-overlap samples
 
@@ -106,7 +106,7 @@ col_idx=1+(0:(cols-1))*(N-overlap);
 
 % then in time each step is samples + window/2 offset /SR
 
-T=((col_idx-1)+((N/2)'))/SR;
+T=((col_idx-1)+((N/2)'))/fs;
 
 
 

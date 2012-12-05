@@ -19,6 +19,7 @@ LABELS=[];
 TRIALS=[];
 ISI=[];
 WINDOWS=[];
+OUTLIERS=[];
 
 fs=25e3;
 use_spiketime=0; % use spiketime as a clustering feature (usually helps if SNR is low)
@@ -26,7 +27,9 @@ nparams=length(varargin);
 maxcoeffs=10; % number of wavelet coefficients to use (sorted by KS statistic)
 wavelet_method='bi';
 wavelet_mpca=1;
-outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
+%outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
+
+outlier_cutoff=75; % l-infty cutoff for residual test
 clust_choice='bic'; % knee is more tolerant, choice BIC (b) or AIC (a) for more sensitive clustering
 nfeatures=10; % number of features to use, ranked by dimreduction technique
 dim_reduce='bi';
@@ -62,6 +65,8 @@ for i=1:2:nparams
 			red_cutoff=varargin{i+1};
 		case 'outlier_detect'
 			outlier_detect=varargin{i+1};
+		case 'outlier_cutoff'
+			outlier_cutoff=varargin{i+1};
 		case 'kfolds'
 			kfolds=varargin{i+1};
 		case 'merge'
@@ -80,6 +85,7 @@ disp(['GMM mode selection method:  ' clust_choice]);
 disp(['All dimensionality reduction method:  ' dim_reduce]);
 disp(['Redundancy cutoff:  ' num2str(red_cutoff)]);
 disp(['Outlier detection:  ' num2str(outlier_detect)]);
+disp(['Outlier cutoff:  ' num2str(outlier_cutoff)]);
 disp(['Merge cutoff (Bhattacharyya distance):  ' num2str(merge)]);
 
 spikewindows=[];
@@ -617,58 +623,115 @@ for i=1:length(clusters)
 	LABELS(idx==clusters(loc(i)))=i;	
 end
 
+% recluster with mean templates, use a residual test and dump outliers into
+% a "junk" cluster
+
 if outlier_detect
+
+	% construct a template
+
+	templates=zeros(samples,length(clusters));
+	newlabels=zeros(size(LABELS));
+
 	for i=1:length(clusters)
+		templates(:,i)=mean(spikewindows(:,LABELS==i),2);
+	end
 
-		clusterlocs=find(LABELS==i);
+	counter=zeros(1,length(clusters));
 
-		% get spike coordinates for trialnumber and spikewindow
-		% matrices
+	for i=1:trials
 
-		CLUSTERPOINTS{i}=spike_data(clusterlocs,:);
+		score=zeros(1,length(clusters));
 
-		% find outliers
+		% l-infty norm
 
-		%clustermean=mean(CLUSTERPOINTS{i});
-		%clusterinvcov=inv(cov(CLUSTERPOINTS{i}));
+		for j=1:length(clusters)
+			score(j)=max(abs(spikewindows(:,i)-templates(:,j)));
+		end
 
-		% get the residuals
+		[val loc]=min(score);
 
-		[nclusttrials,dims]=size(CLUSTERPOINTS{i});
-		%residuals=zeros(nclusttrials,1);
-
-		%for j=1:nclusttrials
-		%	residuals(j)=(CLUSTERPOINTS{i}(j,:)-clustermean)...
-		%		*clusterinvcov*(CLUSTERPOINTS{i}(j,:)-clustermean)';
-		%end
-
-		residuals=mahal(CLUSTERPOINTS{i},CLUSTERPOINTS{i});
-
-		% cutoff point
-
-		cutoff=chi2inv(1-1/nclusttrials,dims);
-		outliers=find(residuals>cutoff);
-
-		% display percentage outliers per cluster
-
-		disp(['Cluster ' num2str(i) ' % outliers: '...
-			num2str(length(outliers)*100/nclusttrials)]);
-
-		% store outlier windows in a separate cell array, or just 
-
-		trialnum(clusterlocs(outliers))=[];
-
-		CLUSTERPOINTS{i}(outliers,:)=[];
-		OUTLIERS{i}=spikewindows(:,clusterlocs(outliers));
-		spikewindows(:,clusterlocs(outliers))=[];
-		spiketimes(clusterlocs(outliers))=[];
-
-		% give outliers a new cluster identity, or delete
-
-		LABELS(clusterlocs(outliers))=[];
-	
+		if val>outlier_cutoff
+			newlabels(i)=NaN;
+			counter(LABELS(i))=counter(LABELS(i))+1;
+		else
+			newlabels(i)=loc;
+		end
 
 	end
+
+	for i=1:length(clusters)
+		prcoutliers=100*(counter(i)./sum(LABELS==i));
+		disp(['Cluster ' num2str(i) ' : ' num2str(prcoutliers) ' % outliers']);
+	end
+
+	LABELS=newlabels;
+	clusters=unique(LABELS(~isnan(LABELS)));
+
+	for i=1:length(clusters)
+		clusterlocs=find(LABELS==i);
+		CLUSTERPOINTS{i}=spike_data(clusterlocs,:);
+	end
+
+	clusterlocs=find(isnan(LABELS));
+	OUTLIERS=spikewindows(:,clusterlocs);
+
+	% any outliers were assigned the new cluster, don't want
+	% to include in any further analysis (save for checking)
+
+	idx=LABELS;
+	clusters=unique(idx(~isnan(idx)));
+
+	% in the odd case an entire cluster is wiped out... (should NOT happen)
+
+	LABELS=zeros(size(idx));
+	for i=1:length(clusters)
+		LABELS(idx==clusters(i))=i;	
+	end
+
+	LABELS(isnan(idx))=NaN;
+
+	%for i=1:length(clusters)
+
+	%	clusterlocs=find(LABELS==i);
+
+	%	% get spike coordinates for trialnumber and spikewindow
+	%	% matrices
+
+	%	CLUSTERPOINTS{i}=spike_data(clusterlocs,:);
+
+	%	% find outliers
+
+	%	% get the residuals
+
+	%	[nclusttrials,dims]=size(CLUSTERPOINTS{i});
+	%	residuals=mahal(CLUSTERPOINTS{i},CLUSTERPOINTS{i});
+
+	%	% cutoff point
+
+	%	cutoff=chi2inv(1-1/nclusttrials,dims);
+	%	outliers=find(residuals>cutoff);
+
+	%	% display percentage outliers per cluster
+
+	%	disp(['Cluster ' num2str(i) ' % outliers: '...
+	%		num2str(length(outliers)*100/nclusttrials)]);
+
+	%	% store outlier windows in a separate cell array, or just 
+
+	%	trialnum(clusterlocs(outliers))=[];
+
+	%	CLUSTERPOINTS{i}(outliers,:)=[];
+	%	OUTLIERS{i}=spikewindows(:,clusterlocs(outliers));
+	%	spikewindows(:,clusterlocs(outliers))=[];
+	%	spiketimes(clusterlocs(outliers))=[];
+
+	%	% give outliers a new cluster identity, or delete
+
+	%	LABELS(clusterlocs(outliers))=[];
+	
+
+	%end
 end
 
 TRIALS=trialnum;

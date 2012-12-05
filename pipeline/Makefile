@@ -48,7 +48,8 @@ $(DIR)/$(APP6)/$(APP6).app/$(FIXPATH)/$(APP6) : $(APP6).m
 	mkdir -p $(DIR)/$(APP6)
 	matlab -nodesktop -nosplash -r 'try,mcc -vm $(APP6).m -d $(DIR)/$(APP6);catch,end,exit'
 
-$(DIR)/$(APP7)/$(APP7).app/$(FIXPATH)/$(APP7) : $(APP7).m ../ephys_visual_sua.m
+$(DIR)/$(APP7)/$(APP7).app/$(FIXPATH)/$(APP7) : $(APP7).m ../ephys_visual_sua.m ../helpers/ephys/ephys_spike_cluster_auto.m ../helpers/ephys/ephys_spike_clustergui_tetrode.m \
+	../helpers/ephys/ephys_spike_detect.m ../helpers/ephys/get_geometric_coefficients.m ../helpers/ephys/get_wavelet_coefficients.m
 	mkdir -p $(DIR)/$(APP7)
 	matlab -nodesktop -nosplash -r 'try,mcc -vm $(APP7).m -d $(DIR)/$(APP7);catch,end,exit'
 

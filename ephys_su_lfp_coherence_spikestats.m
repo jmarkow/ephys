@@ -1,4 +1,4 @@
-function ephys_su_lfp_coherence_spikestats(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)
+function ephys_su_lfp_coherence_spikestats(LFPDATA,SPIKETIMES,varargin)
 %generates plots with aligned fields, spikes and IFR
 %
 %
@@ -7,7 +7,7 @@ function ephys_su_lfp_coherence_spikestats(LFPCHANNEL,SUCHANNEL,SUCLUSTER,vararg
 %
 %
 
-if nargin<3
+if nargin<2
 	error('ephysPipeline:spikestats:notenoughparams','Need 3 arguments to continue, see documentation');
 end
 
@@ -18,10 +18,15 @@ savedir=pwd;
 lfp_fs=25e3;
 fig_title=[];
 medfilt_scale=1.5; % median filter scale (in ms)
-freq_range=[25 100];
+freq_range=[10 40];
+filt_order=5;
 singletrials=1:10; % default to 1-20
 time_range=[]; % if defined only visualize data in this subregion
 
+spike_channel='null';
+spike_cluster='null';
+lfp_channel='null';
+proc_fs=1.25e3; % processing frequency, will downsample lfp
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -37,6 +42,8 @@ for i=1:2:nparams
 			lfp_fs=varargin{i+1};
 		case 'freq_range'
 			freq_range=varargin{i+1};
+		case 'filt_order'
+			filt_order=varargin{i+1};
 		case 'median_scale'
 			median_scale=varargin{i+1};
 		case 'singletrials'
@@ -45,41 +52,63 @@ for i=1:2:nparams
 			medfilt_scale=varargin{i+1};
 		case 'time_range'
 			time_range=varargin{i+1};
+		case 'spike_channel'
+			spike_channel=varargin{i+1};
+		case 'spike_cluster'
+			spike_cluster=varargin{i+1};
+		case 'lfp_channel'
+			lfp_channel=varargin{i+1};
 	end
 end
 
+downfact=lfp_fs/proc_fs;
+
+if mod(downfact,1)>0
+	error('ephysPipeline:spectcoherence:downsamplenotinteger','Need to downsample by integer');
+end
+
+if proc_fs<500
+	warning('ephysPipeline:aliasing',...
+		'Anti-aliasing filter set to 200 Hz, consider increasing the sampling rate');
+end
+
 [path,name,ext]=fileparts(filedir);
-savename=[ name '_lfpch_' num2str(LFPCHANNEL) '_such' num2str(SUCHANNEL) '_clust' num2str(SUCLUSTER) '_freqs' num2str(freq_range)];
+savename=[ name '_lfpch_' num2str(lfp_channel) '_such' num2str(spike_channel) '_clust' num2str(spike_cluster) '_freqs' num2str(freq_range)];
 
-load(fullfile(pwd,'../../aggregated_data.mat'),'CHANNELS','EPHYS_DATA'); % get the channel map and LFPs
+downfact=lfp_fs/proc_fs;
 
-% first let's get the smooth spike traces and IFR (use IFR on a trial by trial basis)
+if mod(downfact,1)>0
+	error('ephysPipeline:spectcoherence:downsamplenotinteger','Need to downsample by integer');
+end
 
-sua_mat=fullfile(pwd,['sua_channels ' num2str(SUCHANNEL) '.mat']);
-load(sua_mat,'smooth_spikes','IFR','TIME','clust_spike_vec','subtrials'); % smooth spikes
+[b,a]=butter(2,[200/(lfp_fs/2)],'low');
+lfp_data=downsample(filtfilt(b,a,double(LFPDATA)),downfact);
+
+lfp_data=ephys_condition_signal(lfp_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale,'medfilt',1,...
+	'fs',proc_fs,'filt_order',filt_order);
+lfp_data=squeeze(lfp_data);
+
+lfp_fs=proc_fs;
+[samples,trials]=size(lfp_data);
+lfp_data=lfp_data';
+
+ifr_fs=lfp_fs;
+
+% get the ifr
+
+ifr_data=zeros(size(lfp_data));
+
+for i=1:length(SPIKETIMES)
+	ifr_data(i,:)=ephys_ifr(SPIKETIMES{i}*lfp_fs,samples,lfp_fs);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
 
-% filter the lfp_data
-
-lfp_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,LFPCHANNEL);
-clear EPHYS_DATA;
-lfp_data=ephys_condition_signal(lfp_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale);
-lfp_data=squeeze(lfp_data);
-
-ifr_data=IFR{1}{SUCLUSTER};
-spike_data=clust_spike_vec{1}{SUCLUSTER};
-ifr_fs=1./(TIME(2)-TIME(1));
-
-lfp_data=lfp_data(:,subtrials);
-[samples,trials]=size(lfp_data);
-lfp_data=lfp_data';
-
 if isempty(fig_title)
-	fig_title=[' LFPCH ' num2str(LFPCHANNEL) ' SUCH' num2str(SUCHANNEL) ...
-		' SUCL' num2str(SUCLUSTER) ' FILT ' num2str(freq_range) ' NTRIALS' num2str(trials)];
+	fig_title=[' LFPCH ' num2str(lfp_channel) ' SUCH' num2str(spike_channel) ...
+		' SUCL' num2str(spike_cluster) ' FILT ' num2str(freq_range) ' NTRIALS' num2str(trials)];
 end
 
 
@@ -110,7 +139,7 @@ box off
 axis tight;
 prettify_axis(gca,'LineWidth',2,'TickLength',[.025 .025],'FontName','Helvetica','FontSize',20);
 prettify_axislabels(gca,'FontName','Helvetica','FontSize',20);
-savedir=fullfile(savedir,'coherence',[ 'spikestats (ch' num2str(SUCHANNEL) '_cl' num2str(SUCLUSTER) ')' ]);
+savedir=fullfile(savedir,'coherence',[ 'spikestats (ch' num2str(spike_channel) '_cl' num2str(spike_cluster) ')' ]);
 
 if ~exist(savedir,'dir')
 	mkdir(savedir);
@@ -146,7 +175,7 @@ for i=singletrials
 
 	currlfp=lfp_data(i,:);
 	currifr=ifr_data(i,:);
-	currspike=spike_data{i}*ifr_fs;	
+	currspike=SPIKETIMES{i}*ifr_fs;	
 	currphase=mod(unwrap(angle(hilbert(lfp_data))),2*pi);
 
 	singletrialfig=figure('Position',[0 0 800 600],'Visible','off');
@@ -236,7 +265,7 @@ if ~isempty(savedir)
 	set(mean_fig,'paperpositionmode','auto');
 	multi_fig_save(mean_fig,savedir,[ savename '_mean' ],'eps,png');
 	save(fullfile(savedir,[savename '.mat']),'ifr_mean','lfp_mean','ifr_sem','lfp_sem',...
-		'lfp_data','ifr_data','spike_data');
+		'lfp_data','ifr_data','SPIKETIMES');
 	close([mean_fig]);
 end
 

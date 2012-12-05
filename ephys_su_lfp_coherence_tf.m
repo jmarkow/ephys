@@ -76,7 +76,7 @@ function [abscoh,t,f]=ephys_su_lfp_coherence_tf(LFPDATA,SPIKETIMES,HISTOGRAM,var
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
-if nargin<4
+if nargin<3
 	error('ephysPipeline:tfcoherence:notenoughparams','Need four arguments to continue, see documentation...');
 end
 
@@ -88,19 +88,20 @@ fig_title='noname';
 colors='jet';
 phasecolors='hsv';
 debug=0;
-nfft=1024;
-n=250;
-overlap=245;
-min_f=20;
+nfft=512;
+n=512;
+overlap=511;
+min_f=1;
 max_f=100;
 w=2;
 alpha=[.001 .01 .05];
 smoothplot=0;
-proc_fs=1.25e3; % processing frequency, will downsample lfp
+proc_fs=1e3; % processing frequency, will downsample lfp
 
 ntapers=[];
 beta=23/20; % parameter for z-transforming coherence
-freq_range=[300]; % let's just refilter
+freq_range=[20 125]; % let's just refilter
+filt_order=6;
 lfp_fs=25e3; % default Intan sampling rate
 trial_range=[];
 medfilt_scale=1.5; % median filter scale (in ms)
@@ -117,6 +118,12 @@ spike_cluster='null';
 lfp_channel='null';
 
 subtrials=[];
+
+method='slepian';
+
+angles=-pi/4:pi/16:pi/4; % for contour image
+ts=50:20:150; %timescales in milliseconds
+contour_thresh=0;
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -160,6 +167,8 @@ for i=1:2:nparams
 			spike_cluster=varargin{i+1};
 		case 'lfp_channel'
 			lfp_channel=varargin{i+1};
+		case 'method'
+			method=varargin{i+1};
 
 	end
 end
@@ -181,11 +190,7 @@ disp(['NFFT:  ' num2str(nfft)]);
 % where to grab the files from?
 % filter the LFP data
 
-if isempty(subtrials)
-	subtrials=[1:length(SPIKETIMES)];
-end
-
-if length(subtrials)~=size(LFPDATA,2)
+if length(SPIKETIMES)~=size(LFPDATA,2)
 	error('ephysPipeline:spectcoherence:unequaltrials','Unequal number of trials');
 end
 
@@ -197,16 +202,23 @@ if mod(downfact,1)>0
 	error('ephysPipeline:spectcoherence:downsamplenotinteger','Need to downsample by integer');
 end
 
-lfp_data=ephys_condition_signal(LFPDATA,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale);
-lfp_data=squeeze(lfp_data);
-lfp_data=lfp_data(:,subtrials);
+[b,a]=butter(2,[200/(lfp_fs/2)],'low');
+lfp_data=downsample(filtfilt(b,a,double(LFPDATA)),downfact);
 
-lfp_data=downsample(lfp_data,downfact);
+lfp_data=ephys_condition_signal(lfp_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale,'medfilt',0,...
+	'fs',proc_fs,'filt_order',filt_order);
+lfp_data=squeeze(lfp_data);
 
 [nsamples,ntrials]=size(lfp_data);
 [path,name,ext]=fileparts(savedir);
 
-savedir=fullfile(savedir,'coherence',[ 'tf (ch' num2str(spike_channel) '_cl' num2str(spike_cluster) ')'] );
+switch lower(method(1))
+	case 's'
+		savedir=fullfile(savedir,'coherence',[ 'tf (ch' num2str(spike_channel) '_cl' num2str(spike_cluster) ' slepian)'] );
+	case 'c'
+		savedir=fullfile(savedir,'coherence',[ 'tf (ch' num2str(spike_channel) '_cl' num2str(spike_cluster) ' contour)'] );
+end
+
 
 if ~exist(savedir,'dir')
 	mkdir(savedir);
@@ -325,27 +337,37 @@ end
 
 disp('Computing spectra and coherence');
 
-[coh,t,f,lfp_spect_mean,spike_spect_mean,stats]=ephys_tfcoherence(lfp_data,binspike_data,'fs',proc_fs,...
-	'nfft',nfft,'n',n,'overlap',overlap,'ntapers',ntapers,'alpha',alpha,'w',w);
+switch lower(method(1))
 
-fig_title=['LFPCH' num2str(lfp_channel) ' SUCH' num2str(spike_channel)...
-       	' SUCL' num2str(spike_cluster) ' NTAP' num2str(stats.ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
+	case 's' % slepian
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% print out coherence cutoff for chosen alpha values
+		[coh,t,f,lfp_spect_mean,spike_spect_mean,stats,forcingfunction]=ephys_tfcoherence(lfp_data,binspike_data,'fs',proc_fs,...
+			'nfft',nfft,'n',n,'overlap',overlap,'ntapers',ntapers,'alpha',alpha,'w',w);
 
-fid=fopen(fullfile(savedir,'alpha_log.log'),'w');
+		fid=fopen(fullfile(savedir,'alpha_log.log'),'w');
 
-for i=1:length(stats.null)	
-	fprintf(fid,'For alpha %g coherence cutoff:\t%g\t%g (Bonferroni corr.)\n',...
-		stats.alpha(i),stats.null(i),stats.null_boncorrected(i));
+		for i=1:length(stats.null)	
+			fprintf(fid,'For alpha %g coherence cutoff:\t%g\t%g (Bonferroni corr.)\n',...
+				stats.alpha(i),stats.null(i),stats.null_boncorrected(i));
+		end
+
+		fprintf(fid,'Variance:\t%g',stats.var);
+		fclose(fid);
+
+		fig_title=['LFPCH' num2str(lfp_channel) ' SUCH' num2str(spike_channel)...
+       			' SUCL' num2str(spike_cluster) ' NTAP' num2str(stats.ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
+
+	case 'c' % contour
+
+		[coh,t,f,lfp_spect_mean,spike_spect_mean,stats]=ephys_tfcoherence_contour(lfp_data,binspike_data,'fs',proc_fs,...
+			'nfft',nfft,'n',n,'overlap',overlap,'angles',angles,'contour_thresh',contour_thresh,'ts',ts);
+
+		fig_title=['LFPCH' num2str(lfp_channel) ' SUCH' num2str(spike_channel) ' SUCL' num2str(spike_cluster) ...
+			' CONTOURTHRESH ' num2str(contour_thresh)];
+
 end
 
-fprintf(fid,'Variance:\t%g',stats.var);
-fclose(fid);
-
-% pre-allocate matrices
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PLOTTING CODE %%%%%%%%%%%%%%%%%%%%%%
@@ -360,8 +382,6 @@ abscoh=abs(coh);
 phasecoh=mod(unwrap(angle(coh)),2*pi);
 
 % z-transformed coherence
-
-zabscoh=spect_ztrans(abscoh,beta,stats.dof);
 
 % we can indicate significant points using the asymptotic values per Jarvis and Mitra (2001)
 % spike spectrogram
@@ -409,22 +429,7 @@ time_frequency_raster(HISTOGRAM,plotabscoh,'tf_min_f',min_f,'tf_max_f',max_f,'sc
 
 set(spect_fig,'PaperPositionMode','auto');
 multi_fig_save(spect_fig,savedir,savefilename,'eps,png','renderer','painters');
-close([spect_fig]);
-
-% z-transform
-
-spect_fig=figure('Visible','off','position',[0 0 round(600*nsamples/proc_fs) 800]);
-
-plotabscoh.image=zabscoh;
-plotabscoh.t=t;
-plotabscoh.f=f;
-
-time_frequency_raster(HISTOGRAM,plotabscoh,'tf_min_f',min_f,'tf_max_f',max_f,'scale','linear',...
-	'fig_num',spect_fig,'scalelabel','Coherence','fig_title',fig_title,'tfimage_colors',colors,'tf_clim',clim,'smoothplot',smoothplot);
-
-set(spect_fig,'PaperPositionMode','auto');
-multi_fig_save(spect_fig,savedir,[savefilename 'ztrans'],'eps,png','renderer','painters');
-close([spect_fig]);
+close([spect_fig])
 
 % also show phase angle
 
@@ -458,7 +463,8 @@ stopidx=min([find(f>=max_f)]);
 
 fvec=startidx:stopidx;
 amp_weighted_histogram=zeros(length(fvec),length(phase_edges));
-cutoff=stats.null(stats.alpha==.05)+stats.var;
+%cutoff=stats.null(stats.alpha==.05)+stats.var;
+cutoff=0;
 
 for i=1:length(fvec)
 
@@ -507,19 +513,24 @@ close([amp_fig]);
 
 % plot the tapers as well
 
-tapers_fig=figure('Visible','off','position',[0 0 800 600]);
-plot([1:n]./proc_fs,stats.tapers,'linewidth',1.25);
-title(['Tapers, n ' num2str(stats.ntapers) ' w ' num2str(w)])
-xlabel('Time (s)');
-prettify_axislabels(tapers_fig,'fontsize',15,'font','Helvetica');
-prettify_axis(tapers_fig,'ticklength',[.02 .02],'fontsize',14,'font','helvetica','linewidth',3);
-box off
+if lower(method(1))=='s'
+	
+	proc_fs
+	tapers_fig=figure('Visible','off','position',[0 0 800 600]);
+	plot([1:n]./proc_fs,stats.tapers,'linewidth',1.25);
+	title(['Tapers, n ' num2str(stats.ntapers) ' w ' num2str(w)])
+	xlabel('Time (s)');
+	prettify_axislabels(tapers_fig,'fontsize',15,'font','Helvetica');
+	prettify_axis(tapers_fig,'ticklength',[.02 .02],'fontsize',14,'font','helvetica','linewidth',3);
+	box off
+	axis tight
 
-multi_fig_save(tapers_fig,savedir,[savefilename '_tapers' ],'eps,png');
-close([tapers_fig]);
+	multi_fig_save(tapers_fig,savedir,[savefilename '_tapers' ],'eps,png');
+	close([tapers_fig]);
+end
 
 save(fullfile(savedir,[savefilename '.mat']),...
-	'coh','t','f','fvec','phase_edges','w','n','nfft','overlap',...
+	'coh','t','f','forcingfunction','fvec','phase_edges','w','n','nfft','overlap',...
 	'lfp_data','binspike_data','amp_weighted_histogram','stats');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

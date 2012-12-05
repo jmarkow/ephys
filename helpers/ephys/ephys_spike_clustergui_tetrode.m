@@ -1,21 +1,30 @@
-function [LABELS TRIALS ISI WINDOWS STATS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,varargin)
+function [LABELS TRIALS ISI WINDOWS STATS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,SPIKELESS,varargin)
 %GUI for spike cluster cutting
 %
 %
 
 % spikewindows', rows x samples, each row is a windowed spike waveform
 
+% The functions are all nested inside the main function but not each other
+% thus by default all variables declared in the main function ARE GLOBAL
+
+nparams=length(varargin);
+
 TRIALS=[]; % by default we don't need this, unless input is over multiple trials
 fs=25e3;
 interpolate_fs=200e3;
-features={'PCA','pose','nege','tote',...
-	'min','max','width','ISI','Spiketimes','wavelets'}; % possible features include, min, max, PCA, width
-				     % energy and wavelet coefficients
-outlier_cutoff=.05;				     
+
+% all features excluding IFR and spiketimes
+
+features_all={'max','min','pe','ne','^2','neo','wid','pgrad','ngrad','PC1','PC2','PC3','PC4'}; 
+features={'PCA','pose','nege','posgrad','neggrad','min','width','ISI','Spiketimes','wavelets'}; 
+
+% possible features include, min, max, PCA, width, energy and wavelet coefficients
+ 
 channel_labels=[];
-nparams=length(varargin);
 colors={'b','r','g','c','m','y','k','r','g','b'};
 NDIMS=[];
+cluster_data=[];
 LEGEND_LABELS={};
 LABELS=[];
 ISI={};
@@ -24,6 +33,9 @@ CLUSTERS=[];
 wavelets=10; % chooses top N non-normal wavelets according to either negentropy or KS test
 wavelet_method='bi';
 wavelet_mpca=1;
+template_cutoff=[]; % l-infty norm cutoff for template clustering (max(abs) residual)
+
+% the template cutoff could be defined by the 95th prctile of the abs(noise) magnitude
 
 if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs!');
@@ -45,20 +57,40 @@ for i=1:2:nparams
 			wavelet_method=varargin{i+1};
 		case 'wavelet_mpca'
 			wavelet_mpca=varargin{i+1};
+		case 'template_cutoff'
+			template_cutoff=varargin{i+1};
 
 	end
 end
 
-% need to deal with cell input (multiple trials), convert input to big matrix
-% and spit out trial number
 
-% get the number of channels
+% get the noise estimate
+% get the number of total noise samples, if it's over 10e3 downsample
+
+
+noisedata=[];
+
+for i=1:length(SPIKELESS)
+	noisedata=[noisedata;downsample(SPIKELESS{i}(:),5)];
+end
+
+SIGMA_EST=var(noisedata); % conservative noise estimate, sup(variance) over trials
+
+if isempty(template_cutoff)	
+	template_cutoff=prctile(abs(noisedata),90);
+end
+
+disp(['Template outlier cutoff ' num2str(template_cutoff)]);
 
 spikewindows=[];
 spiketimes=[];
 spikeifr=[];
 trialnum=[];
 spike_data=[];
+
+% reformat windows and spiketimes
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IFR and spike times
 
 if iscell(SPIKEWINDOWS)
 	for i=1:length(SPIKEWINDOWS)
@@ -70,12 +102,13 @@ if iscell(SPIKEWINDOWS)
 
 		ifr_tmp=[];
 		padded_spikes=[-inf SPIKETIMES{i} inf];
+		
 		for j=2:length(padded_spikes)-1
 			
 			curr_spike=padded_spikes(j);
 			next_spike=min(padded_spikes(padded_spikes>padded_spikes(j)))-curr_spike;
 			prev_spike=curr_spike-max(padded_spikes(padded_spikes<padded_spikes(j)));
-			ifr_tmp(j-1)=1/(min(next_spike,prev_spike)/fs); % isi is the time from the closest spike, before or after
+			ifr_tmp(j-1)=1/(min(next_spike,prev_spike)/fs); % ifr is the time from the closest spike, before or after
 		
 		end
 
@@ -119,8 +152,6 @@ timepoints=[1:samples]';
 
 % expand to include features from all channels processed
 % by convention let's keep each channel a separate column
-
-features_all={'max','min','pe','ne','^2','neo','wid','pgrad','nrad','PC1','PC2','PC3','PC4'}; % all features excluding IFR and spiketimes
 
 for i=1:wavelets
 	features_all{end+1}=['WC' num2str(i)];
@@ -229,6 +260,9 @@ end
 
 spike_data(isnan(spike_data))=0;
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% GUI setup
+
 main_window=figure('Visible','off','Position',[360,500,700,600],'Name','Data Plotter','NumberTitle','off');
 plot_axis=axes('Units','pixels','Position',[50,50,425,425]);
 
@@ -277,6 +311,11 @@ push_recluster= uicontrol('Style','pushbutton',...
 	'Position',[500,550,100,35],'value',0,...
 	'Call',@change_cluster);
 
+push_templatecluster= uicontrol('Style','pushbutton',...
+	'String','Template cluster',...
+	'Position',[500,350,100,35],'value',0,...
+	'Call',@template_cluster);
+
 rows=ceil(length(property_names)/5);
 
 i=1;
@@ -294,7 +333,7 @@ end
 % now align everything and send the main_window handle to the output
 % so we can use the gui with uiwait (requires the handle as a return value)
 
-align([pop_up_clusters,pop_up_clusters_text,push_replot_save],'Center','None');
+align([pop_up_clusters,pop_up_clusters_text,push_replot_save,push_templatecluster],'Center','None');
 align([pop_up_x,pop_up_x_text],'Center','None');
 align([pop_up_y,pop_up_y_text],'Center','None');
 align([pop_up_z,pop_up_z_text],'Center','None');
@@ -306,22 +345,27 @@ change_plot();
 
 set([main_window,plot_axis,pop_up_x,pop_up_x_text,pop_up_y,pop_up_y_text,pop_up_z,...
 	pop_up_z_text,pop_up_clusters,pop_up_clusters_text,...
-	push_replot_save,push_draw_mode,push_recluster],'Units','Normalized');
+	push_replot_save,push_draw_mode,push_recluster,push_templatecluster],'Units','Normalized');
 movegui(main_window,'center')
 
 set(main_window,'Visible','On');
 uiwait(main_window);
 
-%% Callbacks
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Callbacks
 
 % this callback changes the plot and returns the sum of the distances
 % from the centroid for each point in a cluster
 
 % change the plot if we change any of our dimensions, DO NOT RECLUSTER!
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Plot change
+
 function change_plot(varargin)
 
-% get the number of dimensions for the plot (number of principal components)
+% get the number of dimensions for the plot
+
+% clear the axes and draw the points
 
 cla;
 
@@ -330,6 +374,7 @@ viewdim(2)=get(pop_up_y,'value');
 viewdim(3)=get(pop_up_z,'value');
 
 view_data=spike_data(:,viewdim);
+CLUSTERS=length(unique(LABELS));
 
 if NDIMS==2
 	for i=1:CLUSTERS
@@ -358,6 +403,8 @@ L=legend(h,LEGEND_LABELS,'Location','NorthEastOutside');legend boxoff
 set(L,'FontSize',20,'FontName','Helvetica')
 
 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Recluster
 
 function change_cluster(varargin)
 
@@ -391,10 +438,20 @@ clusterchoice=clusterchoices{clusterselection};
 cluster_data=spike_data(:,dim);
 [datapoints,features]=size(spike_data);
 
+
 if ~draw_mode
+
+	if matlabpool('size')>0
+		pctRunOnAll warning('off','stats:gmdistribution:FailedToConverge');
+		pctRunOnAll warning('off','stats:kmeans:FailedToConverge');
+	else
+		warning('off','stats:gmdistribution:FailedToConverge');
+		warning('off','stats:kmeans:FailedToConverge');
+	end
+
 	options=statset('Display','off');
 
-	clustnum=2:8;
+	clustnum=2:9;
 	if datapoints<=features
 		disp('Too few spikes to fit');
 		return;
@@ -403,6 +460,7 @@ if ~draw_mode
 	% gaussian mixture seems to work better than fcm
 
 	if strcmp(lower(clusterchoice),'auto')
+
 
 		parfor i=1:length(clustnum)
 
@@ -435,6 +493,13 @@ if ~draw_mode
 	testobj=gmdistribution.fit(cluster_data,CLUSTERS,'Regularize',1,...
 		'Options',options,'replicates',1,'start',kmeanslabels);
 
+	if matlabpool('size')>0
+		pctRunOnAll warning('on','stats:gmdistribution:FailedToConverge');
+		pctRunOnAll warning('on','stats:kmeans:FailedToConverge');
+	else
+		warning('on','stats:gmdistribution:FailedToConverge');
+		warning('on','stats:kmeans:FailedToConverge');
+	end
 
 	[idx,nlogl,P]=cluster(testobj,cluster_data);
 	counter=1;
@@ -526,8 +591,113 @@ end
 
 % compute any other stats we want, ISI, etc...
 
+collect_stats();
+change_plot();
+
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Recluster
+
+function template_cluster(varargin)
+
+% get the templates for each cluster by extracting mean
+% consider removing outliers first
+
+CLUSTERS=length(unique(LABELS));
+
+for i=1:CLUSTERS
+	template(:,i)=mean(WINDOWS{i},2);
+	mvartemplate(:,i)=2.25.*iqr(WINDOWS{i},2);
+	vartemplate(i)=var(template(:,i));
+end
+
+% could slide the window as well, probably not necessary with precise alignment
+
+
+
+tmp=zeros(size(spikewindows,2),CLUSTERS);
+%cutoff=chi2inv(.95,size(spikewindows,1)-1)
+%cutoff=300;
+samples=size(spikewindows,1);
+
+for i=1:size(spikewindows,2)
+	
+	for j=1:CLUSTERS
+		tmp(i,j)=max(abs(spikewindows(:,i,1)-template(:,j)));
+	end
+
+	[val loc]=min(tmp(i,:));
+
+	% outlier check
+
+	LABELS(i)=loc;
+
+	% chi square test per Wang et al.
+
+	%residual=var(spikewindows(:,i,1)-template(:,loc));
+	%chisquare(i)=(residual*(samples-1))/SIGMA_EST;
+
+	residual=tmp(i,loc);
+
+	% simply use the L-infty norm here
+
+	if residual>template_cutoff
+		LABELS(i)=CLUSTERS+1;
+	end
+
+end
+
+% new cluster assignment is based on template clusters
+
+idx=LABELS;
+clusterlabels=unique(idx);
+CLUSTERS=length(clusterlabels);
+
+for i=1:length(clusterlabels)
+	idx(idx==clusterlabels(i))=i;	
+end
+
+% return labels, and windows and ISI sorted by cluster IDX
+
+LABELS=idx;
+clusterlabels=unique(LABELS);
+outliers=[];
+
+LABELS(outliers)=length(clusterlabels)+1;
+
+idx=LABELS;
+clusterlabels=unique(idx);
+CLUSTERS=length(clusterlabels);
+
+for i=1:length(clusterlabels)
+	idx(idx==clusterlabels(i))=i;	
+end
+
+LABELS=idx;
+CLUSTERS=length(unique(LABELS));
+
+collect_stats();
+change_plot();
+
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Stats collection
+
+function collect_stats(varargin)
+
 [uniq_trial trial_boundary trial_group]=unique(trialnum);
 trial_boundary=[0;trial_boundary];
+
+idx=LABELS;
+clusterlabels=unique(idx);
+CLUSTERS=length(clusterlabels);
+
+for i=1:length(clusterlabels)
+	idx(idx==clusterlabels(i))=i;	
+end
+
+LABELS=idx;
+CLUSTERS=length(unique(LABELS));
 
 WINDOWS={};
 ISI={};
@@ -554,7 +724,8 @@ for i=1:CLUSTERS
 
 		currtrial=currtrial(currlabels==i);
 
-		currisi=(diff(currtrial)); % isi in msec
+		currisi=(diff(currtrial));
+
 		spikeifrtmp=[spikeifrtmp;currisi(:)];
 	end
 
@@ -599,9 +770,9 @@ for i=1:CLUSTERS
 
 end
 
-change_plot();
+end
 
-end	
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Show a window with spike stats
 
 function show_stats(varargin)
 
@@ -620,7 +791,13 @@ for i=1:CLUSTERS
 	ax(i)=subplot(CLUSTERS,2,counter);
 	[samples,trials]=size(WINDOWS{i});
 
-	plot(([1:samples]./interpolate_fs)*1e3,WINDOWS{i});
+	if trials>100
+		plotwindow=WINDOWS{i}(:,1:100);
+	else
+		plotwindow=WINDOWS{i}(:,1:trials);
+	end	
+
+	plot(([1:samples]./interpolate_fs)*1e3,plotwindow);
 
 	ylabel('microvolts');
 	xlabel('msec');
