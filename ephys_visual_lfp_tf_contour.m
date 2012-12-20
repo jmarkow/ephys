@@ -1,4 +1,4 @@
-function [SPECT_AVE]=ephys_visual_lfp_tf(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
+function [CONTOUR_SPECT]=ephys_visual_lfp_tf_contour(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %generates a song-aligned average spectrogram of the LFP
 %
 %	[LFP_RASTER TIME LABEL HISTOGRAM]=ephys_lfp_amp(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
@@ -96,26 +96,27 @@ if mod(nparams,2)>0
 end
 
 fs=25e3;
-noise='none'; % common-average reference for noise removal
+noise='none'; 
+
 car_exclude=[];
 savedir=pwd;
 hist_colors='jet';
-lfp_colors='hot';
+lfp_colors='jet';
 lfp_min_f=1; % bring down to 1
 lfp_max_f=100;
-lfp_n=256; % defined frequency resolution
-lfp_overlap=255;
-lfp_nfft=256; % superficial, makes the spectrogram smoother
-lfp_w=2; % time bandwidth product if using multi-taper
-lfp_ntapers=[]; % number of tapers, leave blank to use 2*w-1
+lfp_n=512; % defined frequency resolution
+lfp_overlap=511;
+lfp_nfft=512; % superficial, makes the spectrogram smoother
+
+
 proc_fs=500;
 
 hist_min_f=1;
 hist_max_f=10e3;
 
 figtitle=[];
-freq_range=[20 100]; % frequency range for filtering
-filt_order=5;
+freq_range=[2 120]; % frequency range for filtering
+filt_order=7;
 channels=CHANNELS;
 method='mt'; % raw or mt for multi-taper
 scale='linear';
@@ -124,8 +125,8 @@ singletrials=5;
 medfilt_scale=1.5; % median filter scale (in ms)
 
 angles=-pi/4:pi/16:pi/4; % for contour image
-ts=50:20:150; %timescales in milliseconds;
-contour_thresh=98;
+wsigma=.05:.02:.15; %timescales in milliseconds;
+padding=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -147,16 +148,8 @@ for i=1:2:nparams
 			channels=varargin{i+1};
 		case 'method'
 			method=varargin{i+1};
-		case 'noise'
-			noise=varargin{i+1};
-		case 'lfp_ntapers'
-			lfp_ntapers=varargin{i+1};
-		case 'lfp_w'
-			lfp_w=varargin{i+1};
 		case 'scale'
 			scale=varargin{i+1};
-		case 'singletrials'
-			singletrials=varargin{i+1};
 		case 'lfp_min_f'
 			lfp_min_f=varargin{i+1};
 		case 'lfp_max_f'
@@ -171,12 +164,27 @@ for i=1:2:nparams
 			lfp_overlap=varargin{i+1};
 		case 'proc_fs'
 			proc_fs=varargin{i+1};
+		case 'padding'
+			padding=varargin{i+1};
+		case 'wsigma'
+			wsigma=varargin{i+1};
 	end
 end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
+
+% add padding if requested
+
+[nsamples,ntrials,nchannels]=size(EPHYS_DATA);
+ntimescales=length(wsigma);
+
+if ~isempty(padding)
+	padsamples=padding*fs;
+	pad=zeros(padsamples,ntrials,nchannels);
+	EPHYS_DATA=[pad;EPHYS_DATA;pad];
+end
 
 % denoise and condition the signal
 
@@ -195,9 +203,6 @@ for i=1:size(proc_data,3)
 end
 
 proc_data=downsample(proc_data,downfact);
-
-size(proc_data)
-
 proc_data=ephys_condition_signal(proc_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale,'medfilt',1,...
 	'fs',proc_fs,'filt_order',filt_order);
 proc_data=squeeze(proc_data);
@@ -230,33 +235,17 @@ else
 	lfp_nfft=2^nextpow2(lfp_nfft);
 end
 
-% check if we're using multi-taper
-
-if lower(method(1))=='m'
-	resolution=lfp_w*1/(lfp_n/proc_fs);
-	
-	if isempty(lfp_ntapers)
-		lfp_ntapers=2*(lfp_w)-1;
-	end
-
-	[tapers,lambda]=dpss(lfp_n,lfp_w,lfp_ntapers);
-else
-	lfp_ntapers='';
-	resolution=proc_fs/lfp_n;
-	tapers=[];
-end
-
-disp(['Resolution:  ' num2str(resolution)  ' Hz']);
-disp(['NFFT:  ' num2str(lfp_nfft)]);
-
 [t,f,lfp_startidx,lfp_stopidx]=getspecgram_dim(nsamples,lfp_n,lfp_overlap,lfp_nfft,proc_fs,lfp_min_f,lfp_max_f);
 
+if ~isempty(padding)
+	t=t-padding;
+end
 rows=length(f);
 columns=length(t);
 
-SPECT_AVE.t=t;
-SPECT_AVE.f=f;
-SPECT_AVE.image=zeros(length(f),length(t),length(channels),'single');
+CONTOUR_SPECT.t=t;
+CONTOUR_SPECT.f=f;
+CONTOUR_SPECT.image=zeros(length(f),length(t),length(channels),'single');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PLOTTING CODE %%%%%%%%%%%%%%%%%%%%%%
@@ -264,18 +253,7 @@ SPECT_AVE.image=zeros(length(f),length(t),length(channels),'single');
 % create output directory
 
 [path,name,ext]=fileparts(savedir);
-savedir=fullfile(savedir,'lfp_tf');
-
-switch lower(method(1))
-
-	case 'r'
-		savedir=fullfile(savedir,'spectrogram');
-
-	case 'm'
-		
-		savedir=fullfile(savedir,'slepian');
-end
-
+savedir=fullfile(savedir,'lfp_tf','contour');
 
 if ~exist(savedir,'dir')
 	mkdir(fullfile(savedir));
@@ -287,98 +265,56 @@ savefilename=[ name '_lfptf_electrode_'];
 
 delete(fullfile(savedir,[savefilename '*']));
 
-if exist(fullfile(savedir,'singletrials'));
-	rmdir(fullfile(savedir,'singletrials'),'s');
-end
-
 for i=1:length(channels)
 
-	savedir_st=fullfile(savedir,'singletrials',[ 'ch' num2str(channels(i))]);
-
-	if ~exist(savedir_st,'dir')
-		mkdir(savedir_st);
-	end
-	
-	spect_ave_tmp=zeros(rows,columns);
+	consensus_ave=zeros(rows,columns);
+	gabor_ave=zeros(rows,columns);
 
 	parfor j=1:ntrials
-	
+
+		disp([num2str(j)]);	
+		consensus_tmp=zeros(rows,columns);
+		gabor_tmp=zeros(rows,columns);
+
 		currdata=proc_data(:,j,i);
 		spect=[];
 
-		switch lower(method(1))
-			case 'r'
+		for k=1:ntimescales
 
-				[spect]=spectrogram(currdata,lfp_n,lfp_overlap,lfp_nfft);
+			% get the stft and reassignment
 
-			case 'm'
-				% average over tapers
+			[stft dx]=chirp_stft(currdata,'fs',proc_fs,'n',lfp_n,...
+				'overlap',lfp_overlap,'nfft',lfp_nfft,'wsigma',wsigma(k));
 
-				spect=zeros(rows,columns);
+			% build the complex contour image
 
-				for k=1:lfp_ntapers
+			consensus=contour_consensus(stft,dx,angles);
 
-					spect_tmp=spectrogram(currdata,tapers(:,k),lfp_overlap,lfp_nfft);
-					
-					% reduce instead to save memory
+			% accumulate
 
-					spect=spect+spect_tmp./lfp_ntapers;
+			consensus_tmp=consensus_tmp+consensus./ntimescales;
+			gabor_tmp=gabor_tmp+stft./ntimescales;
 
-				end
-			
-			otherwise
-
-				error('Did not understand method!');
-
-			
 		end
 
 		% reduction to save memory, storing in a large matrix probably not viable for large n...
 		
-		spect_ave_tmp=spect_ave_tmp+spect./ntrials;
+		consensus_ave=consensus_ave+consensus_tmp./ntrials;
+		gabor_ave=gabor_ave+gabor_tmp./ntrials;
 
-		if j<=singletrials
-			
-			singletrialfig=figure('Visible','off','position',[0 0 800 600]);
-
-			% just plot a simple spectrogram and save
-
-			switch lower(scale)
-				case 'linear'
-					imagesc(t,f(lfp_startidx:lfp_stopidx),abs(spect(lfp_startidx:lfp_stopidx,:)));
-				case 'log'
-					imagesc(t,f(lfp_startidx:lfp_stopidx),20*log10(abs(spect(lfp_startidx:lfp_stopidx,:)+eps)));
-				otherwise
-					error('Did not understand scale, must be log or linear!');
-			end
-
-			set(gca,'ydir','normal');
-
-			axis tight;
-			colormap(lfp_colors);
-			set(gca,'tickdir','out','ytick',[round(lfp_min_f/10):1:round(lfp_max_f/10)]*10,...
-				'linewidth',1.5,'ticklength',[.025 .025],'FontSize',16,'FontName','Helvetica');
-			xlabel('Time (in s)','FontSize',13,'FontName','Helvetica');
-			ylabel('Hz','FontSize',13,'FontName','Helvetica');
-			box off;
-			set(singletrialfig,'PaperPositionMode','auto')
-			multi_fig_save(singletrialfig,savedir_st,['trial' num2str(j)],'png');
-			close([singletrialfig]);
-
-			parsave(fullfile(savedir_st,[ 'trial' num2str(j)]),t,f,spect);
-
-		end
 		
 	end
 
-	SPECT_AVE.data(:,:,i)=spect_ave_tmp; % for saving
-	spect_ave_plot.image=abs(spect_ave_tmp)./max(abs(spect_ave_tmp(:))); % normalize so max is 0 db
-	spect_ave_plot.t=SPECT_AVE.t;
-	spect_ave_plot.f=SPECT_AVE.f;
+	CONTOUR_SPECT.gabor(:,:,i)=gabor_ave;
+	CONTOUR_SPECT.consensus(:,:,i)=consensus_ave;
 
-	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(600*nsamples/proc_fs) 800]);
+	spect_ave_plot.image=abs(consensus_ave);
+	spect_ave_plot.t=t;
+	spect_ave_plot.f=f;
+
+	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(500*nsamples/proc_fs) 800]);
 	
-	fig_title=['CH' num2str(channels(i)) ' NTAP' num2str(lfp_ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
+	fig_title=['CH' num2str(channels(i)) ' NTRIALS' num2str(ntrials)];
 
 	spect_fig=time_frequency_raster(HISTOGRAM,spect_ave_plot,'fig_num',spect_fig,'fig_title',fig_title,'scale',scale,...
 		'scalelabel',scalelabel,'hist_min_f',hist_min_f,'hist_max_f',hist_max_f,'tf_min_f',lfp_min_f,'tf_max_f',lfp_max_f,...
@@ -392,7 +328,7 @@ for i=1:length(channels)
 
 end
 
-save(fullfile(savedir,'lfp_tf_data.mat'),'CHANNELS','channels','SPECT_AVE');
+save(fullfile(savedir,'lfp_tf_data.mat'),'CHANNELS','channels','CONTOUR_SPECT');
 
 end
 
@@ -406,6 +342,7 @@ save(FILE,'t','f','spect');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 
 

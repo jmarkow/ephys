@@ -88,15 +88,15 @@ fig_title='noname';
 colors='jet';
 phasecolors='hsv';
 debug=0;
-nfft=512;
+nfft=1024;
 n=512;
-overlap=511;
+overlap=506;
 min_f=1;
 max_f=100;
 w=2;
 alpha=[.001 .01 .05];
 smoothplot=0;
-proc_fs=1e3; % processing frequency, will downsample lfp
+proc_fs=1.25e3; % processing frequency, will downsample lfp
 
 ntapers=[];
 beta=23/20; % parameter for z-transforming coherence
@@ -214,9 +214,11 @@ lfp_data=squeeze(lfp_data);
 
 switch lower(method(1))
 	case 's'
-		savedir=fullfile(savedir,'coherence',[ 'tf (ch' num2str(spike_channel) '_cl' num2str(spike_cluster) ' slepian)'] );
+		savedir=fullfile(savedir,'coherence',...
+			[ 'tf (lfpch' num2str(lfp_channel) '_such' num2str(spike_channel) '_cl' num2str(spike_cluster) ' slepian)'] );
 	case 'c'
-		savedir=fullfile(savedir,'coherence',[ 'tf (ch' num2str(spike_channel) '_cl' num2str(spike_cluster) ' contour)'] );
+		savedir=fullfile(savedir,'coherence',...
+			[ 'tf (lfpch' num2str(lfp_channel) '_such' num2str(spike_channel) '_cl' num2str(spike_cluster) ' contour)'] );
 end
 
 

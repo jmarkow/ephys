@@ -1,4 +1,4 @@
-function [t,f,forcingfunction,all_sum_cross,signal_sono_mean,consensus_sono_mean]=...
+function [t,f,forcingfunction,all_sum_cross,signal_sono_mean,consensus_sono_mean,consensus_noweight_mean]=...
 		lfp_chirp3(LFPDATA,SPIKETIMES,varargin)
 %
 %
@@ -16,17 +16,16 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
 fs=25e3;
-freq_range=[20 100];
+freq_range=[100];
 filt_order=5;
 filt_name='butter';
 proc_fs=500;
 medfilt_scale=1.5;
 debug=0;
 ts=50:20:150; %timescales in milliseconds;
-proc_fs=proc_fs;
 angles=-pi/4:pi/16:pi/4; 
-nfft=256;
-overlap=255;
+nfft=512;
+overlap=511;
 consensus=0;
 low_cutoff=5;
 rand_lfpphase=0;
@@ -71,6 +70,9 @@ for i=1:2:nparams
 end
 
 % process the LFP and downsample
+nfft
+overlap
+contour_thresh
 
 [b,a]=butter(3,[100]/(fs/2),'low');
 proc_data=filtfilt(b,a,double(LFPDATA));
@@ -107,7 +109,6 @@ end
 
 [t,f]=getspecgram_dim(nsamples,nfft,overlap,nfft,proc_fs);
 
-
 %this next line is specific to this signal size
 
 all_sum_cross=zeros(length(f),length(t));
@@ -115,6 +116,19 @@ spike_sono_mean=zeros(size(all_sum_cross));
 signal_sono_mean=zeros(size(all_sum_cross));
 consensus_sono_mean=zeros(size(all_sum_cross));
 cross_sono_mean=zeros(size(all_sum_cross));
+consensus_noweight_mean=zeros(size(all_sum_cross));
+
+% freeze a random phase vector for all frequency bins over trials
+% rand number length(f)
+
+if rand_lfpphase
+
+	% rand shift for all bins, 0-2pi
+
+	phaseshift=rand(nsamples,1).*2*pi
+
+	%  
+end
 
 for loopi=1:ntrials %loop over trials
 
@@ -125,20 +139,23 @@ for loopi=1:ntrials %loop over trials
 
 	%for controls
 
-	if rand_lfpphase
-
-		a=abs(fft(signal));
-		z=rand(nsamples,1).*2*pi;
-		ar=a.*cos(z)+1j*a.*sin(z);
-
-		signal=real(ifft(ar)); % this is used to randomize the phase of the LFP
-
-	end
-
 	if rand_spiketime
 		spikes=spikes(randperm(length(spikes))); % this is used to randomize the
 	end
+	
 	%time of spikes
+
+	
+	if rand_lfpphase
+
+		sigfft=fft(signal);
+		amp=abs(sigfft);
+		theta=angle(sigfft);
+		z=theta+phaseshift; % include the same phaseshift for each frequency bin
+		ar=amp.*cos(z)+1j*amp.*sin(z);
+		signal=real(ifft(ar)); 
+
+	end
 
 	signalv{loopi}=signal; %record of LFP in different trials
 	spikesv{loopi}=spikes;  %record of spikes in different trials
@@ -153,6 +170,9 @@ for loopi=1:ntrials %loop over trials
 		% setting first parameter>0 uses chirplet, 0 uses Gabor 
 
 		[dxsub sonosub]=chirp2(0,ts(tsv),signal,proc_fs,overlap,nfft);
+
+		% scramble angle here
+
 		[dxsub_s sonosub_s]=chirp2(0,ts(tsv),spikes,proc_fs,overlap,nfft);
 		cross_sono=sonosub.*conj(sonosub_s);
 		%cross_sono_norm=sqrt(abs(sonosub).*abs(sonosub_s));
@@ -167,6 +187,7 @@ for loopi=1:ntrials %loop over trials
 		%create a contour image combining information across all angles.
 
 		consensus_tmp=zeros(size(all_sum_cross));
+		consensus_noweight_tmp=zeros(size(all_sum_cross));
 
 		if consensus
 
@@ -183,6 +204,8 @@ for loopi=1:ntrials %loop over trials
 
 				consensus_tmp=consensus_tmp+(cross_sono.*a_consensus)./length(angles);
 				consensus_sono_tmp=consensus_sono_tmp+(sonosub.*a_consensus)./length(angles);
+				consensus_noweight_tmp=consensus_noweight_tmp+a_consensus./length(angles);
+
 
 			end
 
@@ -206,10 +229,11 @@ for loopi=1:ntrials %loop over trials
 
 	end
 
-	spike_sono_mean=spike_sono_mean+spike_sono_tmp;
-	signal_sono_mean=signal_sono_mean+signal_sono_tmp;
-	cross_sono_mean=cross_sono_mean+cross_sono_tmp;
-	consensus_sono_mean=consensus_sono_mean+consensus_sono_tmp;
+	spike_sono_mean=spike_sono_mean+spike_sono_tmp./ntrials;
+	signal_sono_mean=signal_sono_mean+signal_sono_tmp./ntrials;
+	cross_sono_mean=cross_sono_mean+cross_sono_tmp./ntrials;
+	consensus_sono_mean=consensus_sono_mean+consensus_sono_tmp./ntrials;
+	consensus_noweight_mean=consensus_noweight_mean+consensus_noweight_tmp./ntrials;
 
 end
 

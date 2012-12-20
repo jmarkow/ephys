@@ -5,15 +5,15 @@ function FIGNUM=pretty_polar(ANGLES,NBINS,varargin)
 %
 %
 
-filled=1;
-linewidth=1.5;
+filled=0;
+linewidth=1;
 labels={'0 (pk)','$\pi$/2 (pre-tr)','$\pm\pi$ (tr)','3$\pi$/2 (post-tr)'};
 nparams=length(varargin);
 fig_title=[];
 x_label=[];
 fignum=[];
-facecolor=[0 0 1];
-edgecolor=[0 0 1];
+facecolor=[1 0 0];
+edgecolor=[0 0 0];
 
 if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');

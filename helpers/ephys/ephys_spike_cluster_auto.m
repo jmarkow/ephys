@@ -5,6 +5,8 @@ function [LABELS TRIALS ISI WINDOWS CLUSTERPOINTS STATS OUTLIERS]=...
 %
 %
 
+
+
 % spikewindows', rows x samples, each row is a windowed spike waveform
 
 if nargin<2
@@ -15,6 +17,7 @@ if ~license('test','Statistics_Toolbox')
 	error('ephysPipeline:toolboxChk','Need statistics toolbox for clustering.');
 end
 
+CLUSTERPOINTS=[];
 LABELS=[];
 TRIALS=[];
 ISI=[];
