@@ -1,7 +1,8 @@
 function [features lfp_data binspike_data]=ephys_su_lfp_coherence_tf(MICDATA,LFPDATA,SPIKETIMES,TRIALS,varargin)
-%computes coherograms between LFPs and single units
+%THIS FUNCTION IS INCOMPLETE USE AT YOUR OWN RISK!
+%computes coherograms between LFPs and acoustic features
 %
-%	[abscoh,t,f]=ephys_su_lfp_coherence_tf(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)
+%	[abscoh,t,f]=ephys_su_lfp_audio(LFPCHANNEL,SUCHANNEL,SUCLUSTER,HISTOGRAM,varargin)
 %	
 %	LFPCHANNEL
 %	LFPCHANNEL to use

@@ -9,11 +9,15 @@ function [PARAMETERS]=ephys_pipeline_readconfig(FILE)
 fid=fopen(FILE,'r');
 readdata=textscan(fid,'%s%[^\n]','commentstyle','#');
 
-PARAMETERS.freq_range={};
 idxs=find(strcmp('freq_range',readdata{1}));
 
-for i=1:length(idxs)
-	PARAMETERS.freq_range{end+1}=str2num(readdata{2}{idxs(i)});
+if ~isempty(idxs)
+
+	PARAMETERS.freq_range={};
+
+	for i=1:length(idxs)
+		PARAMETERS.freq_range{end+1}=str2num(readdata{2}{idxs(i)});
+	end
 
 end
 

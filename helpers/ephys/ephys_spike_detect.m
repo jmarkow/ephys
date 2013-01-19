@@ -131,9 +131,9 @@ if samples==1
 	warning('Either data is in wrong format or only contains 1 sample!');
 end
 
-if window(1)~=window(2)
-	error('Asymmetric windows are not currently supported!');
-end
+%if window(1)~=window(2)
+%	error('Asymmetric windows are not currently supported!');
+%end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -152,6 +152,7 @@ end
 frame=round(window*fs);
 frame=frame+jitter;
 frame_length=length([-frame(1):frame(2)]);
+timepoints=-frame(1):frame(2);
 
 if interpolate
 
@@ -159,21 +160,28 @@ if interpolate
 
 	expansion=interpolate_fs/fs;
 
+	% work out the interpolation window including jitter
+
+	newtimepoints=linspace(-frame(1),frame(2),...
+		frame_length*expansion);
+	interp_samples=frame_length*expansion;
+
 	% window for interpolated spike
 
-	spike_window=round(window*interpolate_fs);
+	frame_center=max(find(newtimepoints<=0));
+	spike_window=round(window*interpolate_fs); % use the window without the pad for jitter
 
-	% the frame will be expanded in the interpolation, adjust the center accordingly
-
-	frame_center=floor(median([1:frame_length*expansion]));
+	%frame_center=floor(median([1:frame_length*expansion]))
+	
 else
+	
 	expansion=1;
 	spike_window=round(window*fs);
-	frame_center=floor(median([1:frame_length]));
+	frame_center=max(find(timepoints<=0));
+
 end
 
 spike_window_length=length(-spike_window(1):spike_window(2));
-spike_window_center=floor(median([1:spike_window_length]));
 
 % collect the pos-going and neg-going spikes
 
@@ -247,12 +255,12 @@ for j=1:length(abs_times)
 		% upsample the window with sinc interpolation, or spline
 
 		[samples,channels]=size(tmp_window);
-		interp_samples=expansion*samples;
-		timepoints=[1:samples];
+		%interp_samples=expansion*samples;
+		%timepoints=[1:samples];
 
 		if interpolate
 
-			newtimepoints=linspace(1,samples,interp_samples)';
+			%newtimepoints=linspace(-frame(1),frame(2),interp_samples)';
 
 			% sinc interpolation
 
@@ -264,6 +272,15 @@ for j=1:length(abs_times)
 			for k=1:channels
 				interp_window(:,k)=spline(timepoints,tmp_window(:,k),newtimepoints);
 			end
+
+			%figure(1);
+			%cla;
+			%plot(newtimepoints,interp_window,'b');
+			%hold on;
+			%plot(timepoints,tmp_window,'r');
+
+			%pause();
+
 
 		else
 
@@ -347,6 +364,8 @@ for j=1:length(abs_times)
 				[val loc]=min(interp_window(:,1));
 				
 				alignpoint=loc;
+
+				%abs(alignpoint-frame_center)
 
 				if abs(alignpoint-frame_center)>jitter
 					continue;

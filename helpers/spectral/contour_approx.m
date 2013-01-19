@@ -25,6 +25,7 @@ N=2048;
 overlap=2030;
 tscale=1.5;
 fs=25e3;
+nfft=2048;
 
 nparams=length(varargin);
 
@@ -36,6 +37,8 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'n'
 			N=varargin{i+1};
+		case 'nfft'
+			nfft=varargin{i+1};
 		case 'overlap'
 			overlap=varargin{i+1};
 		case 'tscale'
@@ -53,8 +56,8 @@ sigma=(tscale/1e3)*fs;
 w = exp(-(t/sigma).^2);
 dw = -2*w.*(t/(sigma^2));
 
-q = specgram(SIGNAL,N,[],w,overlap) + eps;
-q2 = specgram(SIGNAL,N,[],dw,overlap) + eps;
+q = specgram(SIGNAL,N,nfft,w,overlap) + eps;
+q2 = specgram(SIGNAL,N,nfft,dw,overlap) + eps;
 dx = (q2./q)/(2*pi);
 
 redx = real(dx)./abs(real(dx));

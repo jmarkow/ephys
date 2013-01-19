@@ -176,6 +176,12 @@ set(ax(1),'pos',[pos(1) pos(2) pos(3)*.95 pos(4)]);
 % make sure the time axes are synced
 
 linkaxes(ax,'x');
-if length(TFIMAGE.t)>1 & TFIMAGE.t(end)>TFIMAGE.t(1)
-	xlim([TFIMAGE.t(1) TFIMAGE.t(end)]);
+
+% pick the tightest margins
+
+xlimits(1)=max([HISTOGRAM.t(1) TFIMAGE.t(1)]);
+xlimits(2)=min([HISTOGRAM.t(end) TFIMAGE.t(end)]);
+
+if xlimits(1)>1 & (xlimits(2)>xlimits(1))
+	xlim([xlimits]);
 end

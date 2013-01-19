@@ -5,17 +5,26 @@ function HISTOGRAM=ephys_visual_histogram(MIC_DATA,varargin)
 %
 %	MIC_DATA
 %	samples x trials matrix of aligned sounds
-%
-%	fs
-%	sampling frequency (default: 25e3)
-%
-%	tscale
-%	time scale for Gaussian window for the Gabor transform (in ms, default: 1.5)
 %	
-%	savedir
-%	if defined, saves the results in savedir in histogram.mat (leave blank to skip, default: pwd)
+%	the following may be specified as parameter/value pairs:%
+%		
+%		fs
+%		sampling frequency (default: 25e3)
 %
+%		tscale
+%		time scale for Gaussian window for the Gabor transform (in ms, default: 1.5)
+%	
+%		savedir
+%		if defined, saves the results in savedir in histogram.mat (leave blank to skip, default: pwd)
 %
+%		n
+%		window length
+%
+%		nfft
+%		number of points in fft
+%
+%		overlap
+%		window overlap
 %
 %
 
@@ -34,6 +43,10 @@ end
 fs=25e3;
 tscale=1.5;
 savedir=pwd;
+N=1024;
+nfft=1024;
+overlap=1e3;
+
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -43,6 +56,13 @@ for i=1:2:nparams
 			tscale=varargin{i+1};
 		case 'savedir'
 			savedir=varargin{i+1};
+		case 'n'
+			N=varargin{i+1};
+		case 'nfft'
+			nfft=varargin{i+1};
+		case 'overlap'
+			overlap=varargin{i+1};
+
 	end
 end
 
@@ -50,7 +70,8 @@ end
 
 % compute the contour histogram
 
-[HISTOGRAM.rmask HISTOGRAM.imask HISTOGRAM.f HISTOGRAM.t]=contour_histogram(MIC_DATA,'fs',fs);
+[HISTOGRAM.rmask HISTOGRAM.imask HISTOGRAM.f HISTOGRAM.t]=contour_histogram(MIC_DATA,'fs',fs,...
+	'tscale',tscale,'nfft',nfft,'n',N,'overlap',overlap);
 
 % mean oscillogram
 

@@ -77,7 +77,7 @@ figtitle=[];
 figsave=[];
 noise='none';
 car_exclude=[];
-freq_range=[800];
+freq_range=[];
 n=1024;
 overlap=1e3;
 nfft=1024;
@@ -87,7 +87,7 @@ filt_type='high';
 
 % high pass the mic trace
 
-[b,a]=butter(4,1e3/(fs/2),'high');
+[b,a]=butter(4,300/(fs/2),'high');
 MIC_DATA=filtfilt(b,a,MIC_DATA);
 
 nparams=length(varargin);
@@ -126,6 +126,8 @@ for i=1:2:nparams
 			type=varargin{i+1};
 		case 'ylim_match'
 			ylim_match=varargin{i+1};
+		case 'car_exclude'
+			car_exclude=varargin{i+1};
 		otherwise
 	end
 end
@@ -146,14 +148,21 @@ end
 
 % denoise according to user's preference
 
-plot_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
+[plot_data car]=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
 
 % condition the signal according to data type
 
 if ~isempty(freq_range)
-	plot_data=ephys_condition_signal(plot_data,type,'freq_range',freq_range,'filt_type','high');
+	plot_data=ephys_condition_signal(plot_data,type,'freq_range',freq_range,'filt_type',filt_type);
+
+	if ~isempty(car)
+		car=ephys_condition_signal(car,type,'freq_range',freq_range,'filt_type',filt_type);
+	end
 else
 	plot_data=ephys_condition_signal(plot_data,type);
+	if ~isempty(car)
+		car=ephys_condition_signal(car,type);
+	end
 end
 
 % delete any non-existent channels from the list
@@ -274,8 +283,7 @@ for i=1:length(channels)
 end
 
 
-if strcmp(lower(noise),'car')
-    car=mean(plot_data,2);
+if strcmp(lower(noise),'car')	
 	ax(end+1)=subaxis(nplots,1,3+i,'spacingvert',0.025,'margin',0.1);
 	plot(t,car);
 	rightax(i)=axes('position',get(gca,'Position'),'color','none',...

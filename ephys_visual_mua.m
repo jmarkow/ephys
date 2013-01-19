@@ -1,7 +1,7 @@
 function [MUA TIME LABEL HISTOGRAM]=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %generates song-aligned mult-unit rasters
 %
-%	[MUA TIME LABEL HISTOGRAM]=intan_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
+%	[MUA TIME LABEL HISTOGRAM]=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %
 %	EPHYS_DATA
 %	sound-aligned voltage traces from extracted_data.mat (should be the variable ephys_data)

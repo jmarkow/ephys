@@ -34,4 +34,4 @@ end
 
 all_axis=findall(FIGHANDLE,'Type','Axes');
 set(all_axis,'Color','w','XColor','k','YColor','k','ticklength',ticklength,...
-	'FontSize',fontsize,'FontName',font,'Linewidth',linewidth,'tickdir','out');
+	'FontSize',fontsize,'FontName',font,'Linewidth',linewidth,'tickdir','out','layer','top');

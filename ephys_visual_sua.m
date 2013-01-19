@@ -67,10 +67,42 @@ function ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %		for KS test, 'bimodal' for coefficient of bimodality, or 'neg' for negentropy)
 %
 %		clust_choice
-%		method of choosing the number of modes for GMM clustering (default: fhv, options 'fhv' 
+%		method of choosing the number of components for GMM clustering (default: fhv, options 'fhv' 
 %		for fuzzy hypervolume, 'ed' for log-likelihood scaled by fuzzy hypervolume, 'knee' for
 %		knee in log-likelihood, 'AIC' for Akaike Information Criterion, 'BIC' for Bayes Information
 %		Criterion')
+%
+%		outlier_detect
+%		enable outlier detection and removal (0 or 1, default: 1)
+%
+%		outlier_cutoff
+%		l_infty cutoff for outliers based on residual test (in microVolts, default: 75)
+%
+%		nfeatures
+%		number of features to use for spike sorting (includes PCA and wavelet coefficients, default: 10)
+%
+%		merge
+%		merge cutoff based on exp(-d) where d is the battacharyya distance (set to 0 for no merge, default: .47)
+%
+%		red_cutoff
+%		cutoff in correlation coefficient for features to be considered redundant (default: .8)
+%
+%		isi_cutoff
+%		cutoff in ISI violation probability for candidate clusters (p<5 milliseconds, default: .05)
+%
+%		lratio_cutoff
+%		cutoff in l-ratio for candidate clusters (default: .2)
+%
+%		isod_cutoff
+%		cutoff in isolation distance for candidate clusters (default: 20)
+%
+%		snr_cutoff
+%		cutoff in SNR (p2p of mean waveform/(6*noise_estimate)) for candidate clusters (default: 1.1)
+%
+%		spike_window
+%		seconds before and after threshold crossing to store (in seconds, default: [.0004 .0004])
+%
+%		
 %
 %
 % see also ephys_visual_mua.m,ephys_visual_lfp_amp.m,ephys_visual_lfp_tf.m,ephys_spike_cluster_auto.m,ephys_spike_clustergui_tetrode.m,ephys_spike_detect.m
@@ -91,23 +123,23 @@ if mod(nparams,2)>0
 end
 
 fs=25e3;
-noise='none'; % common-average reference for noise removal
+noise='none'; % none, nn for nearest neighbor, or car for common average
 car_exclude=[];
 savedir=pwd;
-min_f=1;
-max_f=10e3;
-hist_colors='jet';
+min_f=1; % min frequency to show for song histogram
+max_f=10e3; % max frequency
+hist_colors='jet'; % colormap for histogram
 figtitle='';
 freq_range=[800]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
-filt_type='high';
+filt_type='high'; % high,low or bandpass
 sort=1; % do we want to sort?
-auto_clust=0;
+auto_clust=0; % 0 for manual cluster cutting (GUI), 1 for automated clustering
 tetrode_channels=[];
-sigma_t=4;
-jitter=4;
+sigma_t=4; % multiple of noise estimate for spike threshold (generally 3-4, using Quiroga's method)
+jitter=4; % max jitter in samples for spike re-alignment (4 is reasonable
 singletrials=5; % number of random single trials to plot per cluster
 subtrials=[];
-align='min'; % how to align spike waveforms can be min for minimum peak or COM
+align='min'; % how to align spike waveforms can be min, max or com for center-of-mass
 interpolate_fs=200e3; % 200 has worked best here
 channels=CHANNELS;
 smooth_rate=1e3;
@@ -120,12 +152,12 @@ red_cutoff=.8;
 outlier_detect=1;
 outlier_cutoff=75;
 nfeatures=10;
-merge=.47; % exp(-d), lower to merge more aggressively
+merge=.47; % exp(-d), lower to merge more aggressively (see Hennig "Methods for merging...", 2009)
 savename=''; % add if doing multiple manual sorts, will append a name to the filename
 isi_cutoff=.05; % percentage of ISI values <.001
-lratio_cutoff=.2;
-isod_cutoff=20;
-snr_cutoff=1.1;
+lratio_cutoff=.2; % l-ratio cutoff from Reddish
+isod_cutoff=20; % isolation distance defined by Harris et al.
+snr_cutoff=1.1; % SNR definition from Ludwig et al. 2009 (J. Neurophys)
 spike_window=[.0004 .0004];
 
 % remove eps generation, too slow here...

@@ -1,17 +1,14 @@
-function [abscoh,t,f]=ephys_su_lfp_coherence_gaborhist(LFPDATA,SPIKETIMES,HISTOGRAM,varargin)
+function [abscoh,t,f]=ephys_su_lfp_coherence_gaborhist(LFPDATA,SPIKETIMES,varargin)
 % THIS FUNCTION IS CURRENTLY INCOMPLETE
 %computes coherograms between LFPs and single units
 %
-%	[abscoh,t,f]=ephys_su_lfp_coherence_tf(lfpdata,spiketimes,HISTOGRAM,varargin)
+%	[abscoh,t,f]=ephys_su_lfp_coherence_gaborhist(lfpdata,spiketimes,HISTOGRAM,varargin)
 %	
 %	lfpdata
 %	matrix with lfp data (samples x trials)
 %
 %	spiketimes
 %	cell array with spike times (in seconds)
-%
-%	HISTOGRAM
-%	time frequency histogram structure (result of ephys_visual_histogram or loading histogram.mat)
 %
 %	the following may be passed as parameter/value pairs:
 %
@@ -77,39 +74,32 @@ function [abscoh,t,f]=ephys_su_lfp_coherence_gaborhist(LFPDATA,SPIKETIMES,HISTOG
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
-if nargin<3
-	error('ephysPipeline:tfcoherence:notenoughparams','Need four arguments to continue, see documentation...');
+if nargin<2
+	error('ephysPipeline:tfcoherence:notenoughparams','Need 2 arguments to continue, see documentation...');
 end
 
 nparams=length(varargin);
 
 savedir=pwd;
-filedir=pwd;
-fig_title='noname';
-colors='jet';
-phasecolors='hsv';
+
+colors='hot';
+
 debug=0;
-nfft=512;
+nfft=1024;
 n=512;
 overlap=511;
 min_f=1;
 max_f=100;
-w=2;
-alpha=[.001 .01 .05];
-smoothplot=0;
 proc_fs=500; % processing frequency, will downsample lfp
-window_sig=.15;
 
-ntapers=[];
-beta=23/20; % parameter for z-transforming coherence
-freq_range=[5 125]; % let's just refilter
+freq_range=[20 120]; % let's just refilter
 filt_order=7;
+filt_type='bandpass';
 lfp_fs=25e3; % default Intan sampling rate
 trial_range=[];
 medfilt_scale=1.5; % median filter scale (in ms)
-nphasebins=50;
-
-clim=[];
+nphasebins=13;
+method='contour';
 
 spike_channel='null';
 spike_cluster='null';
@@ -117,10 +107,12 @@ lfp_channel='null';
 
 subtrials=[];
 
-
 angles=-pi/4:pi/16:pi/4; % for contour image
-wsigma=.05:.02:.15; %timescales in milliseconds
-padding=[];
+%wsigma=.05:.02:.15; %timescales in milliseconds
+wsigma=.15;
+padding=.5;
+debug=0;
+ifr_thresh=[];
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -128,12 +120,8 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'filedir'
-			filedir=varargin{i+1};
 		case 'savedir'
 			savedir=varargin{i+1};
-		case 'fig_title'
-			fig_title=varargin{i+1};
 		case 'nfft'
 			nfft=varargin{i+1};
 		case 'n'
@@ -168,6 +156,10 @@ for i=1:2:nparams
 			angles=varargin{i+1};
 		case 'padding'
 			padding=varargin{i+1};
+		case 'ifr_thresh'
+			ifr_thresh=varargin{i+1};
+		case 'binary'
+			binary=varargin{i+1};
 
 	end
 end
@@ -192,7 +184,6 @@ if ~isempty(padding)
 	LFPDATA=[pad;LFPDATA;pad];
 end
 
-
 ntimescales=length(wsigma);
 
 % where to grab the files from?
@@ -211,30 +202,37 @@ if mod(downfact,1)>0
 end
 
 [b,a]=butter(2,[200/(lfp_fs/2)],'low');
-lfp_data=downsample(filtfilt(b,a,double(LFPDATA)),downfact);
+
+for i=1:nchannels
+	lfp_data(:,:,i)=filtfilt(b,a,double(LFPDATA(:,:,i)));
+end
+
+lfp_data=downsample(lfp_data,downfact);
 
 lfp_data=ephys_condition_signal(lfp_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale,'medfilt',0,...
-	'fs',proc_fs,'filt_order',filt_order);
+	'fs',proc_fs,'filt_order',filt_order,'filt_type',filt_type);
 lfp_data=squeeze(lfp_data);
 
-[nsamples,ntrials]=size(lfp_data)
+[nsamples,ntrials]=size(lfp_data);
 [path,name,ext]=fileparts(savedir);
 
+
 savedir=fullfile(savedir,'phasehist',...
-	[ 'tf (lfpch' num2str(lfp_channel) '_such' num2str(spike_channel) '_cl' num2str(spike_cluster) ' contour)'] );
+	[ 'tf (lfpch' num2str(lfp_channel) '_such' num2str(spike_channel) '_cl' num2str(spike_cluster) ' ' method ')'] );
+
+savefilename=[ name '_tfcoherence_lfpch'...
+       	num2str(lfp_channel) '_such' num2str(spike_channel) '_cl ' num2str(spike_cluster)];
 
 if ~exist(savedir,'dir')
 	mkdir(savedir);
 end
 
-dt=1/proc_fs;
-
-[nsamples,ntrials]=size(lfp_data);
-lfp_data=lfp_data';
+[nsamples,ntrials,nchannels]=size(lfp_data);
+%lfp_data=lfp_data';
 
 % pre-allocate the binned spike matrix, specify at a high enough
 % fs so that we don't add multiple spikes to a given bin, sampling
-% rate of LFP should be more than sufficient (25e3 for Intan)
+% rate of LFP is overkill (25e3 for Intan)
 
 binspike_data=zeros(ntrials,nsamples,'double');
 binedges=[1:nsamples]./proc_fs;
@@ -252,12 +250,14 @@ columns=length(t);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AVERAGE SPECTRA %%%%%%%%%%%%%%%%%%%%
 
-
-
 % for each trial grab the phase and frequency of a contour and use to generate a new phase histogram
 
-phase_edges=linspace(0,2*pi,nphasebins);
-phase_edges(1)=-inf;
+%phase_edges=linspace(0,2*pi,nphasebins);
+phase_edges=0:2*pi/nphasebins:2*pi;
+%phase_edges(1)=-inf;
+
+% fvec defines the frequency range we're interested in
+
 fvec=startidx:stopidx;
 amp_weighted_histogram=zeros(length(fvec),length(phase_edges));
 cutoff=0; % to be determined
@@ -265,50 +265,119 @@ cutoff=0; % to be determined
 consensus_ave=zeros(rows,columns);
 gabor_ave=zeros(rows,columns);
 
-t_samples=t*proc_fs;
+t_samples=round(t*proc_fs);
+size(lfp_data)
 
 for i=1:ntrials
 
-	disp([num2str(i)]);	
+	disp([ 'Trial ' num2str(i)]);	
+
 	consensus_tmp=zeros(rows,columns);
 	gabor_tmp=zeros(rows,columns);
 
-	currdata=lfp_data(i,:);
+	currdata=squeeze(lfp_data(:,i,:));
 	spect=[];
 
-	for j=1:ntimescales
+	parfor j=1:ntimescales
 
-		% get the stft and reassignment
+	       % get the stft and reassignment
 
-		[stft dx]=chirp_stft(currdata,'fs',proc_fs,'n',n,...
-			'overlap',overlap,'nfft',nfft,'wsigma',wsigma(j));
+	       consensus_channel_tmp=zeros(rows,columns);
+	       gabor_channel_tmp=zeros(rows,columns);
 
-		% build the complex contour image
+	       stft=[];
+	       consensus=[];
 
-		%consensus=contour_consensus(stft,dx,angles);
+	       for k=1:nchannels
 
-		% accumulate
+		       [stft dx]=chirp_stft(currdata(:,k),'fs',proc_fs,'n',n,...
+			       'overlap',overlap,'nfft',nfft,'wsigma',wsigma(j));
 
-		%consensus_tmp=consensus_tmp+consensus./ntimescales;
+		       % build the complex contour image, combine across channels
 
-		gabor_tmp=gabor_tmp+stft./ntimescales;
+		       if lower(method(1))=='c'
+			       consensus=contour_consensus(stft,dx,angles);
+		       else
+			       consensus=zeros(size(stft));
+		       end
+
+		       consensus_channel_tmp=consensus_channel_tmp+consensus./nchannels;
+		       gabor_channel_tmp=gabor_channel_tmp+stft./nchannels;
+
+	       end
+
+	       % accumulate
+
+		consensus_tmp=consensus_tmp+consensus_channel_tmp./ntimescales;
+		gabor_tmp=gabor_tmp+gabor_channel_tmp./ntimescales;
 
 	end
 
-	%consensus_ave=consensus_ave+consensus_tmp./ntrials;
+	if debug
+
+		figure(1)
+		subplot(2,1,1);imagesc(abs(consensus_tmp(fvec,:)));axis xy;colorbar();
+		subplot(2,1,2);imagesc(angle(consensus_tmp(fvec,:)));axis xy;colorbar();
+
+		figure(2);
+		subplot(2,1,1);imagesc(abs(gabor_tmp(fvec,:)));axis xy;colorbar();
+		subplot(2,1,2);imagesc(mod(unwrap(angle(gabor_tmp(fvec,:)),[],2),2*pi));axis xy;colorbar();
+
+		pause();
+
+	end
+
+	consensus_ave=consensus_ave+consensus_tmp./ntrials;
 	gabor_ave=gabor_ave+gabor_tmp./ntrials;
 
+	%gabor_ave=spectrogram(currdata,n,overlap,nfft);
 	% where are the spikes (timestamps are in seconds)?
 
-	currtimes=unique(round(SPIKETIMES{i}*proc_fs));
+	currtimes=round(SPIKETIMES{i}*proc_fs);
+
+	if ~isempty(ifr_thresh)
+
+		currifr=zeros(1,length(currtimes));
+
+		tmptimes=[-inf currtimes inf]
+
+		counter=1;
+		for j=2:length(tmptimes)-1
+			prevspike=abs(tmptimes(j)-tmptimes(j-1));
+			nextspike=abs(tmptimes(j)-tmptimes(j+1));
+			currifr(counter)=1./(min([prevspike nextspike])./proc_fs);
+			counter=counter+1;
+		end
+
+		currifr(currifr==-inf|currifr==inf)=0;
+		currifr
+		currtimes=currtimes(currifr>ifr_thresh);
+
+	end
+	
+	% get the column of the spectrogram where each spike occurs
+	
 	newtimes=[];
+
+	%tmp=t_samples(t_samples>0);
 	
 	for j=1:length(currtimes)
 		newtimes=[ newtimes find(currtimes(j)==t_samples) ];
 	end
 
-	mag=abs(gabor_tmp);
-	phase=angle(gabor_tmp);
+	%newtimes=setdiff(tmp,currtimes);
+
+	% mag and phase, offset by pi
+
+	if lower(method(1))=='c'
+		mag=abs(consensus_tmp);
+		phase=angle(consensus_tmp);
+	else
+		mag=abs(gabor_tmp);
+		phase=angle(gabor_tmp);
+	end
+
+	phase=unwrap(phase,[],2);
 
 	for j=1:2:rows
 		phase(j,:)=phase(j,:)+pi;
@@ -316,22 +385,54 @@ for i=1:ntrials
 
 	phase=mod(phase,2*pi);
 
-	% get likelihood and phase
+	% get the magnitude and phase at the spike times
 
 	spikemags=mag(fvec,newtimes);
+
+	if binary
+		spikemags=ones(size(spikemags));
+	end
+
 	spikephases=phase(fvec,newtimes);
+
+	% for the weighting amp for now
 
 	for j=1:length(newtimes)
 
+		% check phases throughout the entire frequency range
+
 		[density,phasebins]=histc(spikephases(:,j),phase_edges);
+
+		% add to the amp weighted histogram using the amplitude of the 
+		% time-frequency image (Gabor or consensus)
 
 		for k=1:length(fvec)
 			amp_weighted_histogram(k,phasebins(k))=...
 				amp_weighted_histogram(k,phasebins(k))+spikemags(k,j);
 		end
+
 	end
-
-
 end
 
-figure();imagesc(amp_weighted_histogram(5:end,:))
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PLOTTING %%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+fig=figure('Visible','off');
+
+imagesc(phase_edges(1:end-1),f(fvec),amp_weighted_histogram(:,1:end-1));
+axis xy
+set(gca,'XTick',[ phase_edges(1) phase_edges(ceil(length(phase_edges)/2)) phase_edges(end-1) ],...
+	'XTickLabel',{'0' 'p' '2p'});
+set(gca,'FontName','Symbol','FontSize',20);
+
+xlabel('Phase','FontName','Helvetica','FontSize',14);
+ylabel('Frequency (Hz)','FontName','Helvetica','FontSize',14);
+colormap(hot);
+
+box off;
+
+multi_fig_save(fig,savedir,[savefilename '_ampweightedphase' ],'eps,png');
+close([fig]);
+
+save(fullfile(savedir,[savefilename '.mat']),'amp_weighted_histogram','t','fvec','f',...
+	'phase_edges','gabor_ave','consensus_ave')

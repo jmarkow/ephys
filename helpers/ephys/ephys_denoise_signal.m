@@ -78,6 +78,8 @@ if ndims_ephys==3
 
 		case 'car'
 
+			disp(['Using electrodes ' num2str(CHIN(car_electrodes)) ' for CAR']);
+
 			CAR=mean(EPHYS_DATA(:,:,car_electrodes),3);
 
 			for i=1:length(chmap)
@@ -104,6 +106,8 @@ else
 	switch lower(method)
 
 		case 'car'
+
+			disp(['Using electrodes ' num2str(CHIN(car_electrodes)) ' for CAR']);
 
 			CAR=mean(EPHYS_DATA(:,car_electrodes),2);
 

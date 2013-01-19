@@ -1,7 +1,7 @@
 function [T FEATURES SPECDERIV]=compute_sap_features(SIGNALS,varargin)
-%contour_approx computes the contour approximation via Chris' method.
+% Computes SAP features for a group of signals
 %
-%	[REMASK IMASK F T CONTOURS]=contour_histogram(SIGNAL,varargin)
+%	[T FEATURES SPECDERIV]=compute_sap_features(SIGNALS,varargin)
 %
 %	SIGNAL
 %	vector that contains the signal of interest
@@ -20,6 +20,8 @@ function [T FEATURES SPECDERIV]=compute_sap_features(SIGNALS,varargin)
 %		fs
 %		sampling rate (default: 48e3)
 %
+
+% unfortunately we may not be able to change this...
 
 N=409;
 overlap=365;
@@ -67,6 +69,7 @@ spectmp=sap_features(SIGNALS(:,1),fs,'N',N,'overlap',overlap,'nfft',nfft);
 SPECDERIV=zeros(m,n,trials);
 
 for i=1:trials
+    i
 	[SPECDERIV(:,:,i) FEATURES.am(:,i) FEATURES.fm(:,i) FEATURES.entropy(:,i) FEATURES.amplitude(:,i) ...
 	       FEATURES.gravityc(:,i) FEATURES.pitchgood(:,i) FEATURES.pitch(:,i) FEATURES.pitchchose(:,i) FEATURES.pitchweight(:,i)] ...
 		=sap_features(SIGNALS(:,i),fs,'N',N,'overlap',overlap,'nfft',nfft);

@@ -28,7 +28,8 @@ $(DIR)/$(APP1)/$(APP1).app/$(FIXPATH)/$(APP1) : $(APP1).m
 	mkdir -p $(DIR)/$(APP1)
 	matlab -nodesktop -nosplash -r 'try,mcc -vm $(APP1).m -d $(DIR)/$(APP1);catch,end,exit'
 
-$(DIR)/$(APP2)/$(APP2).app/$(FIXPATH)/$(APP2) : $(APP2).m ../ephys_visual_lfp_amp.m ../ephys_visual_lfp_tf.m
+$(DIR)/$(APP2)/$(APP2).app/$(FIXPATH)/$(APP2) : $(APP2).m ../ephys_visual_lfp_amp.m ../ephys_visual_lfp_tf.m \
+	../helpers/visualization/time_frequency_raster.m ../ephys_visual_lfp_tf_contour.m
 	mkdir -p $(DIR)/$(APP2)
 	matlab -nodesktop -nosplash -r 'try,mcc -vm $(APP2).m -d $(DIR)/$(APP2);catch,end,exit'
 

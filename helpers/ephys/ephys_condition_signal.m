@@ -26,9 +26,9 @@ switch lower(DATA_TYPE)
 
 		% single unit data
 
-		freq_range=[500 8e3]; % 500 Hz high pass 8e3 low pass
+		freq_range=[800]; % 500 Hz high pass 8e3 low pass
 		filt_order=2;
-		filt_type='bandpass';
+		filt_type='high';
 
 		% do not de-mean,trend or median filter!
 
@@ -66,7 +66,7 @@ switch lower(DATA_TYPE)
 		filtering=1;
 		demean=1;
 		detrenddata=1;
-		medfilt=1;
+		medfilt=0;
 		rectify=0;
 		smoothdata=0;
 
@@ -135,7 +135,6 @@ end
 
 % usually only median filter the signal if we're computing fields, a timescale of ~1.5 ms 
 % seems to do a good job of removing spikes
-
 
 if medfilt	
 

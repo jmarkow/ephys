@@ -21,7 +21,8 @@ function [RMASK IMASK F T CONTOURS]=contour_histogram(SIGNALS,varargin)
 %		sampling rate (default: 48e3)
 %
 
-N=1025;
+N=1024;
+nfft=1024;
 overlap=1000;
 tscale=1.5; % in msecs
 fs=48e3;
@@ -38,6 +39,8 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'n'
 			N=varargin{i+1};
+		case 'nfft'
+			nfft=varargin{i+1};
 		case 'overlap'
 			overlap=varargin{i+1};
 		case 'tscale'
@@ -54,7 +57,8 @@ end
 
 [samples,trials]=size(SIGNALS);
 
-[rmask_pre imask_pre spect]=contour_approx(SIGNALS(:,1),'fs',fs,'N',N,'overlap',overlap,'tscale',tscale);
+[rmask_pre imask_pre spect]=contour_approx(SIGNALS(:,1),'fs',fs,...
+	'N',N,'overlap',overlap,'tscale',tscale,'nfft',nfft);
 
 if mask_only
 	RMASK=rmask_pre./trials;

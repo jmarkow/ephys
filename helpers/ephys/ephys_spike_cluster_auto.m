@@ -282,7 +282,7 @@ for i=2:features
 		covmat=cov(spike_data(:,i),spike_data(:,j));
 
 		% get corrcoef
-		% take abs value, don't wait perfectly anti-correlated features...
+		% take abs value, don't want perfectly anti-correlated features...
 
 		similarity(j)=abs(covmat(1,2)/(sqrt(covmat(1,1)*covmat(2,2))));
 	end
@@ -439,9 +439,7 @@ else
 	warning('on','stats:kmeans:FailedToConverge');
 end
 
-
-% AIC and BIC have worked miserably here, simply using the elbow of the log-likelihood
-% decided to use fuzzy hypervolume or scaled likelihood, pretty stable (8/7/2012)
+% choose penalized likelihood measure
 
 switch lower(clust_choice(1))
 
@@ -482,7 +480,7 @@ switch lower(clust_choice(1))
 
 	case 'm'
 
-		% minimum description length
+		% minimum description length, should be same as BIC
 
 		[val loc]=min(MDL);
 		nclust=clustnum(loc);
