@@ -137,6 +137,15 @@ for i=1:length(template_list)
 		template_wave=zscore(mean(template.clusterwindows{cluster},2));
 		template_isi=template.clusterisi{cluster};
 
+		if length(template_wave)~=length(candidate_wave)
+
+			% if the spike waveforms do not have equal length bail
+
+			disp('Waveforms not of equal length, cannot process...');
+			print_done_signal(filedir,CANDIDATEFILE);
+			return;
+		end
+
 		[r,lags]=xcov(template_wave,candidate_wave,'coeff');
 		wavescore=atanh(max(r));
 		isiscore=sqrt(kld(template_isi,candidate_isi,'jsd',1));
@@ -206,10 +215,18 @@ end
 
 % print out filename with . in front to signal that we've processed it
 
+print_done_signal(filedir,CANDIDATEFILE);
+
+end
+
+function print_done_signal(FILEDIR,CANDIDATEFILE)
+
 [path,file,ext]=fileparts(CANDIDATEFILE);
 
-fid=fopen(fullfile(filedir,[ '.' file ext]),'w');
+fid=fopen(fullfile(FILEDIR,[ '.' file ext]),'w');
 fclose(fid);
+
+end
 
 % multiple numbers in config file are read in as strings
 % if we have designated to skip coherence, that's it

@@ -162,9 +162,12 @@ if interpolate
 
 	% work out the interpolation window including jitter
 
-	newtimepoints=linspace(-frame(1),frame(2),...
-		frame_length*expansion);
+	
 	interp_samples=frame_length*expansion;
+
+	newtimepoints=linspace(-frame(1),frame(2),...
+		interp_samples); % points in time relative to center
+	newframepoints=linspace(1,frame_length,interp_samples); % points in time in samples (original window)
 
 	% window for interpolated spike
 
@@ -178,6 +181,9 @@ else
 	expansion=1;
 	spike_window=round(window*fs);
 	frame_center=max(find(timepoints<=0));
+
+	newframepoints=1:frame_length;
+	newtimepoints=timepoint;
 
 end
 
@@ -281,11 +287,18 @@ for j=1:length(abs_times)
 
 			%pause();
 
+			%figure(2);
+			%cla;
+			%plot(newframepoints,interp_window,'b');
+			%hold on;
+			%plot(1:frame_length,tmp_window,'r');
+
+			%pause();
+
 
 		else
 
-			newtimepoints=timepoints;
-			
+
 			for k=1:channels
 				interp_window(:,k)=tmp_window(:,k);
 			end
@@ -392,8 +405,9 @@ for j=1:length(abs_times)
 
 		% get the spike time in the old sample space
 
-		new_time=peak_time-frame(1)+(round(newtimepoints(alignpoint))-1);
+		new_time=peak_time-frame(1)+(round(newframepoints(alignpoint))-1);
 		new_val=DATA(new_time,1);
+		
 		%new_time=peak_time-spike_window(1)+(alignpoint-1);
 
 		SPIKES_PP.abs.times(counter)=new_time;
