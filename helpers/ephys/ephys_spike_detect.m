@@ -183,7 +183,7 @@ else
 	frame_center=max(find(timepoints<=0));
 
 	newframepoints=1:frame_length;
-	newtimepoints=timepoint;
+	newtimepoints=timepoints;
 
 end
 
@@ -404,10 +404,16 @@ for j=1:length(abs_times)
 		new_spikewindow=interp_window(alignpoint-spike_window(1):alignpoint+spike_window(2),:);
 
 		% get the spike time in the old sample space
-
+	
 		new_time=peak_time-frame(1)+(round(newframepoints(alignpoint))-1);
+
+		if new_time<0 || new_time>size(DATA,1)
+			warning('ephysPipeline:spikedetect:spiketimerror',...
+				'New spike time outside data vector');
+		end
+
 		new_val=DATA(new_time,1);
-		
+	
 		%new_time=peak_time-spike_window(1)+(alignpoint-1);
 
 		SPIKES_PP.abs.times(counter)=new_time;

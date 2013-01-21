@@ -756,6 +756,14 @@ for i=1:length(clusters)
 
 	nclustpoints=size(clusterpoints,1);
 
+	if size(otherpoints,1)<=size(otherpoints,2) || size(clusterpoints,1)<=size(clusterpoints,2)
+		warning('ephysPipeline:spikesort:toofewrowsmahal',...
+			'Too few rows for Mahal distance calculation');
+		STATS.lratio(i)=NaN;
+		STATS.isod(i)=NaN;
+		continue;
+	end
+
 	mahaldist=mahal(otherpoints,clusterpoints);
 	
 	if length(otherpoints>0)
