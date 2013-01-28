@@ -23,8 +23,8 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-        	case 'bins'
-            		bins=varargin{i+1};
+        case 'bins'
+            bins=varargin{i+1};
 		case 'jsd'
 			jsd=varargin{i+1};
 		case 'binmethod'

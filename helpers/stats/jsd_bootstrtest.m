@@ -46,7 +46,7 @@ NULL=zeros(trials,1);
 samplepool=[P(:);Q(:)];
 npool=length(samplepool);
 
-parfor i=1:trials
+for i=1:trials
 
 	% case resample the first distribution
 

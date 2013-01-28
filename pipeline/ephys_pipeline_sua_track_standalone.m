@@ -72,7 +72,8 @@ trainfile=fullfile(global_parameters.bookkeeping_dir,'train_data','training_data
 if exist(trainfile,'file')
 	load(trainfile,'train_matrix','class');
 else
-	error('ephysPipeline:suatracking:notrainingdata','Could not find training data %s',trainfile);
+	warning('ephysPipeline:suatracking:notrainingdata','Could not find training data %s',trainfile);
+	return;
 end
 
 % thumbs up or down?
