@@ -16,7 +16,7 @@ interpolate_fs=200e3;
 
 % all features excluding IFR and spiketimes
 
-features_all={'max','min','pe','ne','^2','neo','wid','pgrad','ngrad','PC1','PC2','PC3','PC4'}; 
+features_all={'max','min','ne','^2','neo','wid','pgrad','ngrad','PC1','PC2','PC3','PC4'}; 
 features={'PCA','pose','nege','posgrad','neggrad','min','width','ISI','Spiketimes','wavelets'}; 
 
 % possible features include, min, max, PCA, width, energy and wavelet coefficients
