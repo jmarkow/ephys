@@ -1,8 +1,8 @@
-function [SPIKES_PP SPIKES_PB]=ephys_spike_detect(DATA,THRESH,varargin)
+function [SPIKES]=ephys_spike_detect(DATA,THRESH,varargin)
 %ephys_spike_detect.m performs spike detection on a vector with a pre-determined
 %threshold
 %
-% [SPIKES_PP SPIKES_PB]=spike_detect(DATA,fs,traces,THRESH)
+% [SPIKES SPIKES_PB]=spike_detect(DATA,fs,traces,THRESH)
 %
 %
 % DATA
@@ -16,7 +16,7 @@ function [SPIKES_PP SPIKES_PB]=ephys_spike_detect(DATA,THRESH,varargin)
 %
 % the following can be specified as a parameter/value pair
 %
-% shadow
+% censor
 % length between spikes in S, i.e. the censor period (default .001)
 %
 % window
@@ -38,21 +38,21 @@ function [SPIKES_PP SPIKES_PB]=ephys_spike_detect(DATA,THRESH,varargin)
 %
 % OUTPUT
 %
-% SPIKES_PP
+% SPIKES
 % array of structures (number of traces)
 %
-% SPIKES_PP.pos.times 
+% SPIKES.pos.times 
 % pos going spike times (in samples) 
 %
-% SPIKES_PP.pos.values
+% SPIKES.pos.values
 % pos going spike values
 %
-% SPIKES_PP.pos.window
+% SPIKES.pos.window
 % pos going spike windows
 % 
-% SPIKES_PP.neg, same as pos
+% SPIKES.neg, same as pos
 %
-% SPIKES_PP.abs, same as pos
+% SPIKES, same as pos
 %
 % SPIKES_PB
 % array of structures (number of traces)
@@ -62,8 +62,7 @@ function [SPIKES_PP SPIKES_PB]=ephys_spike_detect(DATA,THRESH,varargin)
 %
 
 %DATA=DATA(:);
-SPIKES_PP=[];
-SPIKES_PB=[];
+SPIKES=[];
 
 if nargin<1
 	error('Need the input data to continue!');
@@ -73,19 +72,15 @@ end
 
 % input argument collection
 
-shadow=.75e-3; % minimum time between spikes, i.e. censor period
+censor=.75e-3; % minimum time between spikes, i.e. censor period
 	       % per Hill, Mehta and Kleinfeld (2011), 750 microseconds
 window=[.0004 .0004]; % how large of a window to grab, seconds before and after spike
 method='b';
 visualize='y';
 fs=25e3;
 realign='y';
-interpolate=1; % do we want to interpolate for realignment and subsequent sorting (default 'y');
-interpolate_fs=200e3; % what fs should we intepolate to? (50e3 has worked in my hands, consider going higher for low SNR)
-align='min'; % you'll want to use COM here, others seem a bit unreliable
-jitter=3; % how much jitter do we allow before tossing out a spike (in samples of original fs)?
-peak_frac=.6; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
-peak_width=4; % how many samples about the peak to include in COM (interpolated space, 5-8 is reasonable here for 50e3 fs)
+jitter=4; % how much jitter do we allow before tossing out a spike (in samples of original fs)?
+align='min';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -97,146 +92,77 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'shadow'
-			shadow=varargin{i+1};
+		case 'censor'
+			censor=varargin{i+1};
 		case 'window'
 			window=varargin{i+1};
-		case 'sigma'
-			sigma=varargin{i+1};
 		case 'method'
 			method=varargin{i+1};
 		case 'visualize'
 			visualize=varargin{i+1};
 		case 'fs'
 			fs=varargin{i+1};
-		case 'interpolate'
-			interpolate=varargin{i+1};
-		case 'interpolate_fs'
-			interpolate_fs=varargin{i+1};
+		case 'jitter'
+			jitter=varargin{i+1};	
 		case 'align'
 			align=varargin{i+1};
-		case 'jitter'
-			jitter=varargin{i+1};
-		case 'tetrode_data'
-			tetrode_data=varargin{i+1};
 	end
 end
 
-% TODO: cleanup and more intelligent placement of frame center to account
-% for asymmetric windows
-
-[samples,traces]=size(DATA);
-
+[samples,traces,channels]=size(DATA);
 if samples==1
 	warning('Either data is in wrong format or only contains 1 sample!');
-end
-
-%if window(1)~=window(2)
-%	error('Asymmetric windows are not currently supported!');
-%end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% pre-allocate the binned output if the user wants it!
-
-if nargout>1
-	if lower(method(1))=='b' || lower(method(1))=='a'
-		SPIKES_PB.abs.trains=zeros(size(DATA(:,1)),'int8');
-	end
 end
 
 % specify the spike window in terms of samples
 
 % the frame to grab (in the original sampling rate) around the threshold crossing
+% collect jitter samples around the frame for upsample and realignment
+
+SPIKES.frame=window;
+SPIKES.jitter=jitter;
 
 frame=round(window*fs);
 frame=frame+jitter;
 frame_length=length([-frame(1):frame(2)]);
 timepoints=-frame(1):frame(2);
 
-if interpolate
-
-	% interpolation factor
-
-	expansion=interpolate_fs/fs;
-
-	% work out the interpolation window including jitter
-
-	
-	interp_samples=frame_length*expansion;
-
-	newtimepoints=linspace(-frame(1),frame(2),...
-		interp_samples); % points in time relative to center
-	newframepoints=linspace(1,frame_length,interp_samples); % points in time in samples (original window)
-
-	% window for interpolated spike
-
-	frame_center=max(find(newtimepoints<=0));
-	spike_window=round(window*interpolate_fs); % use the window without the pad for jitter
-
-	%frame_center=floor(median([1:frame_length*expansion]))
-	
-else
-	
-	expansion=1;
-	spike_window=round(window*fs);
-	frame_center=max(find(timepoints<=0));
-
-	newframepoints=1:frame_length;
-	newtimepoints=timepoints;
-
-end
-
-spike_window_length=length(-spike_window(1):spike_window(2));
-
 % collect the pos-going and neg-going spikes
 
-[pos_times]=find(DATA>THRESH);
-[neg_times]=find(DATA<-THRESH);
-
-if lower(method(1))=='b' || lower(method(1))=='a'
-	
-	abs_times=[pos_times(:);neg_times(:)];
-	abs_isneg=[zeros(size(pos_times(:)));ones(size(neg_times(:)))];
-	[abs_times idx]=sort(abs_times);
-	abs_isneg=abs_isneg(idx);
-
+if lower(method(1))=='b' || lower(method(1))=='a'	
+	spike_times=find(abs(DATA(:,1))>THRESH);
 elseif lower(method(1))=='p'
-	abs_times=pos_times;
-	abs_isneg=zeros(size(pos_times));
+	spike_times=find(DATA(:,1)>THRESH);
 else
-	abs_times=neg_times;
-	abs_isneg=ones(size(neg_times));
+	spike_times=find(DATA(:,1)<-THRESH);
 end
 
-nspikes=length(abs_times);
+nspikes=length(spike_times);
 
 % censor period
 
 counter=2;
-while counter<=length(abs_times)
-	dtime=abs_times(counter)-abs_times(counter-1);
-	if dtime<shadow*fs
-		abs_times(counter)=[];
-		abs_isneg(counter)=[];
+while counter<=length(spike_times)
+	dtime=spike_times(counter)-spike_times(counter-1);
+	if dtime<censor*fs
+		spike_times(counter)=[];
 	else
 		counter=counter+1;
 	end
 end
 
-SPIKES_PP.abs.times=zeros(1,nspikes);
-SPIKES_PP.abs.values=zeros(1,nspikes);
-SPIKES_PP.abs.windows=zeros(spike_window_length,nspikes,traces);
+SPIKES.times=zeros(1,nspikes);
+SPIKES.windows=zeros(frame_length,nspikes,traces);
 
 counter=1;
-for j=1:length(abs_times)
 
-	if abs_times(j)-frame(1)>0 && abs_times(j)+frame(2)<length(DATA(:,1))
+for j=1:length(spike_times)
+
+	if spike_times(j)-frame(1)>0 && spike_times(j)+frame(2)<length(DATA(:,1))
 
 		% find the absolute minimum (or max) and use as the spike peak for alignment
 
-		tmp_time=abs_times(j);
-		isneg=abs_isneg(j);
+		tmp_time=spike_times(j);
 		tmp_window=DATA(tmp_time-frame(1):tmp_time+frame(2),:);
 
 		% find the absolute min in the window
@@ -257,211 +183,35 @@ for j=1:length(abs_times)
 		else
 			continue;
 		end
-	
-		% upsample the window with sinc interpolation, or spline
 
-		[samples,channels]=size(tmp_window);
-		%interp_samples=expansion*samples;
-		%timepoints=[1:samples];
+		SPIKES.times(counter)=peak_time;
+		SPIKES.windows(:,counter,:)=tmp_window;
 
-		if interpolate
-
-			%newtimepoints=linspace(-frame(1),frame(2),interp_samples)';
-
-			% sinc interpolation
-
-			%interp_window=sinc(newtimepoints(:,ones(size(timepoints)))-...
-			%	timepoints(:,ones(size(newtimepoints)))')*tmp_window(:);
-
-			% spline interpolation
-
-			for k=1:channels
-				interp_window(:,k)=spline(timepoints,tmp_window(:,k),newtimepoints);
-			end
-
-			%figure(1);
-			%cla;
-			%plot(newtimepoints,interp_window,'b');
-			%hold on;
-			%plot(timepoints,tmp_window,'r');
-
-			%pause();
-
-			%figure(2);
-			%cla;
-			%plot(newframepoints,interp_window,'b');
-			%hold on;
-			%plot(1:frame_length,tmp_window,'r');
-
-			%pause();
-
-
-		else
-
-
-			for k=1:channels
-				interp_window(:,k)=tmp_window(:,k);
-			end
-
-		end
-
-		% align by com (center of mass), min or max
-		% first realign to min or max, whichever is more reliable
-
-		switch lower(align)
-
-			case 'com'
-
-				% the negative-going peak has been the most reliable, use it to compute COM
-				% per sahani '99, try to capture the majority of the peak
-
-				% grab the peak after the threshold crossings	
-				% first get contiguous region
-			
-				[val loc]=min(interp_window(:,1));
-
-				% we can make these for loops go away, but honestly we're not taking a huge
-				% performance hit ATM...
-
-				% walk to and fro to the threshold, use this for the peak CoM measurement
-
-
-				for k=loc:-1:1
-					if interp_window(k,1)>-THRESH
-						break;
-					end
-				end
-				
-				left_edge=k;
-
-				for k=loc:length(interp_window)
-					if interp_window(k,1)>-THRESH
-						break;
-					end
-				end
-
-				right_edge=k;
-
-				peakind=left_edge:right_edge;
-
-				masked_spike=THRESH-interp_window(:,1);
-
-				idx=[1:length(masked_spike)]';
-
-				mask=zeros(size(idx));
-				mask(peakind)=1;
-
-				masked_spike=masked_spike.*mask;
-					
-				% toss out any points where alignment>jitter, assume to be outliers
-
-				com=sum(idx.*masked_spike)/sum(masked_spike);
-
-				if isnan(com) || isempty(com)
-					continue;
-				end
-
-				alignpoint=round(com);
-				
-				% if the alignpoint is too far from the center of the frame, dump the spike (likely outlier)
-
-				if abs(alignpoint-frame_center)>jitter
-					continue;
-				end
-
-			
-			case 'min'
-
-				% just take the min
-
-				[val loc]=min(interp_window(:,1));
-				
-				alignpoint=loc;
-
-				%abs(alignpoint-frame_center)
-
-				if abs(alignpoint-frame_center)>jitter
-					continue;
-				end
-
-			case 'max'
-
-				% just take the max
-
-				[val loc]=max(interp_window(:,1));
-
-				alignpoint=loc;
-
-				if abs(alignpoint-frame_center)>jitter
-					continue;
-				end
-
-
-		end
-
-		% new spike window
-
-		new_spikewindow=interp_window(alignpoint-spike_window(1):alignpoint+spike_window(2),:);
-
-		% get the spike time in the old sample space
-	
-		new_time=peak_time-frame(1)+(round(newframepoints(alignpoint))-1);
-
-		if new_time<0 || new_time>size(DATA,1)
-			warning('ephysPipeline:spikedetect:spiketimerror',...
-				'New spike time outside data vector');
-		end
-
-		new_val=DATA(new_time,1);
-	
-		%new_time=peak_time-spike_window(1)+(alignpoint-1);
-
-		SPIKES_PP.abs.times(counter)=new_time;
-		SPIKES_PP.abs.values(counter)=new_val;
-		SPIKES_PP.abs.windows(1:spike_window_length,counter,1:traces)=new_spikewindow;
 		counter=counter+1;
-
 
 	end
 end
 
 % how much of array is left unused...
 
-SPIKES_PP.abs.times(counter:nspikes)=[];
-SPIKES_PP.abs.values(counter:nspikes)=[];
-SPIKES_PP.abs.windows(:,counter:nspikes,:)=[];
-if interpolate
-	SPIKES_PP.abs.fs=interpolate_fs;
-else
-	SPIKES_PP.abs.fs=fs;
-end
-
+SPIKES.times(counter:nspikes)=[];
+SPIKES.windows(:,counter:nspikes,:)=[];
+SPIKES.fs=fs;
+SPIKES.censor=censor;
+SPIKES.window_time=timepoints./fs;
 % make sure we haven't made any alignments that violate the censor period
 
 counter=2;
-while counter<=length(SPIKES_PP.abs.times)
-	dtime=SPIKES_PP.abs.times(counter)-SPIKES_PP.abs.times(counter-1);
-	if dtime<shadow*fs
-		SPIKES_PP.abs.times(counter)=[];
-		SPIKES_PP.abs.values(counter)=[];
-		SPIKES_PP.abs.windows(:,counter,:)=[];
+while counter<=length(SPIKES.times)
+	dtime=SPIKES.times(counter)-SPIKES.times(counter-1);
+	if dtime<censor*fs
+		SPIKES.times(counter)=[];
+		SPIKES.windows(:,counter,:)=[];
 	else
 		counter=counter+1;
 	end
 end
 
-
-% if the user wants binned point processes, give them to him/her!
-
-if nargout>1
-	% all of the spikes times are given as one, note that the bin size
-	% here is ONE SAMPLE, hence we cannot have more than one spike in the bin
-
-	if lower(method(1))=='b' || lower(method(1))=='a'
-		SPIKES_PB.abs.trains(SPIKES_PP.abs.times)=1;
-	end
-
-end
 
 % visualize the voltage trace, threshold(s) and spikes
 
@@ -469,15 +219,16 @@ if lower(visualize(1))=='y'
 
 	nsamples=length(DATA);
 	figure();
-	plot([1:nsamples]./fs,DATA,'b');hold on
+	plot([1:nsamples]./fs,DATA(:,1),'b');hold on
 	ylabel({'Voltage (in V)';['Threshold (in V):  ' num2str(THRESH)]},'FontSize',13,'FontName','Helvetica');
 	xlabel('T (in s)','FontSize',13,'FontName','Helvetica');
 	plot([1:nsamples]./fs,ones(nsamples,1).*THRESH,'r');
 	plot([1:nsamples]./fs,ones(nsamples,1).*-THRESH,'r');
 
-	plot(SPIKES_PP.abs.times/fs,SPIKES_PP.abs.values,'b*','markersize',10);
+	plot(SPIKES.times/fs,DATA(SPIKES.times,1),'b*','markersize',10);
 	set(gca,'FontSize',11,'FontName','Helvetica')
 	box off
+	axis tight;
 
 end
 

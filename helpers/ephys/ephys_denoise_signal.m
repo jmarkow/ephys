@@ -25,6 +25,7 @@ end
 
 car_exclude=[];
 method='none';
+car_trim=40;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -32,6 +33,8 @@ for i=1:2:nparams
 			car_exclude=varargin{i+1};
 		case 'method'
 			method=varargin{i+1};
+		case 'car_trim'
+			car_trim=varargin{i+1};
 		otherwise
 
 	end
@@ -72,15 +75,19 @@ for i=1:length(CHOUT)
 end
 
 if ndims_ephys==3
+
 	DATA=zeros(samples,ntrials,length(chmap));
 
 	switch lower(method)
 
 		case 'car'
 
-			disp(['Using electrodes ' num2str(CHIN(car_electrodes)) ' for CAR']);
+			% trimmed mean to avoid subtracting in artifacts and spikes
 
-			CAR=mean(EPHYS_DATA(:,:,car_electrodes),3);
+			disp(['Using electrodes ' num2str(CHIN(car_electrodes)) ' for CAR']);
+			disp(['Trimmed mean prctile ' num2str(car_trim)]);
+
+			CAR=trimmean(EPHYS_DATA(:,:,car_electrodes),car_trim,'round',3);
 
 			for i=1:length(chmap)
 				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-CAR;

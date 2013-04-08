@@ -92,7 +92,7 @@ maxfs=6e3; % the song 'band'
 ratio_thresh=4; % power ratio between song and non-song band
 window=250; % window to calculate ratio in (samples)
 noverlap=0; % just do no overlap, faster
-song_thresh=.25; % between .2 and .3 seems to work best (higher is more exlusive)
+song_thresh=.15; % between .2 and .3 seems to work best (higher is more exlusive)
 songduration=.8; % moving average of ratio
 low=5;
 high=10;
@@ -101,7 +101,8 @@ disp_minfs=1;
 disp_maxfs=10e3;
 filtering=[]; % changed to 100 from 700 as a more sensible default, leave empty to filter later
 intan_fs=25e3;
-audio_pad=.2; % pad on either side of the extraction
+audio_pad=.5; % pad on either side of the extraction
+error_buffer=5; % if we can't load a file, how many days old before deleting
 
 % parameters for folder creation
 
@@ -109,9 +110,18 @@ folder_format='yyyy-mm-dd';
 image_pre='gif';
 wav_pre='wav';
 data_pre='mat';
+sleep_pre='sleep';
+
 delimiter='\_';
 nosort=0;
 subdir='pretty_bird';
+sleep_window=[ 22 7 ]; % times for keeping track of sleep data (24 hr time, start and stop)
+auto_delete=1; % delete data n days old
+sleep_fileinterval=3; % specify file interval (in minutes) 
+sleep_segment=5; % how much data to keep (in seconds)
+sleep_timestamp=[];
+sleep_birdid={};
+sleep_recid={};
 
 % where to place the parsed files
 
@@ -145,6 +155,22 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
+		case 'auto_delete'
+			auto_delete=varargin{i+1};
+		case 'sleep_window'
+			sleep_window=varargin{i+1};
+		case 'sleep_fileinterval'
+			sleep_fileinterval=varargin{i+1};
+		case 'sleep_segment'
+			sleep_segment=varargin{i+1};
+		case 'filtering'
+			filtering=varargin{i+1};
+		case 'audio_pad'
+			audio_pad=varargin{i+1};
+		case 'song_thresh'
+			song_thresh=varargin{i+1};
+		case 'error_buffer'
+			error_buffer=varargin{i+1};
 		case 'mic_pre'
 			mic_pre=varargin{i+1};
 		case 'colors'
@@ -168,6 +194,9 @@ end
 
 if ~isempty(filtering)
 	[b,a]=butter(3,[filtering/(intan_fs/2)],'high');
+else
+    b=[];
+    a=[];
 end
 
 intlisting=dir(fullfile(DIR,'*.int'));
@@ -177,7 +206,43 @@ for i=1:length(intlisting)
 	proc_files{i}=fullfile(DIR,intlisting(i).name);
 end
 
-parfor i=1:length(proc_files)
+% check all files in proc directory and delete anything older than 
+% auto-delete days
+
+if ~isempty(auto_delete)
+
+	% get the proc_dir listing
+	
+	oldproc_listing=dir(fullfile(proc_dir,'*.int'));
+	oldproc_dates={oldproc_listing.date};
+	oldproc_filenames={oldproc_listing.name};
+
+	% make sure recycle is set to off
+
+	oldstate=recycle;
+	newstate=recycle('off');
+
+	for i=1:length(oldproc_dates)
+
+		% for each date check to see if it is > than
+		% the threshold
+
+		% days elapsed
+
+		delapsed=daysdif(datenum(oldproc_dates{i}),datenum(now));
+
+		if delapsed>auto_delete
+			disp(['Deleting ' fullfile(proc_dir,oldproc_filenames{i})]);
+			delete(fullfile(proc_dir,oldproc_filenames{i}));
+		end
+
+	end
+
+	newstate=recycle(oldstate);
+    
+end
+
+for i=1:length(proc_files)
 
 	t=[];
 	amps=[];
@@ -193,7 +258,8 @@ parfor i=1:length(proc_files)
 
 	if nosort
 		foldername=fullfile(unorganized_dir,subdir);
-       	 	mic_trace=mic_pre;
+		mic_trace=mic_pre;
+		file_datenum=[];
 	else
 		tokens=regexpi(intlisting(i).name,delimiter,'split');
 
@@ -240,19 +306,31 @@ parfor i=1:length(proc_files)
 			fprintf(fid,['2) Place template_data.mat,classify_data.mat and template.png' ... 
 				'from a folder created by ephys_cluster in the subdirectory\n']);
 			fprintf(fid,['3) When the pipeline is active, it will automatically' ...
-			       'extract examples of the template from ALL the data for a given bird']);
+				'extract examples of the template from ALL the data for a given bird']);
 			fclose(fid);
 		end
 	end
 
+	disp([proc_files{i}]);
+
 	try
 		[t,amps,data,aux]=read_intan_data_cli(proc_files{i});
 	catch err
+
+		file_age=daysdif(file_datenum,datenum(now));
+
+		if file_age>error_buffer
+			disp(['File too old and cannot process, deleting ' proc_files{i}]);
+			delete(proc_files{i});
+			continue;
+		end
+
 		disp([err])
 		disp('Could not read file, continuing...');
 		fclose('all'); % read_intan does not properly close file if it bails
 		continue;
 	end
+
 
 	% if we're successful reading, then move the file to a processed directory
 
@@ -266,6 +344,10 @@ parfor i=1:length(proc_files)
 		disp(['Could not move file ' proc_files{i}]);
 		fclose('all');
 		continue;
+	end
+
+	if ~exist(foldername,'dir')
+		mkdir(foldername);
 	end
 
 	% standard song detection
@@ -284,12 +366,102 @@ parfor i=1:length(proc_files)
 		conditioned_data=data(:,mic_channel);
 	end
 
-	conditioned_data=conditioned_data./max(abs(conditioned_data));
+	norm_data=conditioned_data./max(abs(conditioned_data));
+
+	% short circuit song processing if current file is in the sleep interval
+
+	if ~isempty(file_datenum) & length(sleep_window)==2
+
+		% convert the sleep window times to datenum
+
+		[year,month,day,hour]=datevec(file_datenum);
+
+		% compare hour, are we in the window?
+
+		if hour>=sleep_window(1) | hour<=sleep_window(2)
+
+			if hour<=sleep_window(2)
+				new_datenum=addtodate(file_datenum,-1,'day');
+			else
+				new_datenum=file_datenum;
+			end
+
+			sleep_foldername=fullfile(root_dir,birdid,recid,...
+				datestr(new_datenum,folder_format));
+
+			sleep_dir=fullfile(sleep_foldername,sleep_pre);
+
+			% time elapsed since we processed the last sleep file (in seconds)?
+			% match bird and recording ID
+
+			birdid_idxs_tmp=strfind(sleep_birdid,birdid);
+			recid_idxs_tmp=strfind(sleep_recid,recid)
+
+			birdid_idxs=~cellfun(@isempty,birdid_idxs_tmp)
+			recid_idxs=~cellfun(@isempty,recid_idxs_tmp)
+
+			match=find(birdid_idxs&recid_idxs)
+
+			% if there is a match, check the elapsed time,
+			% otherwise if we haven't processed a file with this bird and recid
+			% go ahead and store
+
+			if ~isempty(match)
+				time_elapsed=etime(datevec(file_datenum),datevec(sleep_timestamp(match)))
+			else
+				match=length(sleep_timestamp)+1;
+				sleep_birdid{match}=birdid
+				sleep_recid{match}=recid
+				time_elapsed=(sleep_fileinterval*60)+1;
+			end         
+
+			% is it greater than the proposed file interval?
+
+			if time_elapsed>=sleep_fileinterval*60
+
+				if ~exist(sleep_dir,'dir')
+					mkdir(sleep_dir);
+				end
+
+				disp('Processing sleep file...');
+
+				% how much data to keep?
+
+				stopsample=round(sleep_segment*intan_fs);
+
+				disp(['Keeping ' num2str(sleep_segment) ' seconds of data']);
+
+				if length(conditioned_data)<stopsample
+					disp('File too short to keep, skipping...');
+					continue;
+				end
+
+				audio_extraction=conditioned_data(1:stopsample);
+				ephys_extraction=data(1:stopsample,ephys_channels);
+
+				parsave(fullfile(sleep_dir,['sleepdata1_' name '.mat']),...
+					ephys_extraction,audio_extraction,intan_fs,ephys_labels,file_datenum);
+
+				% if we process the file store the new timestamp
+
+				disp(['New timestamp:  ' datestr(file_datenum)]);
+
+
+				sleep_timestamp(match)=file_datenum
+
+			end
+
+			% finish the loop, do not move on to song detection
+
+			disp('Continuing to song detection...');
+
+		end
+	end
 
 	% did we detect song?
 
 	try
-		[song_bin]=song_det(conditioned_data,intan_fs,minfs,maxfs,window,...
+		[song_bin]=song_det(norm_data,intan_fs,minfs,maxfs,window,...
 			noverlap,songduration,ratio_thresh,song_thresh);
 	catch err
 		disp([err]);
@@ -298,7 +470,7 @@ parfor i=1:length(proc_files)
 		continue;
 	end
 
-	[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(conditioned_data,intan_fs,'n',500,'overlap',350,'low',3.5);
+	[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(norm_data,intan_fs,'n',500,'overlap',200,'low',3.5);
 
 	startidx=max([find(sonogram_f<=disp_minfs)]);
 
@@ -324,11 +496,6 @@ parfor i=1:length(proc_files)
 	end
 
 	% if we're here, we've detected song
-
-	if ~exist(foldername,'dir')
-		mkdir(foldername);
-	end
-
 	% factor to move from sonogram coordinates to raw audio data coordinates
 
 	image_dir=fullfile(foldername,image_pre);
@@ -348,12 +515,12 @@ parfor i=1:length(proc_files)
 	end
 
 	[f,t]=size(sonogram_im);
-	son_to_vec=(length(conditioned_data)-noverlap)/(length(song_bin));
-	im_son_to_vec=(length(conditioned_data)-350)/t;
+	son_to_vec=(length(norm_data)-noverlap)/(length(song_bin));
+	im_son_to_vec=(length(norm_data)-350)/t;
 
-	% use diff to find non_continguous song bouts
+	% use diff to find non_continguous song bouts separated by the audio pad + 1 second
 
-	song_idx=[0 find(diff(song_pts*son_to_vec)>intan_fs) length(song_pts)];
+	song_idx=[0 find(diff(song_pts*son_to_vec)>intan_fs+audio_pad*2*intan_fs) length(song_pts)];
 	sonogram_filename=fullfile(image_dir,[ name '.gif' ]);
 
 	for j=1:length(song_idx)-1
@@ -362,8 +529,9 @@ parfor i=1:length(proc_files)
 		endpoint=ceil((song_pts(song_idx(j+1)))*son_to_vec+audio_pad*intan_fs);
 
 		if startpoint<1, startpoint=1; end
-		if endpoint>length(conditioned_data), endpoint=length(conditioned_data); end
+		if endpoint>length(norm_data), endpoint=length(norm_data); end
 
+		norm_extraction=norm_data(startpoint:endpoint);
 		audio_extraction=conditioned_data(startpoint:endpoint);
 		ephys_extraction=data(startpoint:endpoint,ephys_channels);
 
@@ -375,7 +543,7 @@ parfor i=1:length(proc_files)
 
 		sonogram_im(1:10,ceil(startpoint/im_son_to_vec):ceil(endpoint/im_son_to_vec))=63;
 
-		[chunk_sonogram_im chunk_sonogram_f chunk_sonogram_t]=pretty_sonogram(audio_extraction,intan_fs,'low',3.5);
+		[chunk_sonogram_im chunk_sonogram_f chunk_sonogram_t]=pretty_sonogram(norm_extraction,intan_fs,'n',500,'overlap',350,'low',3.5);
 
 		startidx=max([find(chunk_sonogram_f<=disp_minfs)]);
 		stopidx=min([find(chunk_sonogram_f>=disp_maxfs)]);
@@ -384,6 +552,11 @@ parfor i=1:length(proc_files)
 		chunk_sonogram_im=flipdim(chunk_sonogram_im,1);
 
 		imwrite(uint8(chunk_sonogram_im),colors,fullfile(image_dir,[ save_name '.gif']),'gif');
+			
+		parsave(fullfile(data_dir,['songdet1_' save_name '.mat']),...
+			ephys_extraction,audio_extraction,intan_fs,ephys_labels,file_datenum);
+
+		% normalize audio to write out to wav file
 
 		min_audio=min(audio_extraction(:));
 		max_audio=max(audio_extraction(:));
@@ -394,22 +567,25 @@ parfor i=1:length(proc_files)
 			audio_extraction=audio_extraction./(max_audio*(1+1e-3));
 		end
 
-		parsave(fullfile(data_dir,['songdet1_' save_name '.mat']),ephys_extraction,audio_extraction,intan_fs,ephys_labels);
 		wavwrite(audio_extraction,intan_fs,fullfile(wav_dir,[ save_name '.wav']));
 
 	end
 
-	reformatted_im=im_reformat(sonogram_im,10);
+	reformatted_im=im_reformat(sonogram_im,10*(ceil(audio_pad/5)));
 	imwrite(uint8(reformatted_im),colors,sonogram_filename,'gif');
 
 end
-
 end
 
 
+function parsave(file,ephys_data,mic_data,fs,channels,start_datenum)
 
-function parsave(file,ephys_data,mic_data,fs,channels)
+% still saving in this function in case we go back to parfor 
 
-save(file,'ephys_data','mic_data','fs','channels');
+if nargin<6
+    start_datenum=[];
+end
+
+save(file,'ephys_data','mic_data','fs','channels','start_datenum');
 
 end

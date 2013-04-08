@@ -1,4 +1,4 @@
-function fig_num=ephys_visual_cluststats(SPIKEWINDOWS,SPIKETIMES,varargin)
+function fig_num=ephys_visual_cluststats(SPIKEWINDOWS,SPIKETIMES,SPIKEDATA,varargin)
 %cluster statistics, include Fisher projection and other quality metrics
 %
 %
@@ -69,6 +69,7 @@ multi_clust=0;
 if K>1
 	clustercombos=nchoosek(1:K,2);
 	ncombos=size(clustercombos,1);
+	clustercombos=sortrows(clustercombos,[1 2]);
 	multi_clust=1;
 end
 
@@ -106,8 +107,8 @@ col=2;
 if multi_clust
 	for i=1:ncombos
 
-		[density1,density2,xi]=fisher_projection(SPIKEWINDOWS{clustercombos(i,1)}',...
-			SPIKEWINDOWS{clustercombos(i,2)}');
+		[density1,density2,xi]=fisher_projection(SPIKEDATA{clustercombos(i,1)},...
+			SPIKEDATA{clustercombos(i,2)});
 
 		xcoord= [ xi fliplr(xi) ];
 		ycoord1=[zeros(size(xi)) fliplr(density1)];
@@ -170,7 +171,7 @@ for i=1:K
 	
 end
 
-row=2;
+row=K-1;
 col=2;
 spacinghor=.05;
 
@@ -204,8 +205,5 @@ if multi_clust
 
 	end
 end
-
-
-
 
 

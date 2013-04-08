@@ -1,4 +1,4 @@
-function ephys_songextract_aggregate(FILEDIR,SAVEDIR,CONFIG)
+function ephys_songextract_aggregate(FILEDIR,SAVEDIR,CONFIG,SLEEPSTATUS)
 %ephys_songextract_aggregate.m is part of the ephys pipeline
 %and acts as a wrapper script for computing fields, multi-unit
 %and (soon) single-unit rasters
@@ -15,6 +15,14 @@ function ephys_songextract_aggregate(FILEDIR,SAVEDIR,CONFIG)
 % do we want to run ephys scripts after aggregating?
 
 % CONFIG FILE LIVES HERE!
+
+if nargin<4
+	SLEEPSTATUS=0;
+end
+
+if isdeployed
+	SLEEPSTATUS=str2double(SLEEPSTATUS);
+end
 
 if nargin<3
 	error('Need config file to continue!');
@@ -33,115 +41,144 @@ if length(listing)<1
 	return;
 end
 
-if ~exist(fullfile(FILEDIR,SAVEDIR),'dir')
-	mkdir(fullfile(FILEDIR,SAVEDIR));
-end
-
 % pre-allocate the matrix, store as a single
 
 load(fullfile(FILEDIR,listing(1).name),'ephys_data','channels','fs');
 
 % number of samples and channels
 
-%channel_labels=channels;
 [samples,channels]=size(ephys_data);
 ntrials=length(listing);
 
 disp(['Number of trials ' num2str(ntrials)]);
 
-% assume the first trial has a consistent number of channels
-
-
-% matrix is samples,trials,channels
-
-channel_labels=[];
-
-% check for all possible channels across the whole day, a matrix will be filled with zeros if the channel
-% gets knocked out somehow...
-
-for i=1:ntrials
-	load(fullfile(FILEDIR,listing(i).name),'channels');
-
-	% check for any inconsistency in channel labels
-
-	for j=1:length(channels)
-
-		% loop and if any channels are not included in the channel_label vector, include!
-
-		if ~any(channels(j)==channel_labels)
-			channel_labels=[channel_labels channels(j)];
-		end
-	end
+if SLEEPSTATUS
+	parameters.trial_win=parameters.trial_win_sleep;
 end
 
-channel_labels=sort(channel_labels);
-disp(['Found channels ' num2str(channel_labels)]);
+dircount=1;
 
-% set the hard max to something like 600, we can always turn off later to extract all data
-% > 600 seems to lean pretty hard on the RAM (>3-4 GB)
+% extract in a sliding window, generate histograms and trigger mua, sua and lfp processing
 
-if ntrials>parameters.trial_hard_max
-	disp(['N Trials exceeds hardmax, truncating to ' num2str(parameters.trial_hard_max)]);
-	ntrials=parameters.trial_hard_max;
-end
-
-EPHYS_DATA=zeros(samples,ntrials,length(channel_labels),'single');
-MIC_DATA=zeros(samples,ntrials);
-
-% we may need a hard max in case the number of trials exceeds ~600 trials (starts to eat up an inordinate amount of memory)
-% we can always override this if need be
-
-% also causes the pipeline to spend an inordinate amount of time with file i/o
-
-for i=1:ntrials
+for i=0:parameters.trial_win:ntrials
 	
-	load(fullfile(FILEDIR,listing(i).name),'ephys_data','mic_data','channels','fs');
-	MIC_DATA(:,i)=mic_data;
-
-	for j=1:length(channels)
-		
-		ch_idx=find(channels(j)==channel_labels);
-
-		if isempty(ch_idx)
+	if ~exist(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)]),'dir')
+		mkdir(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)]));
+	else
+		if exist(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'.done_extraction'),'file')
+			disp(['Directory ' num2str(dircount) ' finished, continuing']);
+			dircount=dircount+1;
 			continue;
 		end
-
-		EPHYS_DATA(:,i,ch_idx)=single(ephys_data(:,j));
-	
 	end
-end
 
-CHANNELS=channel_labels;
-save(fullfile(FILEDIR,SAVEDIR,'aggregated_data.mat'),'EPHYS_DATA','MIC_DATA','CHANNELS');
+	currtrials=i+1:i+parameters.trial_win;
+	currtrials(currtrials>ntrials)=[];
 
-% aggregator also computes histogram for now...
+	channel_labels=[];
 
-if ntrials>parameters.trial_max
-	disp(['Exceeded trial max, truncating to ' num2str(parameters.trial_max)]);
-	MIC_DATA=MIC_DATA(:,1:parameters.trial_max);
-end
+	for j=1:length(currtrials)
+		load(fullfile(FILEDIR,listing(currtrials(j)).name),'channels');
 
-histogram=ephys_visual_histogram(MIC_DATA,'savedir',fullfile(FILEDIR,SAVEDIR));
+		% check for any inconsistency in channel labels
 
-% touch signals to multi-unit, single-unit, and fields processing
+		for k=1:length(channels)
 
-% add a script to detect if spikes exist with SNR>1.1
+			% loop and if any channels are not included in the channel_label vector, include!
 
-if ntrials>parameters.trial_min
+			if ~any(channels(k)==channel_labels)
+				channel_labels=[channel_labels channels(k)];
+			end
+		end
+	end
 
-	% multi-unit signal
+	channel_labels=sort(channel_labels);
+	disp(['Found channels ' num2str(channel_labels)]);
 
-	fid=fopen(fullfile(FILEDIR,SAVEDIR,'.mua_signal'),'w');
-	fclose(fid);
+	EPHYS_DATA=zeros(samples,length(currtrials),length(channel_labels),'single');
+	MIC_DATA=zeros(samples,length(currtrials));
+	START_DATENUM=zeros(1,length(currtrials));
 
-	% signal-unit signal
+	for j=1:length(currtrials)
 
-	fid=fopen(fullfile(FILEDIR,SAVEDIR,'.sua_signal'),'w');
-	fclose(fid);
+		load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys_data','mic_data','channels','fs','start_datenum');
+		MIC_DATA(:,j)=mic_data;
 
-	% lfp signal
+		for k=1:length(channels)
 
-	fid=fopen(fullfile(FILEDIR,SAVEDIR,'.lfp_signal'),'w');
-	fclose(fid);
+			ch_idx=find(channels(k)==channel_labels);
+
+			if isempty(ch_idx)
+				continue;
+			end
+
+			EPHYS_DATA(:,j,ch_idx)=single(ephys_data(:,k));
+
+		end
+
+		if exist('start_datenum','var')
+			START_DATENUM(j)=start_datenum;
+		else
+
+			% attempt to find the datenum
+
+			tokens=regexpi(listing(currtrials(j)).name,parameters.delimiter,'split');
+
+			if length(tokens)<6
+				continue;
+			end
+
+			% fourth is date
+
+			START_DATENUM(j)=datenum([tokens{5} tokens{6}],'yymmddHHMMSS');
+
+		end
+
+	end
+
+	CHANNELS=channel_labels;
+	save(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'aggregated_data.mat'),'EPHYS_DATA','fs','MIC_DATA','CHANNELS','START_DATENUM','-v7.3');
+
+	if SLEEPSTATUS
+
+		% write out a file to indicate that this is sleep data
+
+		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'SLEEP_DATA'),'w');
+		fclose(fid);
+	else
+		histogram=ephys_visual_histogram(MIC_DATA,'savedir',fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)]));
+	end
+
+	% touch signals to multi-unit, single-unit, and fields processing
+
+	if ntrials>parameters.trial_min
+
+		% multi-unit signal
+
+		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'.mua_signal'),'w');
+		fclose(fid);
+
+		% signal-unit signal
+
+		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'.sua_signal'),'w');
+		fclose(fid);
+
+		% lfp signal
+
+		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'.lfp_signal'),'w');
+		fclose(fid);
+
+	end
+
+	if i+parameters.trial_win<=ntrials
+
+		% don't process again if we have a full window
+
+		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'.done_extraction'),'w');
+		fclose(fid);
+
+	end
+
+	dircount=dircount+1;
 
 end

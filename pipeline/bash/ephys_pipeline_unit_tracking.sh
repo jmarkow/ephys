@@ -28,7 +28,7 @@ while true; do
 
 		# only work with files at least 24 hours old (to prevent excessive duplication of effort)
 
-		FILELIST=( `find $ROOTDIR/$BIRD -type f -name "*candidate_unit_ch*" -cmin +600 ` )
+		FILELIST=( `find $ROOTDIR/$BIRD -type f -name "candidate_unit_ch*" -cmin +60 ` )
 
 		for FILE in ${FILELIST[@]}; do
 
@@ -39,7 +39,7 @@ while true; do
 
 			CANDIDATEFILE='sua_channels '$CHANNEL'.mat'
 
-			DONEFILE=$DIRNAME/.$CANDIDATEFILE
+			DONEFILE=$DIRNAME/.$FILENAME
 			CANDIDATEFILE=$DIRNAME/$CANDIDATEFILE
 
 			# this has to be run one shell at a time
@@ -50,9 +50,9 @@ while true; do
 				# SED out cluster and channel pass to ephys_pipeline_sua_track and
 				# you are done
 
+				echo $DONEFILE >> $OUTPUT
 				echo $CANDIDATEFILE >> $OUTPUT
-
-				$EXEC_TRACK "$CANDIDATEFILE" "$CLUSTER" "$CONFIG" >> $OUTPUT &
+				$EXEC_TRACK "$CANDIDATEFILE" "$CLUSTER" "$CONFIG" "$FILENAME" >> $OUTPUT &
 
 				wait
 			fi

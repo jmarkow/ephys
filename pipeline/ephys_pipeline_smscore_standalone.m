@@ -19,7 +19,8 @@ fprintf('%-10d%-10d%-10d%-10d\n\n\n',...
 	parameters.smscore_n,parameters.smscore_overlap,parameters.smscore_filter_scale,parameters.smscore_downsampling);
 
 features=ephys_pipeline_smscore(mic_data,fs,'n',parameters.smscore_n,'overlap',parameters.smscore_overlap,...
-	'filter_scale',parameters.smscore_filter_scale,'downsampling',parameters.smscore_downsampling);
+	'filter_scale',parameters.smscore_filter_scale,'downsampling',parameters.smscore_downsampling,...
+	'norm_amp',parameters.smscore_norm_amp);
 %
 
 [path,file,ext]=fileparts(FILENAME);

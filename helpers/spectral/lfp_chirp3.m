@@ -269,11 +269,11 @@ preang = angle(forcing);
 
 % phase shift every other line by pi
 
-for jj=1:2:length(f)
-	preang(jj,:) = preang(jj,:) + pi;
-end
+%for jj=1:2:length(f)
+%	preang(jj,:) = preang(jj,:) + pi;
+%end
 
-preang = mod(preang,2*pi);
+%preang = mod(preang,2*pi);
 sono = absv.*(cos(preang)+1i*sin(preang));
 
 %sono(1:low_cutoff,:)=0; % high pass filter 10 Hz

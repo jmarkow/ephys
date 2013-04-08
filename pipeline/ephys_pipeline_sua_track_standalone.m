@@ -1,4 +1,4 @@
-function ephys_pipeline_sua_track_standalone(CANDIDATEFILE,CANDIDATECLUST,CONFIG)
+function ephys_pipeline_sua_track_standalone(CANDIDATEFILE,CANDIDATECLUST,CONFIG,DONEFILE)
 %
 %
 %
@@ -36,6 +36,7 @@ tokens=regexp(path,filesep,'split');
 % TODO:  deal with non-default directory structures (or, simply enforce the standard ones more rigorously)
 
 suatype=tokens{end};
+aggname=tokens{end-2};
 extractionstring=tokens{end-4};
 datestring=tokens{end-6};
 recstring=tokens{end-7};
@@ -59,39 +60,26 @@ for i=1:length(savedir_list)
 end
 
 template_status=zeros(1,length(template_list),'int8');
+filedir=path;
 
-candidate=load(CANDIDATEFILE,'clusterwindows','clusterisi');
+candidate=load(CANDIDATEFILE,'cluster');
 
-candidate_wave=zscore(mean(candidate.clusterwindows{CANDIDATECLUST},2));
-candidate_isi=candidate.clusterisi{CANDIDATECLUST};
-
-% load the training data, specify the cluster boundary
-
-trainfile=fullfile(global_parameters.bookkeeping_dir,'train_data','training_data.mat');
-
-if exist(trainfile,'file')
-	load(trainfile,'train_matrix','class');
-else
-	warning('ephysPipeline:suatracking:notrainingdata','Could not find training data %s',trainfile);
+if ~isfield(candidate,'cluster')
+	warning('ephyspipeline:unittracker:legacydataformat','Old data format, skipping...');
+	print_done_signal(filedir,DONEFILE);
 	return;
 end
 
+if length(candidate.cluster.windows)<CANDIDATECLUST
+	warning('ephyspipeline:unittracker:clusternotfound','Cluster not found, skipping...');
+	print_done_signal(filedir,DONEFILE);
+	return;
+end
+
+candidate_wave=zscore(mean(candidate.cluster.windows{CANDIDATECLUST},2));
+candidate_isi=candidate.cluster.isi{CANDIDATECLUST};
+
 % thumbs up or down?
-
-traindata(:,1)=atanh(train_matrix(:,1));
-traindata(:,2)=train_matrix(:,2);
-
-class=class+1;
-
-[C,err,P,logp,coeff]=classify(traindata(class==2,:),traindata,class,'quadratic');
-
-threshold=quantile(P(:,1),.73); % with the current training set this produces 5% error rate
-n=(2*threshold)/(1+2*threshold);
-p=1/(1+2*threshold);
-priors=[ n p ];
-%priors=[ .5 .5 ];
-
-filedir=path;
 
 for i=1:length(template_list)
 
@@ -109,6 +97,8 @@ for i=1:length(template_list)
 	end
 
 	% check for any potential matches
+
+	C=0;
 
 	for j=1:length(extract_list)
 
@@ -129,29 +119,35 @@ for i=1:length(template_list)
 		clustfile=fullfile(extract_list{j},'raster',['sua_channels ' num2str(channel) '.mat']);
 
 		if exist(clustfile,'file')	
-			template=load([clustfile],'clusterwindows','clusterisi');
+			template=load([clustfile],'cluster');
 		else
 			warning('ephysPipeline:singleunittrack:nosuafile','Could not find sua file at %s',clustfile);
 			continue;
 		end
 
-		template_wave=zscore(mean(template.clusterwindows{cluster},2));
-		template_isi=template.clusterisi{cluster};
+		template_wave=zscore(mean(template.cluster.windows{cluster},2));
+		template_isi=template.cluster.isi{cluster};
 
 		if length(template_wave)~=length(candidate_wave)
 
 			% if the spike waveforms do not have equal length bail
 
 			disp('Waveforms not of equal length, cannot process...');
-			print_done_signal(filedir,CANDIDATEFILE);
+			print_done_signal(filedir,DONEFILE);
 			return;
+
 		end
 
-		[r,lags]=xcov(template_wave,candidate_wave,'coeff');
-		wavescore=atanh(max(r));
-		isiscore=sqrt(kld(template_isi,candidate_isi,'jsd',1));
+		try
+			[r,lags]=xcov(template_wave,candidate_wave,'coeff');
+			wavescore=atanh(max(r));
+			isiscore=sqrt(kld(template_isi,candidate_isi,'jsd',1));
+			C=(wavescore>=global_parameters.unit_wavecut)&(isiscore<=global_parameters.unit_isicut);
 
-		[C]=classify([wavescore isiscore],traindata,class,'quadratic',priors);
+		catch
+			warning('ephysPipeline:singleunittrack:couldnotclassify','Error classifying unit');
+			C=0;
+		end
 
 		% break after we read the template, presumably the first file
 
@@ -159,12 +155,13 @@ for i=1:length(template_list)
 
 	end
 
+	C
 	template_status(i)=C;
 
 end
 
 namebase=global_parameters.unit_name;
-template_status=template_status>1;
+%template_status=template_status>1;
 
 if all(template_status==0) || isempty(template_status)
 	dirnum=length(template_list)+1;
@@ -184,7 +181,7 @@ elseif sum(template_status)>1
 	fprintf('Match found in %s\n\n',template_list{i});
 end
 
-savedir=fullfile(savedir,cellid,[ datestring ' (' extractionstring ',' lower(suatype) ')']);
+savedir=fullfile(savedir,cellid,[ datestring ' (' extractionstring ',' lower(suatype) ',' lower(aggname) ')' ]);
 
 % copy any single unit rasters for safe keeping...
 
@@ -205,24 +202,25 @@ fprintf(fid,'Path:\t\t%s\nRec ID:\t\t%s\nBird ID:\t%s\nDate:\t\t%s\nCell ID:\t%s
 fclose(fid);
 
 try
-	copyfile(fullfile(filedir,['ephys_sua_freqrange*electrode_' num2str(candidate_channel) ...
-		'_raster_cluster_' num2str(CANDIDATECLUST) '.*' ]),fullfile(savedir,'raster'));
-	copyfile(fullfile(filedir,['ephys_sua_freqrange*electrode_' num2str(candidate_channel) ...
+	copyfile(fullfile(filedir,['ephys_*_sua_freqrange*electrode_' num2str(candidate_channel) ...
+		'_raster_cluster_*.*' ]),fullfile(savedir,'raster'));
+	copyfile(fullfile(filedir,['ephys_*_sua_freqrange*electrode_' num2str(candidate_channel) ...
 		'_stats_cluster_*' ]),fullfile(savedir,'raster'));
 	copyfile(fullfile(filedir,['sua_channels ' num2str(candidate_channel) '.mat']),fullfile(savedir,'raster'));
-catch
-	warning('ephysPipeline:singleunitpostproc:nocopy','Could not copy single unit raster file');
+catch err
+	print_done_signal(filedir,DONEFILE);
+	rethrow(err)
 end
 
 % print out filename with . in front to signal that we've processed it
 
-print_done_signal(filedir,CANDIDATEFILE);
+print_done_signal(filedir,DONEFILE);
 
 end
 
-function print_done_signal(FILEDIR,CANDIDATEFILE)
+function print_done_signal(FILEDIR,DONEFILE)
 
-[path,file,ext]=fileparts(CANDIDATEFILE);
+[path,file,ext]=fileparts(DONEFILE);
 
 fid=fopen(fullfile(FILEDIR,[ '.' file ext]),'w');
 fclose(fid);

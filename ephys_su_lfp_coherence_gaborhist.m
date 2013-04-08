@@ -377,13 +377,11 @@ for i=1:ntrials
 		phase=angle(gabor_tmp);
 	end
 
-	phase=unwrap(phase,[],2);
-
 	for j=1:2:rows
 		phase(j,:)=phase(j,:)+pi;
 	end
 
-	phase=mod(phase,2*pi);
+	phase=mod(phase+pi,2*pi);
 
 	% get the magnitude and phase at the spike times
 

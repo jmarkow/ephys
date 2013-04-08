@@ -37,7 +37,7 @@ while true; do
 
 		PROCDIR=( `dirname $DIR`)
 
-		$EXEC_SUA "$PROCDIR" "$CONFIG" >> $1 &	
+		nice -n $NICELVL $EXEC_SUA "$PROCDIR" "$CONFIG" >> $1 &	
 		
 		let ARRAYCOUNT=$COUNTER-1
 

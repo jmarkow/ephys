@@ -57,7 +57,7 @@ while true; do
 			echo 'Spawning thread ' $n >> $1
 			echo ${NEWFILELIST[$i]} >> $1
 			
-			$EXEC_SMSCORE "${NEWFILELIST[$i]}" $CONFIG >> $1 &
+			nice -n $NICELVL $EXEC_SMSCORE "${NEWFILELIST[$i]}" $CONFIG >> $1 &
 
 			let i+=1
 

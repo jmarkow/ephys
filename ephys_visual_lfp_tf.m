@@ -103,30 +103,31 @@ noise='none'; % common-average reference for noise removal
 car_exclude=[];
 savedir=pwd;
 hist_colors='jet';
-lfp_colors='hot';
+lfp_colors='jet';
 lfp_min_f=1; % bring down to 1
 lfp_max_f=100;
-lfp_n=256; % defined frequency resolution
-lfp_overlap=255;
-lfp_nfft=256; % superficial, makes the spectrogram smoother
+lfp_n=500; % defined frequency resolution
+lfp_overlap=495;
+lfp_nfft=1024; % superficial, makes the spectrogram smoother
 lfp_w=2; % time bandwidth product if using multi-taper
 lfp_ntapers=[]; % number of tapers, leave blank to use 2*w-1
-proc_fs=500;
+proc_fs=1250;
 
 hist_min_f=1;
 hist_max_f=10e3;
 
 figtitle=[];
-freq_range=[20 100]; % frequency range for filtering
+freq_range=[5 100]; % frequency range for filtering
 filt_order=5;
 channels=CHANNELS;
-method='mt'; % raw or mt for multi-taper
-scale='linear';
-scalelabel='Mag.';
-singletrials=5;
-medfilt_scale=1.5; % median filter scale (in ms)
+method='raw'; % raw or mt for multi-taper
+scale='log';
+scalelabel='dB';
+singletrials=0;
+clipping=-35;
+medfilt_scale=3; % median filter scale (in ms)
 
-padding=[];
+padding=.12;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -164,7 +165,7 @@ for i=1:2:nparams
 			lfp_max_f=varargin{i+1};
 		case 'lfp_colors'
 			lfp_colors=varargin{i+1};
-		case 'lfn_n'
+		case 'lfp_n'
 			lfp_n=varargin{i+1};
 		case 'lfp_nfft'
 			lfp_nfft=varargin{i+1};
@@ -174,6 +175,8 @@ for i=1:2:nparams
 			proc_fs=varargin{i+1};
 		case 'padding'
 			padding=varargin{i+1};
+		case 'clipping'
+			clipping=varargin{i+1};
 	end
 end
 
@@ -186,6 +189,7 @@ end
 [nsamples,ntrials,nchannels]=size(EPHYS_DATA);
 
 % add a zero padd on either side if requested by the user
+
 
 if ~isempty(padding)
 	padsamples=padding*fs;
@@ -228,11 +232,14 @@ clear EPHYS_DATA;
 if lfp_n>nsamples
 	difference=lfp_n-lfp_overlap;
 	lfp_n=round(nsamples/5);
-	lfp_overlap=lfp_n-difference;
+	lfp_overlap=lfp_n-1;
+
+	if lfp_overlap<1
+		error('ephysPipeline:lfptf:badparameters','Check window size and overlap');
+	end
 
 	warning('ephysPipeline:lfptf:notenoughsamples',...
 		'Window size larger than the number of samples, settings window size to %d and ond overlap to %d',lfp_n,lfp_overlap);
-
 end
 
 % if nfft is empty set to nextpow2
@@ -307,6 +314,10 @@ if exist(fullfile(savedir,'singletrials'));
 	rmdir(fullfile(savedir,'singletrials'),'s');
 end
 
+lfp_n
+lfp_overlap
+lfp_nfft
+
 for i=1:length(channels)
 
 	savedir_st=fullfile(savedir,'singletrials',[ 'ch' num2str(channels(i))]);
@@ -352,43 +363,26 @@ for i=1:length(channels)
 		% reduction to save memory, storing in a large matrix probably not viable for large n...
 		
 		spect_ave_tmp=spect_ave_tmp+spect./ntrials;
-
-		if j<=singletrials
-			
-			singletrialfig=figure('Visible','off','position',[0 0 800 600]);
-
-			% just plot a simple spectrogram and save
-
-			switch lower(scale)
-				case 'linear'
-					imagesc(t,f(lfp_startidx:lfp_stopidx),abs(spect(lfp_startidx:lfp_stopidx,:)));
-				case 'log'
-					imagesc(t,f(lfp_startidx:lfp_stopidx),20*log10(abs(spect(lfp_startidx:lfp_stopidx,:)+eps)));
-				otherwise
-					error('Did not understand scale, must be log or linear!');
-			end
-
-			set(gca,'ydir','normal');
-
-			axis tight;
-			colormap(lfp_colors);
-			set(gca,'tickdir','out','ytick',[round(lfp_min_f/10):1:round(lfp_max_f/10)]*10,...
-				'linewidth',1.5,'ticklength',[.025 .025],'FontSize',16,'FontName','Helvetica');
-			xlabel('Time (in s)','FontSize',13,'FontName','Helvetica');
-			ylabel('Hz','FontSize',13,'FontName','Helvetica');
-			box off;
-			set(singletrialfig,'PaperPositionMode','auto')
-			multi_fig_save(singletrialfig,savedir_st,['trial' num2str(j)],'png');
-			close([singletrialfig]);
-
-			parsave(fullfile(savedir_st,[ 'trial' num2str(j)]),t,f,spect);
-
-		end
 		
 	end
 
 	SPECT_AVE.data(:,:,i)=spect_ave_tmp; % for saving
-	spect_ave_plot.image=abs(spect_ave_tmp)./max(abs(spect_ave_tmp(:))); % normalize so max is 0 db
+
+	% normalize 
+
+	spectimage=abs(spect_ave_tmp)./max(abs(spect_ave_tmp(:)));
+
+	if strcmp(lower(scale),'log') 
+		
+		spectimage=20*log10(spectimage);
+
+		if ~isempty(clipping)
+			spectimage=max(spectimage,clipping);
+		end
+
+	end
+		
+	spect_ave_plot.image=spectimage; % normalize so max is 0 db
 	spect_ave_plot.t=SPECT_AVE.t;
 	spect_ave_plot.f=SPECT_AVE.f;
 
@@ -396,7 +390,7 @@ for i=1:length(channels)
 	
 	fig_title=['CH' num2str(channels(i)) ' NTAP' num2str(lfp_ntapers) ' RES ' num2str(resolution) ' Hz' ' NTRIALS' num2str(ntrials)];
 
-	spect_fig=time_frequency_raster(HISTOGRAM,spect_ave_plot,'fig_num',spect_fig,'fig_title',fig_title,'scale',scale,...
+	spect_fig=time_frequency_raster(HISTOGRAM,spect_ave_plot,'fig_num',spect_fig,'fig_title',fig_title,'scale','linear',...
 		'scalelabel',scalelabel,'hist_min_f',hist_min_f,'hist_max_f',hist_max_f,'tf_min_f',lfp_min_f,'tf_max_f',lfp_max_f,...
 		'hist_colors',hist_colors,'tfimage_colors',lfp_colors);
 

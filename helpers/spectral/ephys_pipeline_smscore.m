@@ -15,6 +15,7 @@ overlap=1000; % spectrogram overlap
 sigma=1.5; % Gaussian timescale (in ms)
 downsampling=5; % downsampling factor (skip columns)
 filter_scale=10; % disk filter scale (samples)
+norm_amp=1; % normalize the amplitude
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -28,10 +29,16 @@ for i=1:2:nparams
 			filter_scale=varargin{i+1};
 		case 'downsampling'
 			downsampling=varargin{i+1};
+		case 'norm_amp'
+			norm_amp=varargin{i+1};
 	end
 end
 
 % TODO remove dynamic allocation of feature matrix
+
+if norm_amp
+	s=s./max(abs(s));
+end
 
 disp('Computing score');
 t=-n/2+1:n/2;

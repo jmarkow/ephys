@@ -1,4 +1,4 @@
-function [LABELS TRIALS ISI WINDOWS STATS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,SPIKELESS,varargin)
+function [WINDOWS TIMES TRIALS ISI STATS]=ephys_spike_clustergui_tetrode(SPIKEWINDOWS,SPIKETIMES,SPIKELESS,varargin)
 %GUI for spike cluster cutting
 %
 %
@@ -10,7 +10,6 @@ function [LABELS TRIALS ISI WINDOWS STATS]=ephys_spike_clustergui_tetrode(SPIKEW
 
 nparams=length(varargin);
 
-TRIALS=[]; % by default we don't need this, unless input is over multiple trials
 fs=25e3;
 interpolate_fs=200e3;
 
@@ -146,7 +145,6 @@ if isempty(channel_labels)
 end
 
 clear SPIKEWINDOWS;
-TRIALS=trialnum;
 
 timepoints=[1:samples]';
 
@@ -441,14 +439,6 @@ cluster_data=spike_data(:,dim);
 
 if ~draw_mode
 
-	if matlabpool('size')>0
-		pctRunOnAll warning('off','stats:gmdistribution:FailedToConverge');
-		pctRunOnAll warning('off','stats:kmeans:FailedToConverge');
-	else
-		warning('off','stats:gmdistribution:FailedToConverge');
-		warning('off','stats:kmeans:FailedToConverge');
-	end
-
 	options=statset('Display','off');
 
 	clustnum=2:9;
@@ -462,7 +452,7 @@ if ~draw_mode
 	if strcmp(lower(clusterchoice),'auto')
 
 
-		parfor i=1:length(clustnum)
+		for i=1:length(clustnum)
 
 			kmeans_labels(:,i)=kmeans(cluster_data,clustnum(i),'replicates',5);
 			testobj=gmdistribution.fit(cluster_data,clustnum(i),'Regularize',1,...
@@ -492,14 +482,6 @@ if ~draw_mode
 	[kmeanslabels]=kmeans(cluster_data,CLUSTERS,'replicates',10);
 	testobj=gmdistribution.fit(cluster_data,CLUSTERS,'Regularize',1,...
 		'Options',options,'replicates',1,'start',kmeanslabels);
-
-	if matlabpool('size')>0
-		pctRunOnAll warning('on','stats:gmdistribution:FailedToConverge');
-		pctRunOnAll warning('on','stats:kmeans:FailedToConverge');
-	else
-		warning('on','stats:gmdistribution:FailedToConverge');
-		warning('on','stats:kmeans:FailedToConverge');
-	end
 
 	[idx,nlogl,P]=cluster(testobj,cluster_data);
 	counter=1;
@@ -710,6 +692,8 @@ for i=1:CLUSTERS
 	
 	spikeifrtmp=[];
 
+	trialtmp=[];
+
 	for j=1:length(uniq_trial)
 		
 		% all spike times in this trial
@@ -723,14 +707,18 @@ for i=1:CLUSTERS
 		% spike times for this cluster
 
 		currtrial=currtrial(currlabels==i);
+		trialtmp=[trialtmp;uniq_trial(j)*ones(length(currtrial),1)];
 
 		currisi=(diff(currtrial));
 
 		spikeifrtmp=[spikeifrtmp;currisi(:)];
 	end
 
-	ISI{i}=spikeifrtmp;
+	TRIALS{i}=trialtmp';
+	ISI{i}=spikeifrtmp';
 	WINDOWS{i}=spikewintmp;
+	TIMES{i}=spiketimes(LABELS==i)';
+
 
 end
 

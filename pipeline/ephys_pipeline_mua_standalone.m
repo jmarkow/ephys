@@ -15,15 +15,23 @@ fprintf('%-10d%-10d\n\n\n',parameters.fs,parameters.mua_downsampling);
 disp('Computing multi-unit rasters...');
 disp(['Loading data from ' PROCDIR]);
 
+if ~exist(fullfile(PROCDIR,'histogram.mat'),'file')
+	HISTOGRAM=[];
+end
+
 try
 	load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS');
-	load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
+	if exist(fullfile(PROCDIR,'histogram.mat'),'file')
+		load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
+	end
 catch
 	try
 		disp('Pausing for 60 seconds and will retry');
 		pause(60);
 		load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS');
-		load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
+		if exist(fullfile(PROCDIR,'histogram.mat'),'file')
+			load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
+		end
 	catch
 
 		disp('Could not properly load files, bailing!');
@@ -43,6 +51,11 @@ end
 mua=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,'savedir',PROCDIR,'fs',parameters.fs);
 
 % check for peak in the mua that exceeds 4*std seems to be a good rule of thumb
+
+if exist(fullfile(PROCDIR,'SLEEP_DATA'),'file')
+	disp('Sleep directory, skipping projection neuron checks');
+	return;
+end
 
 delete(fullfile(PROCDIR,'proj_channel_*'));
 trial_edges=[1:parameters.trial_window:ntrials ntrials];

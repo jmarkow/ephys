@@ -98,6 +98,7 @@ fid=fopen(fullfile(savedir,'.songextraction'),'w');
 fclose(fid);
 
 for i=1:length(features)
+	
 	score_temp{i}=[];
 
 	for j=1:featureslength-templength
@@ -105,7 +106,13 @@ for i=1:length(features)
 	end
 
 	score_temp{i}=score_temp{i}-mean(score_temp{i});
-	score_temp{i}=score_temp{i}/std(score_temp{i});
+
+	% this correction factor is meant to threshold out large segments of silence 
+	% (we want the scores scaled by their variance across different sounds ideally)
+
+	% also, it has been determined EMPIRICALLY, could do with some battle-testing
+
+	score_temp{i}=score_temp{i}/std(score_temp{i}(abs(score_temp{i})>(templength*2)+300));
 	score_temp{i}(score_temp{i}>0)=0;
 	score_temp{i}=abs(score_temp{i});
 
@@ -174,6 +181,19 @@ sonogram_im=flipdim(sonogram_im,1);
 [f,t]=size(sonogram_im);
 im_son_to_vec=(length(data.mic_data)-450)/t;
 
+% make sure we don't pull out overlapping data
+
+startpoints=hits.*(parameters.smscore_n-parameters.smscore_overlap)*parameters.smscore_downsampling;
+
+% prevent overlap by only using hits sufficiently spaced from each other
+
+%keeppoints=find(diff(startpoints)>fulltemplength+sum(padding)*parameters.fs);
+%hits=hits(keeppoints);
+
+%
+
+prevendpoint=0;
+
 for i=1:length(hits)
 
 	hitloc=peak_locs(hits(i));
@@ -184,6 +204,11 @@ for i=1:length(hits)
 	if length(padding)==2
 		startpoint=startpoint-floor(padding(1)*parameters.fs);
 		endpoint=endpoint+ceil(padding(2)*parameters.fs);
+	end
+
+	if startpoint-prevendpoint<=0
+		disp('Hits are overlapping, skipping...');
+		continue;
 	end
 
 	if length(data.mic_data)>endpoint && startpoint>0	
@@ -209,8 +234,12 @@ for i=1:length(hits)
 		chunk_sonogram_im=flipdim(chunk_sonogram_im,1);
 		imwrite(uint8(chunk_sonogram_im),colors,fullfile(imagedir,[savename '.gif']),'gif');
 		wavwrite(mic_data,fs,fullfile(wavdir,[savename '.wav']));
+		prevendpoint=endpoint;
 	
 	end
+
+	
+
 end
 
 imwrite(uint8(sonogram_im),colors,fullfile(imagedir,[ file(1:end-6) '.gif']),'gif');

@@ -24,6 +24,47 @@ end
 readdata{1}(idxs)=[];
 readdata{2}(idxs)=[];
 
+idxs=find(strcmp('spike_weights',readdata{1}));
+
+if ~isempty(idxs)
+	PARAMETERS.spike_weights=[];
+	PARAMETERS.spike_weights=str2num(readdata{2}{idxs(1)});
+end
+
+readdata{1}(idxs)=[];
+readdata{2}(idxs)=[];
+
+idxs=find(strcmp('spike_freq_range',readdata{1}));
+
+if ~isempty(idxs)
+	PARAMETERS.spike_freq_range=[];
+	PARAMETERS.spike_freq_range=str2num(readdata{2}{idxs(1)});
+end
+
+readdata{1}(idxs)=[];
+readdata{2}(idxs)=[];
+
+idxs=find(strcmp('spike_window',readdata{1}));
+
+if ~isempty(idxs)
+	PARAMETERS.spike_window=[];
+	PARAMETERS.spike_window=str2num(readdata{2}{idxs(1)});
+end
+
+readdata{1}(idxs)=[];
+readdata{2}(idxs)=[];
+
+
+idxs=find(strcmp('spike_cluststart',readdata{1}));
+
+if ~isempty(idxs)
+	PARAMETERS.spike_cluststart=[];
+	PARAMETERS.spike_cluststart=str2num(readdata{2}{idxs(1)});
+end
+
+readdata{1}(idxs)=[];
+readdata{2}(idxs)=[];
+
 for i=1:length(readdata{1})
 	PARAMETERS.(readdata{1}{i})=str2double(readdata{2}{i});
 

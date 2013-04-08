@@ -31,8 +31,10 @@ mu2=mean(DATAMAT2)';
 cov1=cov(DATAMAT1,1);
 cov2=cov(DATAMAT2,1);
 
-%cov1=cov1+eye(size(cov1)).*1e-10;
-%cov2=cov2+eye(size(cov2)).*1e-10;
+cov1=cov1+eye(size(cov1)).*1e-20;
+cov2=cov2+eye(size(cov2)).*1e-20;
+
+% pool the covariance
 
 w_proj=(cov1+cov2)\(mu2-mu1);
 
@@ -43,7 +45,7 @@ points2=DATAMAT2*w_proj;
 
 % between class separation over within class separation
 
-separation(i)=((w_proj'*(mu1-mu2))^2)/(w_proj'*(cov1+cov2)*w_proj);
+separation=((w_proj'*(mu1-mu2))^2)/(w_proj'*(cov1+cov2)*w_proj);
 
 % define mean and covariance for samples
 % plot the histogram
@@ -53,5 +55,3 @@ XI=linspace(min([points1;points2]),max([points1;points2]),...
 
 [DENSITY1]=ksdensity(points1,XI);
 [DENSITY2]=ksdensity(points2,XI);
-
-

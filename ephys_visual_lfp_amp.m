@@ -52,7 +52,7 @@ function [LFP_RASTER TIME LABEL HISTOGRAM]=ephys_lfp_amp(EPHYS_DATA,HISTOGRAM,CH
 %		a simple hampel or median filter is used to throw out noise trials for display
 %		(all trials are stored regardless), basically the number specifies how many MADs
 %		the rms on a particular trial must be from the median computed across trials (30 trial window)
-%		to throw out 3-4 is standard, with lower being more aggresive (leave blank to skip, default: 3)
+%to throw out 3-4 is standard, with lower being more aggresive (leave blank to skip, default: 3)
 %
 % see also ephys_visual_sua.m,ephys_visual_lfp_tf.m,ephys_visual_mua.m
 
@@ -180,8 +180,9 @@ end
 
 savedir=fullfile(savedir,'lfp_amp');
 
-if ~exist(fullfile(savedir,subdir),'dir')
-	mkdir(fullfile(savedir,subdir));
+if ~exist(fullfile(savedir,subdir,'amp'),'dir') || ~exist(fullfile(savedir,subdir,'phase'),'dir')
+	mkdir(fullfile(savedir,subdir,'amp'));
+	mkdir(fullfile(savedir,subdir,'phase'));
 end
 
 savefilename=[ name '_lfp_freqrange_' num2str(freq_range) '_electrode_'];
@@ -190,6 +191,12 @@ savefilename=[ name '_lfp_freqrange_' num2str(freq_range) '_electrode_'];
 
 delete(fullfile(savedir,subdir,[savefilename '*.png']));
 delete(fullfile(savedir,subdir,[savefilename '*.eps']));
+
+delete(fullfile(savedir,subdir,'amp',[savefilename '*.png']));
+delete(fullfile(savedir,subdir,'amp',[savefilename '*.eps']));
+
+delete(fullfile(savedir,subdir,'phase',[savefilename '*.png']));
+delete(fullfile(savedir,subdir,'phase',[savefilename '*.eps']));
 
 for i=1:length(channels)
 
@@ -206,12 +213,23 @@ for i=1:length(channels)
 	PLOTLFP.trials=PLOTLFP.trials(goodtrials);
 	PLOTLFP.image=PLOTLFP.image_amp(goodtrials,:,i);
 
-	multi_unit_raster(HISTOGRAM,PLOTLFP,'fs',fs,...
-		'fig_num',raster_fig,'fig_title',{[figtitle];[ 'Channel ' num2str(channels(i))]},...
-		'min_f',min_f,'max_f',max_f,'raster_colors',mua_colors,'hist_colors',hist_colors);
+	if ~isempty(HISTOGRAM)
+		multi_unit_raster(HISTOGRAM,PLOTLFP,'fs',fs,...
+			'fig_num',raster_fig,'fig_title',{[figtitle];[ 'Channel ' num2str(channels(i))]},...
+			'min_f',min_f,'max_f',max_f,'raster_colors',mua_colors,'hist_colors',hist_colors);
+	else
+		imagesc(PLOTLFP.t,PLOTLFP.trials,PLOTLFP.image);
+		colormap(mua_colors);
+		axis xy;
+		xlabel('Time (in s)','FontSize',13,'FontName','Helvetica');
+		ylabel('Trial','FontSize',13,'FontName','Helvetica');
+		box off
+		set(gca,'tickdir','out','linewidth',1.5,'ticklength',[.025 .025],...
+			'FontSize',11,'FontName','Helvetica');
+	end
 
 	set(raster_fig,'PaperPositionMode','auto')
-	multi_fig_save(raster_fig,fullfile(savedir,subdir),...
+	multi_fig_save(raster_fig,fullfile(savedir,subdir,'amp'),...
 		[ savefilename num2str(channels(i)) '_amp' ],'eps,png');
 	
 	close([raster_fig]);
@@ -220,13 +238,24 @@ for i=1:length(channels)
 
 	PLOTLFP.image=PLOTLFP.image_phase(goodtrials,:,i);
 
-	multi_unit_raster(HISTOGRAM,PLOTLFP,'fs',fs,...
-		'fig_num',raster_fig,'fig_title',{[figtitle];[ 'Channel ' num2str(channels(i))]},...
-		'min_f',min_f,'max_f',max_f,'raster_colors',mua_colors_phase,'hist_colors',hist_colors,...
-		'show_colorbar',1,'scalelabel','Phase');
+	if ~isempty(HISTOGRAM)
+		multi_unit_raster(HISTOGRAM,PLOTLFP,'fs',fs,...
+			'fig_num',raster_fig,'fig_title',{[figtitle];[ 'Channel ' num2str(channels(i))]},...
+			'min_f',min_f,'max_f',max_f,'raster_colors',mua_colors_phase,'hist_colors',hist_colors,...
+			'show_colorbar',1,'scalelabel','Phase');
+	else
+		imagesc(PLOTLFP.t,PLOTLFP.trials,PLOTLFP.image);
+		colormap(mua_colors);
+		axis xy;
+		xlabel('Time (in s)','FontSize',13,'FontName','Helvetica');
+		ylabel('Trial','FontSize',13,'FontName','Helvetica');
+		box off
+		set(gca,'tickdir','out','linewidth',1.5,'ticklength',[.025 .025],...
+			'FontSize',11,'FontName','Helvetica');
+	end
 
 	set(raster_fig,'PaperPositionMode','auto')
-	multi_fig_save(raster_fig,fullfile(savedir,subdir),...
+	multi_fig_save(raster_fig,fullfile(savedir,subdir,'phase'),...
 		[ savefilename num2str(channels(i)) '_phase' ],'eps,png');
 
 	close([raster_fig]);

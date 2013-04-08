@@ -62,11 +62,12 @@ for i=1:length(uniqlabels)
 	groupmean=mean(groupmat,1)
 	
 	%groupdist=squareform(pdist(grouppoints,'euclidean'));
+	dist=zeros(npoints,3);
 
-	dist=zeros(1,npoints);
+	% take max distance in aech direction
 
 	for j=1:npoints
-		dist(j)=sqrt(sum((groupmat(j,:)-groupmean).^2));
+		dist(j,:)=abs(groupmat(j,:)-groupmean);
 	end
 
 	r=max(dist);
@@ -75,11 +76,9 @@ for i=1:length(uniqlabels)
 
 	[x,y,z]=sphere(15);
 
-	h=surf(x*r+groupmean(1),y*r+groupmean(2),z*r+groupmean(3));
+	h=surfc(x*r(1)+groupmean(1),y*r(2)+groupmean(2),z*r(3)+groupmean(3));
 	set(h,'FaceColor',surfcolor(i,:),'FaceAlpha',.95,'EdgeColor',[0 0 0]);
 	hold on;
-
-
 
 	% could use simply mean and scale by max pairwise distance,
 	% or assume that the first point is the center (i.e. how far
@@ -104,10 +103,12 @@ for i=1:length(uniqlabels)
 	
 	%groupdist=squareform(pdist(grouppoints,'euclidean'));
 
-	dist=zeros(1,npoints);
+	dist=zeros(npoints,3);
+
+	% take max distance in aech direction
 
 	for j=1:npoints
-		dist(j)=sqrt(sum((groupmat(j,:)-groupmean).^2));
+		dist(j,:)=abs(groupmat(j,:)-groupmean);
 	end
 
 	r=max(dist);
@@ -116,13 +117,13 @@ for i=1:length(uniqlabels)
 
 	[x,y,z]=sphere(15);
 
-	h=surf(x*r+groupmean(1),y*r+groupmean(2),ones(size(z)).*zlimits(1));
+	h=surf(x*r(1)+groupmean(1),y*r(2)+groupmean(2),ones(size(z)).*zlimits(1));
 	set(h,'FaceColor',[.4 .4 .4],'EdgeColor','none','FaceAlpha',.15);
 
-	h=surf(ones(size(x)).*xlimits(2),y*r+groupmean(2),z*r+groupmean(3));
+	h=surf(ones(size(x)).*xlimits(2),y*r(2)+groupmean(2),z*r(3)+groupmean(3));
 	set(h,'FaceColor',[.4 .4 .4],'EdgeColor','none','FaceAlpha',.15);
 
-	h=surf(x*r+groupmean(1),ones(size(y)).*ylimits(2),z*r+groupmean(3));
+	h=surf(x*r(1)+groupmean(1),ones(size(y)).*ylimits(2),z*r(3)+groupmean(3));
 	set(h,'FaceColor',[.4 .4 .4],'EdgeColor','none','FaceAlpha',.15);
 
 end

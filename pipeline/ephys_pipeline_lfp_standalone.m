@@ -17,15 +17,23 @@ fprintf('%-10d%-10d%-10d%-10s%-10d%-10d%-10s%-10d\n\n\n',...
 disp('Computing LFP spectrograms and rasters...');
 disp(['Loading data from ' PROCDIR]);
 
+if ~exist(fullfile(PROCDIR,'histogram.mat'),'file')
+	HISTOGRAM=[];
+end
+
 try
 	load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS');
-	load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
+	if exist(fullfile(PROCDIR,'histogram.mat'),'file')
+		load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
+	end
 catch
 	try
 		disp('Pausing for 60 seconds and will retry');
 		pause(60);
 		load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS');
-		load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
+		if exist(fullfile(PROCDIR,'histogram.mat'),'file')
+			load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
+		end
 	catch
 
 		disp('Could not properly load files, bailing!');
@@ -52,7 +60,20 @@ disp('Computing spectrograms...');
 
 samplemin=parameters.lfp_n/2+(parameters.lfp_minhops*(parameters.lfp_n-parameters.lfp_overlap));
 
-if samples>samplemin
+
+disp('Computing LFP amplitudes...');
+
+for i=1:length(parameters.freq_range)
+	ephys_visual_lfp_amp(EPHYS_DATA,HISTOGRAM,CHANNELS,...
+		'freq_range',parameters.freq_range{i},'savedir',PROCDIR,'fs',parameters.fs,'proc_fs',parameters.proc_fs);
+end
+
+if exist(fullfile(PROCDIR,'SLEEP_DATA'),'file')
+	disp('Sleep data, skipping spectrograms...');
+	return;
+end
+
+if samples>samplemin & ~exist(fullfile(PROC_DIR,'SLEEP_DATA'),'file')
 
 	if lower(parameters.lfp_method(1))=='c'
 
@@ -73,7 +94,8 @@ if samples>samplemin
 			parameters.lfp_n,'lfp_nfft',parameters.lfp_nfft,'lfp_overlap',...
 			parameters.lfp_overlap,'scale',parameters.lfp_scale,...
 			'lfp_ntapers',parameters.lfp_ntapers,'lfp_w',parameters.lfp_w,...
-			'fs',parameters.fs,'proc_fs',parameters.proc_fs,'padding',parameters.lfp_padding);
+			'fs',parameters.fs,'proc_fs',parameters.proc_fs,'padding',parameters.lfp_padding,...
+			'clipping',parameters.lfp_clipping);
 
 	end
 
@@ -81,9 +103,3 @@ else
 	disp([' Number of samples ' num2str(samples) ' less than samplemin ' num2str(samplemin)]);
 end
 
-disp('Computing LFP amplitudes...');
-
-for i=1:length(parameters.freq_range)
-	ephys_visual_lfp_amp(EPHYS_DATA,HISTOGRAM,CHANNELS,...
-		'freq_range',parameters.freq_range{i},'savedir',PROCDIR,'fs',parameters.fs,'proc_fs',parameters.proc_fs);
-end

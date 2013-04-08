@@ -40,7 +40,7 @@ while true; do
 
 		PROCDIR=( `dirname $DIR`)
 
-		$EXEC_LFP "$PROCDIR" "$CONFIG" >> $1 &	
+		nice -n $NICELVL $EXEC_LFP "$PROCDIR" "$CONFIG" >> $1 &	
 		
 		let ARRAYCOUNT=$COUNTER-1
 

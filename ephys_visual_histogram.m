@@ -46,7 +46,7 @@ savedir=pwd;
 N=1024;
 nfft=1024;
 overlap=1e3;
-
+mic_filtering=500; % highpass for mic trace
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -62,6 +62,8 @@ for i=1:2:nparams
 			nfft=varargin{i+1};
 		case 'overlap'
 			overlap=varargin{i+1};
+		case 'mic_filtering'
+			filtering=varargin{i+1};
 
 	end
 end
@@ -69,6 +71,18 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % compute the contour histogram
+% normalize the mic trace
+
+% 
+
+[nsamples,ntrials]=size(MIC_DATA);
+
+if ~isempty(mic_filtering)
+	[b,a]=butter(2,[mic_filtering/(fs/2)],'high');
+	MIC_DATA=filtfilt(b,a,MIC_DATA);
+end
+
+MIC_DATA=MIC_DATA./repmat(max(abs(MIC_DATA),[],1),[nsamples 1]);
 
 [HISTOGRAM.rmask HISTOGRAM.imask HISTOGRAM.f HISTOGRAM.t]=contour_histogram(MIC_DATA,'fs',fs,...
 	'tscale',tscale,'nfft',nfft,'n',N,'overlap',overlap);

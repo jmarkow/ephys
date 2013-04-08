@@ -21,6 +21,7 @@ noise_p2p=[];
 y_res=200;
 spike_fs=50e3;
 note=[];
+channelboundary=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -40,6 +41,8 @@ for i=1:2:nparams
 			isi_method=varargin{i+1};
 		case 'note'
 			note=varargin{i+1};
+		case 'channelboundary'
+			channelboundary=varargin{i+1};
 	end
 end
 
@@ -88,7 +91,13 @@ end
 
 subplot(3,1,1);
 plot(timevec,SPIKEWINDOWS,'m-');
-ylabel('Voltage (microVolts)','FontName','Helvetica','FontSize',13);
+ylimits=ylim();
+if ~isempty(channelboundary)
+	hold on;
+	plot([timevec(channelboundary);timevec(channelboundary)],...
+		[ylimits(1).*ones(size(channelboundary));ylimits(2).*ones(size(channelboundary))],'b--','linewidth',1.5);
+end
+ylabel('Voltage (µVolts)','FontName','Helvetica','FontSize',13);
 set(gca,'layer','top');
 box off
 axis tight;
@@ -120,6 +129,13 @@ end
 subplot(3,1,2);
 density=hist3(coordmat,'Edges',edges);
 imagesc(timevec(1:end-1),edges{2},density(1:length(timevec)-1,:)');
+ylimits=ylim();
+if ~isempty(channelboundary)
+	hold on;
+	plot([timevec(channelboundary);timevec(channelboundary)],...
+		[ylimits(1).*ones(size(channelboundary));ylimits(2).*ones(size(channelboundary))],'y--','linewidth',1.5);
+end
+
 set(gca,'YTick',yticks);
 colormap(hot);
 

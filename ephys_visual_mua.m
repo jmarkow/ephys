@@ -188,9 +188,20 @@ for i=1:length(channels)
 	PLOTMUA.trials=PLOTMUA.trials(goodtrials);
 	PLOTMUA.image=PLOTMUA.image(goodtrials,:,i);
 
-	multi_unit_raster(HISTOGRAM,PLOTMUA,'fs',fs,...
-		'fig_num',raster_fig,'fig_title',{[figtitle];[ 'Channel ' num2str(channels(i))]},...
-		'min_f',min_f,'max_f',max_f,'raster_colors',mua_colors,'hist_colors',hist_colors);
+	if ~isempty(HISTOGRAM)
+		multi_unit_raster(HISTOGRAM,PLOTMUA,'fs',fs,...
+			'fig_num',raster_fig,'fig_title',{[figtitle];[ 'Channel ' num2str(channels(i))]},...
+			'min_f',min_f,'max_f',max_f,'raster_colors',mua_colors,'hist_colors',hist_colors);
+	else
+		imagesc(PLOTMUA.t,PLOTMUA.trials,PLOTMUA.image);
+		colormap(mua_colors);
+		axis xy;
+		xlabel('Time (in s)','FontSize',13,'FontName','Helvetica');
+		ylabel('Trial','FontSize',13,'FontName','Helvetica');
+		box off
+		set(gca,'tickdir','out','linewidth',1.5,'ticklength',[.025 .025],...
+			'FontSize',11,'FontName','Helvetica');
+	end
 
 	set(raster_fig,'PaperPositionMode','auto')
 
@@ -201,6 +212,6 @@ for i=1:length(channels)
 
 end
 
-save(fullfile(savedir,'mua.mat'),'MUA','freq_range','channels','CHANNELS','reject','goodtrials');
+save(fullfile(savedir,'mua.mat'),'MUA','freq_range','channels','CHANNELS');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

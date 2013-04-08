@@ -47,7 +47,7 @@ filtering='y'; % if defined then filtering filter the traces
 savedir=pwd;
 freq_range=[800]; % frequency range for filtering
 filt_type='high';
-snr_threshold=1.1;
+snr_threshold=8;
 exclude_channels=[];
 channels=CHANNELS;
 
@@ -135,7 +135,7 @@ for i=1:length(channels)
 			adjust=adjust+((window*2)+1);
 		end
 
-		noise_est=6*std(curr_data);
+		noise_est=std(curr_data);
 		peaktopeak=max(spikes_pp.abs.windows,[],2)-min(spikes_pp.abs.windows,[],2);
 		fullsnr=peaktopeak(:)./noise_est;
 
