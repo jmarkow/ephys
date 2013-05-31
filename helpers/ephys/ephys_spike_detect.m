@@ -153,6 +153,8 @@ end
 
 SPIKES.times=zeros(1,nspikes);
 SPIKES.windows=zeros(frame_length,nspikes,traces);
+SPIKES.storewindows=[];
+SPIKES.storetimes=[];
 
 counter=1;
 

@@ -68,7 +68,7 @@ for BIRD in ${BIRDLIST[@]}; do
 
 		# list any potential single units
 
-		SUALIST=( `find $EXTRACTDIR/mat -type f -name "sua_channel*" | sed -n 's/^.*channels \([0-9][0-9]*\).*$/\1/p' 2>/dev/null ` )
+		SUALIST=( `find $EXTRACTDIR/mat -type f -name "candidate_unit*" | sed -n 's/^.*ch\([0-9][0-9]*\).*$/\1/p' 2>/dev/null ` )
 
 		printf "%s" "Units (" >> $OUTPUT
 		

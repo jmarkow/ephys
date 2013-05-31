@@ -17,6 +17,8 @@ filt_name='butter'; % default to Butterworth, use a Kaiser filter if we need
 		    % sharp cutoffs, per Logothetis et al. 2001
 ripple=1; % Kaiser params, ripple in dB
 attenuation=.01; % Kaiser params, attenuation (not dB)
+decomp_level=6;
+wavelet_denoise=0;
 
 % data type specific defaults
 
@@ -105,6 +107,10 @@ for i=1:2:nparams
 			medfilt=varargin{i+1};
 		case 'medfilt_scale'
 			medfilt_scale=varargin{i+1};
+		case 'decomp_level'
+			decomp_level=varargin{i+1};
+		case 'wavelet_denoise'
+			wavelet_denoise=varargin{i+1};
 	end
 end
 
@@ -135,6 +141,41 @@ end
 
 % usually only median filter the signal if we're computing fields, a timescale of ~1.5 ms 
 % seems to do a good job of removing spikes
+
+if wavelet_denoise
+
+	disp('Wavelet denoising');
+
+	correction=.8*sqrt(2*log(nsamples))
+
+	% minimax threshold is a bit more conservative
+	% multiply by scalar <1 if noise reduction is too severe (altered spike waveforms)
+
+	%correction=1*(.3936+.1829*log2(nsamples));
+	
+	% could fold the filtering into this step as well
+
+	for i=1:nchannels
+		for j=1:ntrials
+			tmp=EPHYS_DATA(:,j,i);
+			[c,l]=wavedec(tmp,6,'sym7');
+
+			% estimate sigma from cd_1
+			
+			lidxs=[0;cumsum(l(1:end-1))];
+
+			for k=2:length(l)-1
+				sigma=median(abs((c(lidxs(k):lidxs(k+1)))))/.6745;
+				idxs=find(abs(c(lidxs(k):lidxs(k+1)))<=correction*sigma);
+				c(idxs+lidxs(k)-1)=0;
+			end
+
+			EPHYS_DATA(:,j,i)=waverec(c,l,'sym7');
+		end
+
+	end
+
+end
 
 if medfilt	
 
@@ -195,7 +236,18 @@ if filtering
 			for i=1:nchannels
 				EPHYS_DATA(:,:,i)=filtfilt(b,a,squeeze(EPHYS_DATA(:,:,i)));
 			end
-		
+	
+		case 'e'
+			disp('Elliptic filter');
+
+
+			[b,a]=ellip(2,.1,40,[freq_range]/(fs/2));
+
+
+			for i=1:nchannels
+				EPHYS_DATA(:,:,i)=filtfilt(b,a,squeeze(EPHYS_DATA(:,:,i)));
+			end
+
 		case 'k'
 		
 
@@ -226,7 +278,31 @@ if filtering
 			for i=1:nchannels
 				EPHYS_DATA(:,:,i)=filtfilt(b,1,squeeze(EPHYS_DATA(:,:,i)));
 			end
-		
+	
+		case 'w'
+
+			disp('Wavelet filter');
+			disp(['Decomposition level ' num2str(decomp_level)]);
+			disp(['Frequency cutoff ' num2str(fs/(2^decomp_level))]);
+
+			for i=1:nchannels
+				
+				for j=1:ntrials
+					
+					[c,l]=wavedec(EPHYS_DATA(:,j,i),decomp_level,'sym7');
+
+					% set the approximation coefficients to zero
+
+					c(1:l(1))=0;
+
+					% reconstruct
+
+					EPHYS_DATA(:,j,i)=waverec(c,l,'sym7');
+				end
+			end
+
+
+
 		otherwise
 		
 			error('Did not understand filter name (must be kaiser or butter)');
@@ -264,4 +340,8 @@ if smoothdata
 	end
 
 end
+
+
+
+
 

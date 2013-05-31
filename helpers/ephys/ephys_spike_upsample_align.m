@@ -74,8 +74,8 @@ traces=size(SPIKES.windows,3);
 NEWSPIKES.times=zeros(1,nspikes);
 NEWSPIKES.windows=zeros(spike_window_length,nspikes,traces);
 
-if isfield(SPIKES,'oldwindows')
-	NEWSPIKES.oldwindows=zeros(size(NEWSPIKES.windows));
+if isfield(SPIKES,'storewindows')
+	NEWSPIKES.storewindows=zeros(size(NEWSPIKES.windows));
 end
 
 NEWSPIKES.window_time=[-spike_window(1):spike_window(2)]'./interpolate_fs;
@@ -88,6 +88,11 @@ counter=1;
 
 jitter=jitter*expansion;
 
+if isfield(SPIKES,'storewindows')
+	NEWSPIKES.storewindows=zeros(size(NEWSPIKES.windows));
+	NEWSPIKES.storetimes=zeros(size(NEWSPIKES.times));
+end
+
 for i=1:nspikes
 
 	tmp_window=SPIKES.windows(:,i,:);
@@ -95,18 +100,20 @@ for i=1:nspikes
 	[samples,channels]=size(tmp_window);
 
 	% spline interpolation
-
+	
 	for j=1:channels
 		interp_window(:,j)=spline(timepoints,tmp_window(:,j),newtimepoints);	
 	end
 
-	if isfield(SPIKES,'oldwindows')
+	
+	if isfield(SPIKES,'storewindows')
 		for j=1:channels
-			interp_window2(:,j)=spline(timepoints,SPIKES.oldwindows(:,i,j),newtimepoints);
+			interp_window2(:,j)=spline(timepoints,SPIKES.storewindows(:,i,j),newtimepoints);
 		end
 	else
 		interp_window2=[];
 	end
+
 
 	% align by com (center of mass), min or max
 	% first realign to min or max, whichever is more reliable
@@ -217,21 +224,116 @@ for i=1:nspikes
 	NEWSPIKES.times(counter)=new_time;
 	NEWSPIKES.windows(1:spike_window_length,counter,1:traces)=new_spikewindow;
 
-	if isfield(SPIKES,'oldwindows') 
+	if isfield(SPIKES,'storewindows') 
+			
+		switch lower(align)
+
+			case 'com'
+
+				% the negative-going peak has been the most reliable, use it to compute COM
+				% per sahani '99, try to capture the majority of the peak
+
+				% grab the peak after the threshold crossings	
+				% first get contiguous region
+
+				[val loc]=min(interp_window2(:,1));
+
+				% we can make these for loops go away, but honestly we're not taking a huge
+				% performance hit ATM...
+
+				% walk to and fro to the threshold, use this for the peak CoM measurement
+
+				for j=loc:-1:1
+					if interp_window2(j,1)>-THRESH
+						break;
+					end
+				end
+
+				left_edge=k;
+
+				for j=loc:length(interp_window2)
+					if interp_window2(j,1)>-THRESH
+						break;
+					end
+				end
+
+				right_edge=k;
+
+				peakind=left_edge:right_edge;
+
+				masked_spike=THRESH-interp_window2(:,1);
+
+				idx=[1:length(masked_spike)]';
+
+				mask=zeros(size(idx));
+				mask(peakind)=1;
+
+				masked_spike=masked_spike.*mask;
+
+				% toss out any points where alignment>jitter, assume to be outliers
+
+				com=sum(idx.*masked_spike)/sum(masked_spike);
+
+				if isnan(com) || isempty(com)
+					continue;
+				end
+
+				alignpoint=round(com);
+
+				% if the alignpoint is too far from the center of the frame, dump the spike (likely outlier)
+
+				if abs(alignpoint-frame_center)>jitter
+					continue;
+				end
+
+
+			case 'min'
+
+				% just take the min
+
+				[val loc]=min(interp_window2(:,1));
+
+				alignpoint=loc;
+
+				%abs(alignpoint-frame_center)
+
+				if abs(alignpoint-frame_center)>jitter
+					continue;
+				end
+
+			case 'max'
+
+				% just take the max
+
+				[val loc]=max(interp_window2(:,1));
+
+				alignpoint=loc;
+
+				if abs(alignpoint-frame_center)>jitter
+					continue;
+				end
+
+
+		end
+
 		new_spikewindow2=interp_window2(alignpoint-spike_window(1):alignpoint+spike_window(2),:);
-		NEWSPIKES.oldwindows(1:spike_window_length,counter,1:traces)=new_spikewindow2;
+		NEWSPIKES.storewindows(1:spike_window_length,counter,1:traces)=new_spikewindow2;
+
+		new_time=peak_time-frame(1)+(round(newframepoints(alignpoint))-1);
+		NEWSPIKES.storetimes(counter)=new_time;
+
 	end
-
+	
 	counter=counter+1;
-
 
 end
 
 NEWSPIKES.times(counter:nspikes)=[];
 NEWSPIKES.windows(:,counter:nspikes,:)=[];
 
-if isfield(NEWSPIKES,'oldwindows')
-	NEWSPIKES.oldwindows(:,counter:nspikes,:)=[];
+if isfield(NEWSPIKES,'storewindows')
+	NEWSPIKES.storewindows(:,counter:nspikes,:)=[];
+	NEWSPIKES.storetimes(counter:nspikes)=[];
 end
 
 counter=2;
@@ -240,8 +342,9 @@ while counter<=length(NEWSPIKES.times)
 	if dtime<censor*fs
 		NEWSPIKES.times(counter)=[];
 		NEWSPIKES.windows(:,counter,:)=[];
-		if isfield(NEWSPIKES,'oldwindows')
-			NEWSPIKES.oldwindows(:,counter,:)=[];
+		if isfield(NEWSPIKES,'storewindows')
+			NEWSPIKES.storetimes(counter)=[];
+			NEWSPIKES.storewindows(:,counter,:)=[];
 		end
 	else
 		counter=counter+1;

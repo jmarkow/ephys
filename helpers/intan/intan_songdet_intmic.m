@@ -360,13 +360,14 @@ for i=1:length(proc_files)
 		ephys_channels(j)=find(amps==ephys_labels(j));
 	end
 
+	conditioned_data=data(:,mic_channel);
 	if ~isempty(filtering)
-		conditioned_data=filtfilt(b,a,data(:,mic_channel));
+		norm_data=filtfilt(b,a,conditioned_data);
 	else
-		conditioned_data=data(:,mic_channel);
+		norm_data=conditioned_data;
 	end
 
-	norm_data=conditioned_data./max(abs(conditioned_data));
+	norm_data=norm_data./max(abs(norm_data));
 
 	% short circuit song processing if current file is in the sleep interval
 
@@ -558,20 +559,20 @@ for i=1:length(proc_files)
 
 		% normalize audio to write out to wav file
 
-		min_audio=min(audio_extraction(:));
-		max_audio=max(audio_extraction(:));
+		min_audio=min(norm_extraction(:));
+		max_audio=max(norm_extraction(:));
 
 		if min_audio + max_audio < 0
-			audio_extraction=audio_extraction./(-min_audio);
+			norm_extraction=norm_extraction./(-min_audio);
 		else
-			audio_extraction=audio_extraction./(max_audio*(1+1e-3));
+			norm_extraction=norm_extraction./(max_audio*(1+1e-3));
 		end
 
-		wavwrite(audio_extraction,intan_fs,fullfile(wav_dir,[ save_name '.wav']));
+		wavwrite(norm_extraction,intan_fs,fullfile(wav_dir,[ save_name '.wav']));
 
 	end
 
-	reformatted_im=im_reformat(sonogram_im,10*(ceil(audio_pad/5)));
+	reformatted_im=im_reformat(sonogram_im,(ceil((length(audio_extraction)/intan_fs)/5)));
 	imwrite(uint8(reformatted_im),colors,sonogram_filename,'gif');
 
 end

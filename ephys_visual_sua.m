@@ -125,6 +125,7 @@ figtitle='';
 freq_range=[800 11e3]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
 filt_type='bandpass'; % high,low or bandpass
 filt_order=6;
+filt_name='b';
 spikesort=1; % do we want to sort?
 auto_clust=1; % 0 for manual cluster cutting (GUI), 1 for automated clustering
 tetrode_channels=[];
@@ -138,6 +139,7 @@ channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
 car_trim=40;
+decomp_level=6;
 
 savename=''; % add if doing multiple manual sorts, will append a name to the filename
 isi_cutoff=.01; % percentage of ISI values <.001
@@ -156,6 +158,8 @@ spikeworkers=1;
 spikecut=1;
 modelselection='icl';
 maxnoisetraces=1e6;
+wavelet_denoise=0;
+noisewhiten=1;
 
 % remove eps generation, too slow here...
 
@@ -185,6 +189,10 @@ for i=1:2:nparams
 			figtitle=varargin{i+1};
 		case 'filt_type'
 			filt_type=varargin{i+1};
+		case 'filt_name'
+			filt_name=varargin{i+1};
+		case 'decomp_level'
+			decomp_level=varargin{i+1};
 		case 'freq_range'
 			freq_range=varargin{i+1};
 		case 'spikesort'
@@ -247,6 +255,12 @@ for i=1:2:nparams
 			spikeworkers=varargin{i+1};
 		case 'modelselection'
 			modelselection=varargin{i+1};
+		case 'wavelet_denoise'
+			wavelet_denoise=varargin{i+1};
+		case 'noisewhiten'
+			noisewhiten=varargin{i+1};
+		case 'decomp_level'
+			decomp_level=varargin{i+1};
 	end
 end
 
@@ -269,11 +283,14 @@ TIME=[1:samples]./fs; % time vector for plotting
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
 proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
-proc_data=ephys_condition_signal(proc_data,'s','freq_range',freq_range,'filt_type',filt_type,'filt_order',filt_order);
+proc_data=ephys_condition_signal(proc_data,'s','freq_range',...
+	freq_range,'filt_type',filt_type,'filt_order',filt_order,'filt_name',filt_name,...
+	'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
 
 if ~isempty(tetrode_channels)
 	tetrode_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,tetrode_channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
-	tetrode_data=ephys_condition_signal(tetrode_data,'s','freq_range',freq_range,'filt_type',filt_type,'filt_order',filt_order);
+	tetrode_data=ephys_condition_signal(tetrode_data,'s','freq_range',freq_range,'filt_type',filt_type,'filt_order',...
+		filt_order,'filt_name',filt_name,'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
 else
 	tetrode_data=[];
 end
@@ -317,7 +334,7 @@ for j=1:ntrials
 	%spikeless_data=[];
 
 	spikethreshold=sigma_t*median(abs(sort_data(:,j,1))/.6745);
-
+	%spikethreshold=10;
 	% get the threshold crossings (based on first channel)
 
 	spikes(j)=ephys_spike_detect(squeeze(sort_data(:,j,:)),spikethreshold,'fs',fs,'visualize','n','align',align,...
@@ -398,7 +415,8 @@ if spikesort
 			ephys_spike_cluster_auto(spikes,spikeless,...
 			'fs',fs,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
 			'maxnoisetraces',maxnoisetraces,'cluststart',cluststart,'pcs',pcs,...
-			'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',modelselection,'align',align);
+			'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',...
+			modelselection,'align',align,'noisewhiten',noisewhiten);
 	else
 		error('GUI sorting non-functional ATM, stay tuned...');
 		[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats]=...

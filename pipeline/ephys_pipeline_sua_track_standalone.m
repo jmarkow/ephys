@@ -132,9 +132,12 @@ for i=1:length(template_list)
 
 			% if the spike waveforms do not have equal length bail
 
+		
 			disp('Waveforms not of equal length, cannot process...');
-			print_done_signal(filedir,DONEFILE);
-			return;
+			C=0;
+			break;
+			%print_done_signal(filedir,DONEFILE);
+			%return;
 
 		end
 

@@ -1,4 +1,4 @@
-function [SPIKECOUNT LFPWINS spikebins]=ephys_su_lfp_coherence_peaktrigger(LFPDATA,SPIKETIMES,varargin)
+function [SPIKECOUNT LFPWINS spikebins]=ephys_su_lfp_coherence_peaktrigger(LFPDATA,TIMES,TRIALS,varargin)
 %computes IFR triggered LFPs
 %
 %	[LFPWINS_PEAK,LFPWINS_TROUGH,LFPWINS_RAND]=ephys_su_lfp_coherence_trigger(LFPCHANNEL,SUCHANNEL,SUCLUSTER,varargin)
@@ -179,7 +179,7 @@ for i=1:ntrials
 
 	currlfp=zscore(lfp_data(i,:));
 	difflfp=diff(currlfp);
-	currtimes=round(SPIKETIMES{i}*proc_fs);
+	currtimes=round((TIMES(TRIALS==i)/ifr_fs)*proc_fs)
 
 	% only include burst spikes
 

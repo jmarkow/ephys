@@ -37,6 +37,7 @@ use_spiketime=0; % use spiketime as a clustering feature (usually helps if SNR i
 nparams=length(varargin);
 align='min';
 regularize=.01;
+noisewhiten=1;
 
 %outlier_cutoff=.05; % posterior probability cutoff for outliers (.6-.8 work well) [0-1, high=more aggresive]
 
@@ -78,12 +79,20 @@ for i=1:2:nparams
 			modelselection=varargin{i+1};
 		case 'align'
 			align=varargin{i+1};
+		case 'noisewhiten'
+			noisewhiten=varargin{i+1};
 	end
 end
 
 % TODO: chi2 test for dealing with outliers (simply take residuals and use chi2 CDF)
 % need to deal with cell input (multiple trials), convert input to big matrix
 % and spit out trial number
+
+downfact=interpolate_fs/fs;
+
+if mod(downfact,1)~=0
+	error('Downsample rate must be an integer');
+end
 
 spikewindows=[];
 spiketimes=[];
@@ -94,80 +103,67 @@ spike_data=[];
 % use ifr as a clustering feature
 
 % string the channels together for clustering
-
-disp('Whitening spikes');
-
-NEWSPIKES=SPIKES;
-
 % get the covariance matrices for whitening
 
 [nsamples,ntrials,nchannels]=size(SPIKES(1).windows);
-for i=1:length(NOISEDATA)
 
-	noisetrials=floor(length(NOISEDATA{i})/nsamples);
+if noisewhiten
+	for i=1:length(NOISEDATA)
 
-	if noisetrials>maxnoisetraces
-		noisetrials=maxnoisetraces;
+		noisetrials=floor(length(NOISEDATA{i})/nsamples);
+
+		if noisetrials>maxnoisetraces
+			noisetrials=maxnoisetraces;
+		end
+
+		disp(['Noise trials ' num2str(noisetrials)]);
+
+		noisematrix=zeros(noisetrials,nsamples);
+
+		counter=0;
+
+		for j=1:noisetrials
+			noisematrix(j,:)=NOISEDATA{i}(counter+1:counter+nsamples);
+			counter=counter+nsamples;
+		end
+
+		noisematrix=noisematrix+regularize.*randn(size(noisematrix));
+		noisecov=cov(noisematrix);
+
+		R=chol(noisecov);
+		invR{i}=inv(R);
 	end
-
-	disp(['Noise trials ' num2str(noisetrials)]);
-
-	noisematrix=zeros(noisetrials,nsamples);
-
-	counter=0;
-	for j=1:noisetrials
-		noisematrix(j,:)=NOISEDATA{i}(counter+1:counter+nsamples);
-		counter=counter+nsamples;
-	end
-
-	noisematrix=noisematrix+regularize.*randn(size(noisematrix));
-	noisecov=cov(noisematrix);
-
-	R=chol(noisecov);
-	invR{i}=inv(R);
 end
 
-for j=1:length(NEWSPIKES)
+for j=1:length(SPIKES)
 
-	[samples,trials,nchannels]=size(NEWSPIKES(j).windows);
+	[samples,trials,nchannels]=size(SPIKES(j).windows);
 
-	NEWSPIKES(j).oldwindows=NEWSPIKES(j).windows;
-	for k=1:nchannels
-		NEWSPIKES(j).windows(:,:,k)=[NEWSPIKES(j).windows(:,:,k)'*invR{k}]';
+	% store unwhitened times and use the unwhitened spikes for spike times
+
+	SPIKES(j).storewindows=SPIKES(j).windows;
+
+	% comment out the next three lines to not noise-whiten
+
+	if noisewhiten
+		for k=1:nchannels
+			SPIKES(j).windows(:,:,k)=[SPIKES(j).windows(:,:,k)'*invR{k}]';
+		end
 	end
 
+	% upsample and align, then downsample and whiten!!!
 
-	%figure(1);
-	%for k=1:size(NEWSPIKES(j).windows,3)
+	alignspikes=ephys_spike_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align',align);	
+	CLUSTSPIKES(j)=alignspikes;
 
-	%	subplot(size(NEWSPIKES(j).windows,3),1,k);plot(NEWSPIKES(j).windows(:,:,k));
-	%	hold on;
+	% cluster with the decimated spikes
 
-	%end
-
-	%pause();
-
-	% upsample and realign
-
-	UPNEWSPIKES(j)=ephys_spike_upsample_align(NEWSPIKES(j),'interpolate_fs',interpolate_fs,'align',align);
-
-	%figure(2);
-	%for k=1:size(UPNEWSPIKES(j).windows,3)
-
-	%	subplot(size(UPNEWSPIKES(j).windows,3),1,k);plot(UPNEWSPIKES(j).windows(:,:,k));
-	%	hold on;
-
-	%end
-
-	%pause();
-
-
-	[samples,trials,nchannels]=size(UPNEWSPIKES(j).windows);
+	[~,trials,nchannels]=size(CLUSTSPIKES(j).windows);
 
 	tmp=[];
-
+	
 	for k=1:nchannels
-		tmp=[tmp;UPNEWSPIKES(j).windows(:,:,k)];
+		tmp=[tmp;CLUSTSPIKES(j).windows(:,:,k)];
 	end
 
 	clusterspikewindowscell{j}=tmp;
@@ -175,7 +171,7 @@ for j=1:length(NEWSPIKES)
 	tmp=[];
 
 	for k=1:nchannels
-		tmp=[tmp;UPNEWSPIKES(j).oldwindows(:,:,k)];
+		tmp=[tmp;CLUSTSPIKES(j).storewindows(:,:,k)];
 	end
 
 	storespikewindowscell{j}=tmp;
@@ -183,12 +179,14 @@ for j=1:length(NEWSPIKES)
 
 end
 
+[nsamples,ntrials,nchannels]=size(CLUSTSPIKES(1).windows);
+
 clusterspikewindows=cat(2,clusterspikewindowscell{:});
 storespikewindows=cat(2,storespikewindowscell{:});
 trialnum=cat(1,trialscell{:});
-spiketimes=cat(2,UPNEWSPIKES(:).times);
+spiketimes=cat(2,CLUSTSPIKES(:).storetimes);
 
-clearvars NEWSPIKES SPIKES UPNEWSPIKES clusterspikewindowscell storespikewindowscell;
+clearvars SPIKES CLUSTSPIKES clusterspikewindowscell storespikewindowscell;
 
 [idx spikedata MODEL]=ephys_spike_gmmsort(clusterspikewindows,...
 	'proc_fs',proc_fs,'fs',fs,'interpolated_fs',interpolated_fs,...
@@ -203,6 +201,7 @@ nclust=length(clusters);
 % number of spikes per cluster is simply the number of labels
 
 nspikes=[];
+
 for i=1:nclust
 	nspikes(i)=sum(idx==clusters(i));
 end
@@ -216,7 +215,6 @@ LABELS=zeros(size(idx));
 for i=1:length(clusters)
 	LABELS(idx==clusters(loc(i)))=i;	
 end
-
 
 %TRIALS=trialnum;
 

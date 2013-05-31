@@ -83,7 +83,7 @@ while true; do
 
 	done
 
-	DIRLIST=( `find $ROOTDIR -type d -name "sleep" -ctime +4h -mindepth 3 -maxdepth 4` )
+	DIRLIST=( `find $ROOTDIR -type d -name "sleep" -ctime +2h -mindepth 3 -maxdepth 4` )
 
 	let COUNTER=1
 

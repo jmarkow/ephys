@@ -67,7 +67,7 @@ end
 nparams=length(varargin);
 filedir=pwd;
 savedir=pwd;
-lfp_winextract=[.2 .2]; % msec before and after peak or trough to grab LFP
+lfp_winextract=[.3 .3]; % msec before and after peak or trough to grab LFP
 peakedges=[50 50]; % take the leading edge of the peak
 troughedges=[50 50];
 fig_title='noname';
@@ -211,6 +211,10 @@ zerocount=0;
 poscount=0;
 randcount=0;
 
+% random shift, constant across trials for 
+
+randshift=randi(ifrsamples,1,1);
+
 for i=1:ntrials
 
 	if ~isempty(smoothing)
@@ -223,7 +227,11 @@ for i=1:ntrials
 
 	zerocross{i}=find(currifr(indx)>troughedges(1) & currifr(indx+1)<troughedges(2))+1; 
 	poscross{i}=find(currifr(indx)<peakedges(1) & currifr(indx+1)>peakedges(2))+1;
-	randcross{i}=randsample(1:length(currifr),length(poscross{i}));
+	
+	% wrap the random shift if necessary
+
+	randcross{i}=mod(poscross{i}+randshift,ifrsamples);
+	%randcross{i}=randsample(1:length(currifr),length(poscross{i}));
 
 	ncross(i)=length(zerocross);
 
@@ -247,7 +255,6 @@ for i=1:ntrials
 	% grab LFP windows around the peaks
 
 	for j=1:length(poscross{i})
-
 
 		% take all contiguous bursting points
 
@@ -283,11 +290,10 @@ for i=1:ntrials
 		stopidx=lfpcenter+lfp_winextract(2);
 
 		if startidx>0 & stopidx<length(currlfp)
-			poscount=poscount+1;
+			randcount=randcount+1;
 		end
 
 	end
-
 
 	% show the results if debugging
 
@@ -369,8 +375,8 @@ for i=1:ntrials
 		stopidx=lfpcenter+lfp_winextract(2);
 
 		if startidx>0 & stopidx<length(currlfp)
-			LFPWINS_RAND.waveforms(1:winlength,poscount)=currlfp(startidx:stopidx)';
-			poscount=poscount+1;
+			LFPWINS_RAND.waveforms(1:winlength,randcount)=currlfp(startidx:stopidx)';
+			randcount=randcount+1;
 		end
 
 	end

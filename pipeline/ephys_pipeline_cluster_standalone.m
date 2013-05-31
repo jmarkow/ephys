@@ -97,24 +97,46 @@ end
 fid=fopen(fullfile(savedir,'.songextraction'),'w');
 fclose(fid);
 
+% compute in a sliding 1 sec window perhaps...
+
 for i=1:length(features)
 	
 	score_temp{i}=[];
+	energy=[];
 
 	for j=1:featureslength-templength
 		score_temp{i}=[score_temp{i} sum(sum(abs(features{i}(:,j:j+templength)-template_features{i})))];
+		energy=[energy mean(mean(features{4}(:,j:j+templength)))];
 	end
 
-	score_temp{i}=score_temp{i}-mean(score_temp{i});
+	% taking only points where we have significant energy, otherwise long bouts of silence
+	% will screw up our normalization
 
-	% this correction factor is meant to threshold out large segments of silence 
-	% (we want the scores scaled by their variance across different sounds ideally)
+	% assume that silence is the min point
+	
+	silent=min(energy)
+	
+	% where is energy greater than the min + 1 STD (very conservative)
 
-	% also, it has been determined EMPIRICALLY, could do with some battle-testing
+	idxs=energy>(silent+.5*std(energy));
 
-	score_temp{i}=score_temp{i}/std(score_temp{i}(abs(score_temp{i})>(templength*2)+300));
+	%find(idxs)
+	
+	score_temp{i}=score_temp{i}-mean(score_temp{i}(idxs));
+	
+	%score_temp{i}=score_temp{i}-median(score_temp{i});
+
+	% divide IQR by 1<x<2 to scale how conservative the clustering is, increasing
+	% x makes the clustering LESS conservative, 1.349-->SD
+
+	%scale=iqr(score_temp{i}(idxs));
+	scale=std(score_temp{i}(idxs));
+	
+	%scale=iqr(score_temp{i}):
+	score_temp{i}=score_temp{i}/scale;
 	score_temp{i}(score_temp{i}>0)=0;
 	score_temp{i}=abs(score_temp{i});
+
 
 end
 
@@ -123,6 +145,7 @@ product_score=score_temp{1};
 
 for i=2:attributes, product_score=product_score.*score_temp{i}; end
 
+%figure();plot(product_score)
 % need to tag the file as processed at the end of this fiasco
 
 if length(product_score)<3
@@ -172,7 +195,7 @@ data=load(rawfile,'mic_data','ephys_data','channels','fs');
 
 % write images to 'gif', wav to 'wav' and 'mat' to mat again
 
-[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(data.mic_data,data.fs,'n',500,'overlap',450,'low',3.5);
+[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(data.mic_data,data.fs,'n',500,'overlap',450,'low',2.5);
 startidx=max([find(sonogram_f<=disp_minfs)]);
 stopidx=min([find(sonogram_f>=disp_maxfs)]);
 sonogram_im=sonogram_im(startidx:stopidx,:);
@@ -226,7 +249,7 @@ for i=1:length(hits)
 
 		sonogram_im(1:10,ceil(startpoint/im_son_to_vec):ceil(endpoint/im_son_to_vec))=63;
 
-		[chunk_sonogram_im chunk_sonogram_f chunk_sonogram_t]=pretty_sonogram(mic_data,fs,'low',3.5);
+		[chunk_sonogram_im chunk_sonogram_f chunk_sonogram_t]=pretty_sonogram(mic_data,fs,'low',2.5);
 
 		startidx=max([find(chunk_sonogram_f<=disp_minfs)]);
 		stopidx=min([find(chunk_sonogram_f>=disp_maxfs)]);

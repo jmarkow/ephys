@@ -24,7 +24,7 @@ garbage=1;
 workers=1;
 modelselection='icl';
 smem=1;
-outliercut=.2; % exclude outliers from robpca
+outliercut=.9; % exclude outliers from robpca
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -107,9 +107,9 @@ newmodel=tmpnewmodel{loc(1)};
 newscore=-SPIKE_DATA'*v;
 rankcut=pcs;
 
-% these comprise the outliers before the projection...
+% these comprise the outliers before the projection... set to >1 to include all (default for now)
 
-outlierpoints=newmodel.R(:,2)>=outliercut;
+outlierpoints=newmodel.R(:,2)>=2;
 
 disp(['Robust PCA outliers:  ' num2str(sum(outlierpoints))]);
 

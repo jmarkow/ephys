@@ -1,4 +1,4 @@
-function [COH,T,F,SPECT1,SPECT2,STATS,FORCINGFUNCTION]=ephys_tfcoherence(SIGNAL1,SIGNAL2,varargin)
+function [COH,T,F,SPECT1,SPECT2,STATS]=ephys_tfcoherence(SIGNAL1,SIGNAL2,varargin)
 %Slepian-based time-frequency coherence
 %
 %
@@ -64,7 +64,7 @@ if isempty(ntapers)
     ntapers=2*(w)-1;
 end
 
-STATS.dof=2*ntapers*ntrials; % correction added 10/2/12 (forgot 2)
+STATS.dof=2*ntapers*ntrials; % correction added 10/2/12 (forgot 2!)
 [tapers,lambda]=dpss(n,w,ntapers);
 
 if isempty(nfft)
@@ -127,7 +127,6 @@ parfor i=1:ntrials
 	curr1=SIGNAL1(i,:)-mean(SIGNAL1(i,:));
 	curr2=SIGNAL2(i,:)-mean(SIGNAL2(i,:));
 
-	% spectra
 
 	% multi-taper estimate
 	% accumulate across tapers to cut down compt time, then we can use parfor
@@ -165,9 +164,7 @@ parfor i=1:ntrials
 
 end
 
-
 % phase correction
-%sono(1:low_cutoff,:)=0; % high pass filter
 
 SPECT1=spect1_mean;
 SPECT2=spect2_mean;
@@ -178,27 +175,8 @@ COH=cross_spect_mean./sqrt(spect1_mean.*spect2_mean);
 
 % display is user selects to display
 
-disp('Computing forcing function');
+% return p-values
 
-forcing=zeros(rows,columns);
-parfor i=1:ntrials
-	for j=1:ntapers
-		spect=spectrogram(SIGNAL1(i,:),tapers(:,j)',overlap,nfft);
-		forcing=forcing+(spect.*abs(COH))./(ntrials*ntapers);
-	end
-end
-
-absv=abs(forcing);
-preang=angle(forcing);
-
-% phase shift every other line by pi
-
-for jj=1:2:size(preang,1)
-	preang(jj,:) = preang(jj,:) + pi;
-end
-
-preang = mod(preang,2*pi);
-sono = absv.*(cos(preang)+1i*sin(preang));
-
-FORCINGFUNCTION=sum(real(sono));
+abscoh=abs(COH);
+STATS.pcoh=(STATS.dof-2).*abscoh.*(1-abscoh.^2).^(STATS.dof/2-2);
 

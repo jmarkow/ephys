@@ -497,7 +497,7 @@ function template_match(TEMPLATE,TARGET_FILES,SAVEFILE,TEMPLATESIZE)
 %disp('Comparing the target sounds to the template...');
 
 
-parfor i=1:length(TARGET_FILES)
+for i=1:length(TARGET_FILES)
 
 	% load the features of the sound data
 
@@ -520,10 +520,19 @@ parfor i=1:length(TARGET_FILES)
 	temp_mat=[];
 
 	for j=1:length(target)
-		score_temp{j}=[];
+
+		%template=TEMPLATE{j}-median(TEMPLATE{j});
+		%template=template./mad(template);
+
+		%targ=target{j}-median(target{j});
+		%targ=target{j}./mad(target{j});
+
+		template=TEMPLATE{j};
+		targ=target{j};
+		score_temp{j}=zeros(1,targetlength-TEMPLATESIZE);
 
 		for k=1:targetlength-TEMPLATESIZE
-			score_temp{j}=[score_temp{j} sum(sum(abs(target{j}(:,k:k+TEMPLATESIZE)-TEMPLATE{j})))];
+			score_temp{j}(k)=[sum(sum(abs(targ(:,k:k+TEMPLATESIZE)-template)))];
 		end
 
 		score_temp{j}=score_temp{j}-mean(score_temp{j});
@@ -545,6 +554,7 @@ parfor i=1:length(TARGET_FILES)
 	end
 	
 	warning('off','signal:findpeaks:largeMinPeakHeight');
+
 	[pks,locs]=findpeaks(product_score,'MINPEAKHEIGHT',.005);
 	warning('on','signal:findpeaks:largeMinPeakHeight');
 	
