@@ -99,9 +99,9 @@ high=10;
 colors=hot;
 disp_minfs=1;
 disp_maxfs=10e3;
-filtering=[]; % changed to 100 from 700 as a more sensible default, leave empty to filter later
+filtering=300; % changed to 100 from 700 as a more sensible default, leave empty to filter later
 intan_fs=25e3;
-audio_pad=.5; % pad on either side of the extraction
+audio_pad=5; % pad on either side of the extraction
 error_buffer=5; % if we can't load a file, how many days old before deleting
 
 % parameters for folder creation
@@ -281,6 +281,12 @@ for i=1:length(proc_files)
 			mic_trace=mic_pre;
 		end
 
+		if length(tokens)>3
+			ttl_trace=regexpi(tokens{4},'\d+','match');
+		else
+			ttl_trace=[];
+		end
+
 		% fourth is date
 
 		file_datenum=datenum([tokens{4} tokens{5}(1:end-4)],'yymmddHHMMSS');
@@ -358,6 +364,10 @@ for i=1:length(proc_files)
 	ephys_channels=[];
 	for j=1:length(ephys_labels)
 		ephys_channels(j)=find(amps==ephys_labels(j));
+	end
+
+	if ~isempty(ttl_trace)
+		ttl_data=aux(:,ttl_trace);
 	end
 
 	conditioned_data=data(:,mic_channel);
@@ -459,19 +469,39 @@ for i=1:length(proc_files)
 		end
 	end
 
-	% did we detect song?
+	image_dir=fullfile(foldername,image_pre);
+	wav_dir=fullfile(foldername,wav_pre);
+	data_dir=fullfile(foldername,data_pre);
 
-	try
-		[song_bin]=song_det(norm_data,intan_fs,minfs,maxfs,window,...
-			noverlap,songduration,ratio_thresh,song_thresh);
-	catch err
-		disp([err]);
-		disp('Song detection failed, continuing...');
-		fclose('all');
-		continue;
+	image_dir_ttl=fullfile(foldername,[image_pre '_ttl']);
+	wav_dir_ttl=fullfile(foldername,[wav_pre '_ttl']);
+	data_dir_ttl=fullfile(foldername[data_pre '_ttl']);
+
+	if ~exist(image_dir,'dir')
+		mkdir(image_dir);
 	end
 
-	[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(norm_data,intan_fs,'n',500,'overlap',200,'low',3.5);
+	if ~exist(wav_dir,'dir');
+		mkdir(wav_dir);
+	end
+
+	if ~exist(data_dir,'dir');
+		mkdir(data_dir);
+	end
+
+	if ~exist(image_dir_ttl,'dir')
+		mkdir(image_dir_ttl);
+	end
+
+	if ~exist(wav_dir_ttl,'dir');
+		mkdir(wav_dir_ttl);
+	end
+
+	if ~exist(data_dir_ttl,'dir');
+		mkdir(data_dir_ttl);
+	end
+
+	[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(norm_data,intan_fs,'n',500,'overlap',200,'low',1.5);
 
 	startidx=max([find(sonogram_f<=disp_minfs)]);
 
@@ -487,6 +517,97 @@ for i=1:length(proc_files)
 
 	sonogram_im=sonogram_im(startidx:stopidx,:);
 	sonogram_im=flipdim(sonogram_im,1);
+	[f,t]=size(sonogram_im);
+	im_son_to_vec=(length(norm_data)-350)/t;
+
+	% if we have a TTL trace, extract using the TTL
+
+	if ~isempty(ttl_trace)
+
+		%idx=1:length(ttl_data)-1;
+
+		%ttl_pts=find(ttl_data(idx)<.2&ttl_data(idx+1)>.5);
+		ttl_pts=find(ttl_data>.5);
+
+		if ~isempty(ttl_pts)
+
+			ttl_idx=[0 find(diff(ttl_pts)>audio_pad*2*intan_fs) length(ttl_pts)];
+
+			disp(['TTL detected in file:  ' proc_files{i}]);
+
+			for j=1:length(ttl_idx)-1
+
+				startpoint=floor(ttl_pts(ttl_idx(j)+1)-audio_pad*intan_fs);
+				endpoint=ceil(ttl_pts(ttl_idx(j+1))+audio_pad*intan_fs);
+
+				if startpoint<1, startpoint=1; end
+				if endpoint>length(norm_data), endpoint=length(norm_data); end
+
+				sonogram_filename=fullfile(image_dir,[ name '_ttl.gif' ]);
+
+				norm_extraction=norm_data(startpoint:endpoint);
+				audio_extraction=conditioned_data(startpoint:endpoint);
+				ephys_extraction=data(startpoint:endpoint,ephys_channels);
+				ttl_extraction=ttl_data(startpoint:endpoint);
+
+				save_name=[ name '_chunk_' num2str(j) '_ttl' ];
+
+				%if length(audio_extraction)<500
+				%	continue;
+				%end
+
+				sonogram_im(1:10,ceil(startpoint/im_son_to_vec):ceil(endpoint/im_son_to_vec))=63;
+
+				[chunk_sonogram_im chunk_sonogram_f chunk_sonogram_t]=pretty_sonogram(norm_extraction,intan_fs,'n',500,'overlap',350,'low',1.5);
+
+				startidx=max([find(chunk_sonogram_f<=disp_minfs)]);
+				stopidx=min([find(chunk_sonogram_f>=disp_maxfs)]);
+
+				chunk_sonogram_im=chunk_sonogram_im(startidx:stopidx,:);
+				chunk_sonogram_im=flipdim(chunk_sonogram_im,1);
+
+				imwrite(uint8(chunk_sonogram_im),colors,fullfile(image_dir_ttl,[ save_name '.gif']),'gif');
+
+				parsave(fullfile(data_dir_ttl,['songdet1_' save_name '.mat']),...
+					ephys_extraction,audio_extraction,ttl_extraction,intan_fs,ephys_labels,file_datenum);
+
+				% normalize audio to write out to wav file
+
+				min_audio=min(norm_extraction(:));
+				max_audio=max(norm_extraction(:));
+
+				if min_audio + max_audio < 0
+					norm_extraction=norm_extraction./(-min_audio);
+				else
+					norm_extraction=norm_extraction./(max_audio*(1+1e-3));
+				end
+
+				wavwrite(norm_extraction,intan_fs,fullfile(wav_dir_ttl,[ save_name '.wav']));
+
+			end
+
+			reformatted_im=im_reformat(sonogram_im,(ceil((length(audio_extraction)/intan_fs)/5)));
+			imwrite(uint8(reformatted_im),colors,sonogram_filename,'gif');
+
+		end
+
+		disp('Continuing to song detection...');
+
+
+	end
+
+	% did we detect song?
+
+	try
+		[song_bin]=song_det(norm_data,intan_fs,minfs,maxfs,window,...
+			noverlap,songduration,ratio_thresh,song_thresh);
+	catch err
+		disp([err]);
+		disp('Song detection failed, continuing...');
+		fclose('all');
+		continue;
+	end
+
 
 	song_pts=find(song_bin>0);
 
@@ -499,25 +620,7 @@ for i=1:length(proc_files)
 	% if we're here, we've detected song
 	% factor to move from sonogram coordinates to raw audio data coordinates
 
-	image_dir=fullfile(foldername,image_pre);
-	wav_dir=fullfile(foldername,wav_pre);
-	data_dir=fullfile(foldername,data_pre);
-
-	if ~exist(image_dir,'dir')
-		mkdir(image_dir);
-	end
-
-	if ~exist(wav_dir,'dir');
-		mkdir(wav_dir);
-	end
-
-	if ~exist(data_dir,'dir');
-		mkdir(data_dir);
-	end
-
-	[f,t]=size(sonogram_im);
 	son_to_vec=(length(norm_data)-noverlap)/(length(song_bin));
-	im_son_to_vec=(length(norm_data)-350)/t;
 
 	% use diff to find non_continguous song bouts separated by the audio pad + 1 second
 
@@ -536,6 +639,12 @@ for i=1:length(proc_files)
 		audio_extraction=conditioned_data(startpoint:endpoint);
 		ephys_extraction=data(startpoint:endpoint,ephys_channels);
 
+		if ~isempty(ttl_trace)
+			ttl_extraction=ttl_data(startpoint:endpoint);
+		else
+			ttl_extraction=[];
+		end
+
 		save_name=[ name '_chunk_' num2str(j) ];
 
 		if length(audio_extraction)<500
@@ -553,9 +662,9 @@ for i=1:length(proc_files)
 		chunk_sonogram_im=flipdim(chunk_sonogram_im,1);
 
 		imwrite(uint8(chunk_sonogram_im),colors,fullfile(image_dir,[ save_name '.gif']),'gif');
-			
+
 		parsave(fullfile(data_dir,['songdet1_' save_name '.mat']),...
-			ephys_extraction,audio_extraction,intan_fs,ephys_labels,file_datenum);
+			ephys_extraction,audio_extraction,ttl_extraction,intan_fs,ephys_labels,file_datenum);
 
 		% normalize audio to write out to wav file
 
@@ -578,8 +687,7 @@ for i=1:length(proc_files)
 end
 end
 
-
-function parsave(file,ephys_data,mic_data,fs,channels,start_datenum)
+function parsave(file,ephys_data,mic_data,ttl_data,fs,channels,start_datenum)
 
 % still saving in this function in case we go back to parfor 
 
@@ -587,6 +695,6 @@ if nargin<6
     start_datenum=[];
 end
 
-save(file,'ephys_data','mic_data','fs','channels','start_datenum');
+save(file,'ephys_data','mic_data','ttl_data','fs','channels','start_datenum');
 
 end

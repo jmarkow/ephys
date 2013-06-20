@@ -197,6 +197,7 @@ delete(fullfile(savedir,subdir,'amp',[savefilename '*.eps']));
 
 delete(fullfile(savedir,subdir,'phase',[savefilename '*.png']));
 delete(fullfile(savedir,subdir,'phase',[savefilename '*.eps']));
+goodtrials=[];
 
 for i=1:length(channels)
 

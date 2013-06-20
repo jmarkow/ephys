@@ -23,7 +23,7 @@ DATA=DATA./abs(max(DATA));
 
 % sampling rate doesn't matter here at all, just using a dummy value, 48e3
 
-sonogram_im=pretty_sonogram(DATA,48e3,'n',FFTWINDOW,'overlap',NOVERLAP);
+sonogram_im=pretty_sonogram(DATA,48e3,'n',FFTWINDOW,'overlap',NOVERLAP,'low',1);
 sonogram_im=flipdim(sonogram_im,1);
 %sonogram_im=spectrogram(DATA,FFTWINDOW,NOVERLAP);
 %sonogram_im=abs(flipdim(sonogram_im,1));

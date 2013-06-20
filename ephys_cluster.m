@@ -217,7 +217,7 @@ end
 % generate a nice sonogram of the selected template
 
 template_fig=figure('Visible','off');
-[template_image,f,t]=pretty_sonogram(TEMPLATE,fs,'N',1024,'overlap',1000);
+[template_image,f,t]=pretty_sonogram(TEMPLATE,fs,'N',1024,'overlap',1000,'low',1);
 
 startidx=max([find(f<=min_f);1]);
 

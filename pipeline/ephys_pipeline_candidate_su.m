@@ -78,6 +78,7 @@ clear EPHYS_DATA;
 % collect spike windows and estimate SNR
 
 disp('Computing SNR');
+SNR=zeros(ntrials,length(channels));
 
 for i=1:length(channels)
 
@@ -101,7 +102,7 @@ for i=1:length(channels)
 	
 		% need to adjust our windows if we've interpolated
 
-		[samples,nspikes]=size(spikes_pp.abs.windows);
+		[samples,nspikes]=size(spikes_pp.windows);
 	
 		if nspikes<2
 			snr(j)=NaN;
@@ -118,13 +119,13 @@ for i=1:length(channels)
 
 		% compute the peak to peak of the mean waveform
 	
-		%mean_waveform=mean(spikes_pp.abs.windows,2);
+		%mean_waveform=mean(spikes_pp.windows,2);
 		%peaktopeak=max(mean_waveform)-min(mean_waveform);
 		curr_data=proc_data(:,j,i);
 
 		for k=1:nspikes
 
-			spike_point=spikes_pp.abs.times(k)-adjust;
+			spike_point=spikes_pp.times(k)-adjust;
 
 			if spike_point-window<1
 				snr(j)=NaN;
@@ -136,7 +137,7 @@ for i=1:length(channels)
 		end
 
 		noise_est=std(curr_data);
-		peaktopeak=max(spikes_pp.abs.windows,[],2)-min(spikes_pp.abs.windows,[],2);
+		peaktopeak=max(spikes_pp.windows,[],2)-min(spikes_pp.windows,[],2);
 		fullsnr=peaktopeak(:)./noise_est;
 
 		snr(j)=prctile(fullsnr,90); % check the top spikes at 90th percentile to 
