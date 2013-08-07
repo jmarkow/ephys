@@ -71,6 +71,8 @@ padding=[]; % padding that will be saved with the template, in seconds (relevant
    	    % two elements vector, both specify in seconds how much time before and after to extract
 	    % e.g. [.2 .2] will extract 200 msec before and after the extraction point when clustering
 	    % sounds through the pipeline
+lowfs=[];
+highfs=[];
 
 % smscore parameters, THESE MUST MATCH THE PIPELINE PARAMETERS IN EPHYS_PIPELINE.CFG, OTHERWISE
 % THE FEATURE COMPUTATION BETWEEN THE TEMPLATE AND CANDIDATE SOUNDS WILL NOT
@@ -108,6 +110,10 @@ for i=1:2:nparams
 			subset=varargin{i+1};
 		case 'padding'
 			padding=varargin{i+1};
+		case 'lowfs'
+			lowfs=varargin{i+1};
+		case 'highfs'
+			highfs=varargin{i+1};
 	end
 end
 
@@ -200,8 +206,8 @@ if ~exist(fullfile(proc_dir,'template_data.mat'),'file')
 
 	disp('Computing the spectral features of the template');
 	template_features=ephys_pipeline_smscore(TEMPLATE,fs,...
-		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling);
-	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features','padding');
+		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling,'lowfs',lowfs,'highfs',highfs);
+	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features','padding','lowfs','highfs');
 
 else
 	disp('Loading stored template...');
@@ -209,8 +215,8 @@ else
 	
 	disp('Computing the spectral features of the template');
 	template_features=ephys_pipeline_smscore(TEMPLATE,fs,...
-		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling);
-	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features','padding');
+		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling,'lowfs',lowfs,'highfs',highfs);
+	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features','padding','lowfs','highfs');
 
 end
 
@@ -288,7 +294,7 @@ if ~skip
 
 	disp('Computing features for all sounds...');
 
-	sound_file_features(DIR,files_to_proc,n,overlap,filter_scale,downsampling);
+	sound_file_features(DIR,files_to_proc,n,overlap,filter_scale,downsampling,lowfs,highfs);
 
 	disp('Comparing sound files to the template (this may take a minute)...');
 
@@ -436,9 +442,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% COMPUTE FEATURES %%%%%%%%%%%%%%%%%%%
 
 
-function sound_file_features(DIR,SOUND_FILES,N,OVERLAP,FILTER_SCALE,DOWNSAMPLING)
+function sound_file_features(DIR,SOUND_FILES,N,OVERLAP,FILTER_SCALE,DOWNSAMPLING,LOWFS,HIGHFS)
 
-par_save = @(FILE,features) save([FILE],'features');
+par_save = @(FILE,features,lowfs,highfs,TTL) save([FILE],'features','lowfs','highfs','TTL');
 
 if ~exist(fullfile(DIR,'syllable_data'),'dir')
 	mkdir(fullfile(DIR,'syllable_data'));
@@ -475,11 +481,17 @@ parfor i=1:length(SOUND_FILES)
 	end
 
 	sound_features=ephys_pipeline_smscore(sound_data,fs,...
-		'n',N,'overlap',OVERLAP,'filter_scale',FILTER_SCALE,'downsampling',DOWNSAMPLING);
+		'n',N,'overlap',OVERLAP,'filter_scale',FILTER_SCALE,'downsampling',DOWNSAMPLING,'lowfs',LOWFS,'highfs',HIGHFS);
 
 	% save for posterity's sake
 
-	par_save(output_file,sound_features);
+	if ~isempty(LOWFS) & ~isempty(HIGHFS)
+		TTL=1;
+	else
+		TTL=0;
+	end
+
+	par_save(output_file,sound_features,LOWFS,HIGHFS,TTL);
 
 end
 
@@ -518,6 +530,8 @@ for i=1:length(TARGET_FILES)
 
 	score_temp={};
 	temp_mat=[];
+
+	disp([TARGET_FILES{i}])
 
 	for j=1:length(target)
 

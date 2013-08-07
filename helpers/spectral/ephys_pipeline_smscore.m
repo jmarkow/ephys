@@ -16,6 +16,8 @@ sigma=1.5; % Gaussian timescale (in ms)
 downsampling=5; % downsampling factor (skip columns)
 filter_scale=10; % disk filter scale (samples)
 norm_amp=1; % normalize the amplitude
+lowfs=[];
+highfs=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -31,6 +33,10 @@ for i=1:2:nparams
 			downsampling=varargin{i+1};
 		case 'norm_amp'
 			norm_amp=varargin{i+1};
+		case 'lowfs'
+			lowfs=varargin{i+1};
+		case 'highfs'
+			highfs=varargin{i+1};
 	end
 end
 
@@ -50,8 +56,26 @@ sigma=(sigma/1000)*fs;
 
 w=exp(-(t/sigma).^2);
 dw=(w).*((t)/(sigma^2))*-2;
-q=specgram(s,n,[],w,overlap)+eps; %gaussian windowed spectrogram
-q2=specgram(s,n,[],dw,overlap)+eps; %deriv gaussian windowed spectrogram
+q=spectrogram(s,w,overlap,n)+eps; %gaussian windowed spectrogram
+q2=spectrogram(s,dw,overlap,n)+eps; %deriv gaussian windowed spectrogram
+
+if ~isempty(lowfs) & ~isempty(highfs)
+
+	[t,f]=getspecgram_dim(length(s),n,overlap,n,fs);
+	f=flipdim(f(:),1);
+	
+	lowpoint=min(find(f<=lowfs))
+	highpoint=max(find(f>=highfs))
+
+	if isempty(lowpoint), lowpoint=length(f); end
+	if isempty(highpoint), hihgpoint=1; end
+
+else
+
+	lowpoint=480;
+	highpoint=300;
+
+end
 
 % add FM and pitch?
 
@@ -62,8 +86,8 @@ dx=flipdim(dx,1);
 
 % take subset of frequencies to focus on
 
-dx=dx(300:480,:);
-sonogram=sonogram(300:480,:);
+dx=dx(highpoint:lowpoint,:);
+sonogram=sonogram(highpoint:lowpoint,:);
 
 % larger disks really slows down compute time
 

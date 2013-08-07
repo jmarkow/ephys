@@ -139,7 +139,7 @@ channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
 car_trim=40;
-decomp_level=6;
+decomp_level=7;
 
 savename=''; % add if doing multiple manual sorts, will append a name to the filename
 isi_cutoff=.01; % percentage of ISI values <.001

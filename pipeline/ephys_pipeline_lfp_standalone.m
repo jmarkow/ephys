@@ -73,7 +73,7 @@ if exist(fullfile(PROCDIR,'SLEEP_DATA'),'file')
 	return;
 end
 
-if samples>samplemin & ~exist(fullfile(PROC_DIR,'SLEEP_DATA'),'file')
+if samples>samplemin & ~exist(fullfile(PROCDIR,'SLEEP_DATA'),'file')
 
 	if lower(parameters.lfp_method(1))=='c'
 

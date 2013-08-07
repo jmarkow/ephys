@@ -17,7 +17,7 @@ filt_name='butter'; % default to Butterworth, use a Kaiser filter if we need
 		    % sharp cutoffs, per Logothetis et al. 2001
 ripple=1; % Kaiser params, ripple in dB
 attenuation=.01; % Kaiser params, attenuation (not dB)
-decomp_level=6;
+decomp_level=7;
 wavelet_denoise=0;
 
 % data type specific defaults

@@ -38,7 +38,7 @@ while true; do
 			continue;
 		fi
 
-		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*score.mat" | grep -v '/\.'` )
+		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*score.mat" | grep -v '/\.' | egrep -v 'ttl_score.mat'` )
 
 		# check for files that have not been processed for this template
 
@@ -96,12 +96,76 @@ while true; do
 
 			done
 		done
+
+		echo 'Checking TTL templates' >> $1
+
+		if [ ! -d $ROOTDIR/$BIRD/templates_ttl ]; then
+			continue;
+		fi
+
+		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*ttl_score.mat" | grep -v '/\.'` )
+
+		# check for files that have not been processed for this template
+
+		# the files processed should have a dotfile in a subdir that matches
+		# the template directory
+
+		# all the files we have spectral features for
+
+		TEMPLATELIST=( `find $ROOTDIR/$BIRD/templates_ttl -type f -name "template_data.mat" -maxdepth 2` )
+
+		for TEMPLATE in ${TEMPLATELIST[@]}; do
+
+			#source ephys_pipeline_wrapper.cfg
+
+			# extract the toplevel directory from the template listing
+
+			TEMPLATEDIRNAME=( `dirname $TEMPLATE` )
+			TEMPLATETOPDIR=( `basename $TEMPLATEDIRNAME` )
+
+			if [ ! -e "$TEMPLATEDIRNAME/classify_data.mat" ]; then
+				echo 'No classify_data.mat in ' $TEMPLATEDIRNAME >> $OUTPUT
+				continue;
+			fi
+
+			# exclude dot files what we want to check
+
+			let COUNTER=1
+
+			for FILE in ${FILELIST[@]}; do
+
+				FILENAME=( `basename $FILE` )
+				DIRNAME=( `dirname $FILE` )
+
+				RESULTSDIR=$DIRNAME/../$TEMPLATETOPDIR
+
+				#echo $RESULTSDIR/.${FILENAME}
+
+				if [ ! -e $RESULTSDIR/.$FILENAME ]; then
+
+					echo "Spawning subshell " $COUNTER >> $1
+
+					# specify template_data file, spectral feature data file then classification object file
+
+					nice -n $NICELVL $EXEC_CLUSTER "$TEMPLATE" "$FILE" "$TEMPLATEDIRNAME/classify_data.mat" $CONFIG >> $1 &
+
+					let COUNTER+=1
+
+					if [ $COUNTER -gt $SUBSHELLS_CLUSTER ]; then
+						echo 'Waiting for subshells to finish' >> $1
+						wait
+						let COUNTER=1
+					fi
+
+				fi
+
+			done
+		done
 	done
 
-done
 
-date >> $1
-sleep $INTERVAL_CLUSTER
+	date >> $1
+	sleep $INTERVAL_CLUSTER
 
 done
 

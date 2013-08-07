@@ -122,6 +122,7 @@ sleep_segment=5; % how much data to keep (in seconds)
 sleep_timestamp=[];
 sleep_birdid={};
 sleep_recid={};
+ttl_skip=1; % skip song detection if TTL detected?
 
 % where to place the parsed files
 
@@ -183,6 +184,8 @@ for i=1:2:nparams
 			nosort=varargin{i+1};
 		case 'subdir'
 			subdir=varargin{i+1};
+		case 'ttl_skip'
+			ttl_skip=varargin{i+1};
 	end
 end
 
@@ -193,7 +196,7 @@ end
 % list the files to process
 
 if ~isempty(filtering)
-	[b,a]=butter(3,[filtering/(intan_fs/2)],'high');
+	[b,a]=butter(5,[filtering/(intan_fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
 else
     b=[];
     a=[];
@@ -281,15 +284,24 @@ for i=1:length(proc_files)
 			mic_trace=mic_pre;
 		end
 
-		if length(tokens)>3
-			ttl_trace=regexpi(tokens{4},'\d+','match');
+		if length(tokens)>5
+			tokens{4}
+			ttltokens=regexpi(tokens{4},'\d+','match');
+			ttltokens{1}
+			ttl_trace=str2num(ttltokens{1});
 		else
 			ttl_trace=[];
 		end
 
 		% fourth is date
 
-		file_datenum=datenum([tokens{4} tokens{5}(1:end-4)],'yymmddHHMMSS');
+		if length(tokens)<6
+		    tokidx=4;
+		else
+		    tokidx=5;
+		end
+		
+		file_datenum=datenum([tokens{tokidx} tokens{tokidx+1}(1:end-4)],'yymmddHHMMSS');
 
 		% now create the folder it doesn't exist already
 
@@ -336,7 +348,6 @@ for i=1:length(proc_files)
 		fclose('all'); % read_intan does not properly close file if it bails
 		continue;
 	end
-
 
 	% if we're successful reading, then move the file to a processed directory
 
@@ -450,8 +461,14 @@ for i=1:length(proc_files)
 				audio_extraction=conditioned_data(1:stopsample);
 				ephys_extraction=data(1:stopsample,ephys_channels);
 
+                if ~isempty(ttl_trace)
+                    ttl_extraction=ttl_data(1:stopsample);
+                else
+                    ttl_extraction=[];
+                end
+                
 				parsave(fullfile(sleep_dir,['sleepdata1_' name '.mat']),...
-					ephys_extraction,audio_extraction,intan_fs,ephys_labels,file_datenum);
+					ephys_extraction,audio_extraction,ttl_extraction,intan_fs,ephys_labels,file_datenum);
 
 				% if we process the file store the new timestamp
 
@@ -475,7 +492,7 @@ for i=1:length(proc_files)
 
 	image_dir_ttl=fullfile(foldername,[image_pre '_ttl']);
 	wav_dir_ttl=fullfile(foldername,[wav_pre '_ttl']);
-	data_dir_ttl=fullfile(foldername[data_pre '_ttl']);
+	data_dir_ttl=fullfile(foldername,[data_pre '_ttl']);
 
 	if ~exist(image_dir,'dir')
 		mkdir(image_dir);
@@ -527,7 +544,7 @@ for i=1:length(proc_files)
 		%idx=1:length(ttl_data)-1;
 
 		%ttl_pts=find(ttl_data(idx)<.2&ttl_data(idx+1)>.5);
-		ttl_pts=find(ttl_data>.5);
+		ttl_pts=find(ttl_data>.5)';
 
 		if ~isempty(ttl_pts)
 
@@ -543,7 +560,7 @@ for i=1:length(proc_files)
 				if startpoint<1, startpoint=1; end
 				if endpoint>length(norm_data), endpoint=length(norm_data); end
 
-				sonogram_filename=fullfile(image_dir,[ name '_ttl.gif' ]);
+				sonogram_filename=fullfile(image_dir_ttl,[ name '_ttl.gif' ]);
 
 				norm_extraction=norm_data(startpoint:endpoint);
 				audio_extraction=conditioned_data(startpoint:endpoint);
@@ -591,7 +608,12 @@ for i=1:length(proc_files)
 
 		end
 
-		disp('Continuing to song detection...');
+		if ttl_skip
+			disp('Skipping song detection...');
+			continue;
+		else
+			disp('Continuing to song detection...');
+		end
 
 
 	end
@@ -685,6 +707,7 @@ for i=1:length(proc_files)
 	imwrite(uint8(reformatted_im),colors,sonogram_filename,'gif');
 
 end
+
 end
 
 function parsave(file,ephys_data,mic_data,ttl_data,fs,channels,start_datenum)

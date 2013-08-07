@@ -130,7 +130,13 @@ for i=0:parameters.trial_win:ntrials
 
 			% fourth is date
 
-			START_DATENUM(j)=datenum([tokens{5} tokens{6}],'yymmddHHMMSS');
+			if strcmpi(tokens{5}(1:3),'ttl')
+				idx=6;
+			else
+				idx=5;
+			end
+
+			START_DATENUM(j)=datenum([tokens{idx} tokens{idx+1}],'yymmddHHMMSS');
 
 		end
 
