@@ -253,6 +253,15 @@ for i=1:length(proc_files)
 	aux=[];
 	song_bin=[];
 	mic_trace=[];
+	norm_data=[];
+	conditioned_data=[];
+	ttl_data=[];
+	norm_extraction=[];
+	audio_extraction=[];
+	ephys_extraction=[];
+	ttl_extraction=[];
+	sonogram_im=[];
+	chunk_sonogram_im=[];
 
 	% read in the data
 
@@ -461,12 +470,12 @@ for i=1:length(proc_files)
 				audio_extraction=conditioned_data(1:stopsample);
 				ephys_extraction=data(1:stopsample,ephys_channels);
 
-                if ~isempty(ttl_trace)
-                    ttl_extraction=ttl_data(1:stopsample);
-                else
-                    ttl_extraction=[];
-                end
-                
+				if ~isempty(ttl_trace)
+				    ttl_extraction=ttl_data(1:stopsample);
+				else
+				    ttl_extraction=[];
+				end
+				
 				parsave(fullfile(sleep_dir,['sleepdata1_' name '.mat']),...
 					ephys_extraction,audio_extraction,ttl_extraction,intan_fs,ephys_labels,file_datenum);
 
