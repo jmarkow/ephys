@@ -615,15 +615,17 @@ for i=1:length(proc_files)
 			reformatted_im=im_reformat(sonogram_im,(ceil((length(audio_extraction)/intan_fs)/5)));
 			imwrite(uint8(reformatted_im),colors,sonogram_filename,'gif');
 
+			% if we found TTL pulses and ttl_skip is on, skip song detection and move on to next file
+
+			if ttl_skip
+				disp('Skipping song detection...');
+				continue;
+			end	
+
+
 		end
 
-		if ttl_skip
-			disp('Skipping song detection...');
-			continue;
-		else
-			disp('Continuing to song detection...');
-		end
-
+		
 
 	end
 

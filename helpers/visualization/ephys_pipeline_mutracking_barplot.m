@@ -1,4 +1,4 @@
-function ephys_pipeline_mutracking_barplot(CONTROL,DOWN,UP,varargin)
+function [groupdata,fig,stats]=ephys_pipeline_mutracking_barplot(DATA,varargin)
 %
 %
 %
@@ -10,8 +10,8 @@ function ephys_pipeline_mutracking_barplot(CONTROL,DOWN,UP,varargin)
 
 % take the data, square and take the average
 
+stats=[];
 intan_fs=25e3;
-freq_range=[500 3e3];
 plotcolor=[.7 .7 .7];
 windowsize=15;
 mads=30;
@@ -33,92 +33,94 @@ for i=1:2:nparams
 			grpid=varargin{i+1};
 		case 'startid'
 			startid=varargin{i+1};
+		case 'edges'
+			edges=varargin{i+1};
 	end
 end
 
 % bandpass filter to recover the multi-unit data
 
-[b,a]=ellip(5,.2,40,freq_range./(intan_fs/2),'bandpass');
 
-mucontrol=mean(CONTROL);
-stdcontrol=std(CONTROL);
+% for each group get the first and last 100-200 trials, histogram and run simple statistics (ranksum maybe)
 
-zcontrol=(CONTROL-mucontrol)./(stdcontrol);
-zdown=(DOWN-mucontrol)./(stdcontrol);
-zup=(UP-mucontrol)./(stdcontrol);
+groups=unique(grpid);
 
-zcontrol_mu=mean(zcontrol);
-zcontrol_std=std(zcontrol);
-
-zdown_mu=mean(zdown);
-zdown_std=std(zdown);
-
-zup_mu=mean(zup);
-zup_std=std(zup);
-
-minval=min([CONTROL DOWN UP]);
-maxval=max([CONTROL DOWN UP]);
-
-bins=[minval:.2:maxval inf]'; 
-
-x=histc(CONTROL,bins);
-y=histc(UP,bins);
-z=histc(DOWN,bins);
-
-x=x./sum(x);
-y=y./sum(y);
-z=z./sum(z);
-figure();
-
-xvec=[];
-yvec=[];
-zvec=[];
-binvec=[];
-
-for i=1:length(bins)-1
-	binvec=[binvec;bins(i:i+1)];
-	xvec=[xvec;repmat(x(i),2,1)];
-	yvec=[yvec;repmat(y(i),2,1)];
-	zvec=[zvec;repmat(z(i),2,1)];
+for i=1:length(groups)
+	groupdata{i}=[];
 end
 
-ax(1)=stairs(binvec,xvec,'k-','linewidth',3);hold on;
-ax(2)=stairs(binvec,yvec,'r-','linewidth',3);
-ax(3)=stairs(binvec,zvec,'b-','linewidth',3);
-xlim([11.5 17]);
+for i=2:length(edges)
 
+	currgrp=edges(i-1):edges(i);
+	grpidx=grpid(edges(i-1));
+
+	% take the first and last 100, or percentage
+
+	grpidx
+
+	len=length(edges(i-1):edges(i));
+
+	control=DATA(edges(i-1):edges(i-1)+len/10);
+	obs=DATA(edges(i)-len/10:edges(i));
+	
+	mucontrol=mean(control);
+	stdcontrol=std(control);
+
+	control=(control-mucontrol)./stdcontrol;
+	obs=(obs-mucontrol)./stdcontrol;
+
+	[p,h]=ranksum(control,obs)
+
+	groupdata{1}=[groupdata{1} control];
+	groupdata{grpidx}=[groupdata{grpidx} obs];
+end
+
+bins=[-8:.5:8];
+fig=figure();
+for i=1:length(groupdata)
+	
+	[N,BINVEC]=pretty_histogram(groupdata{i},bins)
+	N=N./sum(N);
+	subplot(1,2,1);
+	stairs(BINVEC,N,'color',grpcolors(i,:),'linewidth',2);
+	hold on;
+
+end
 box off;
-axis tight;
-ylabel('P','FontSize',20,'FontName','Helvetica');
-xlabel('MU activity','FontSize',20,'FontName','Helvetica');
-set(gca,'layer','top','linewidth',2,'ticklength',[.025 .025],...
-	'tickdir','out','fontsize',20,'fontname','helvetica');
-
-L=legend(ax,'No FB','Escape up','Escape down');
-legend boxoff;
-set(L,'FontSize',20,'FontName','Helvetica','Location','NorthEast');
+set(gca,'layer','top','linewidth',1.5,'ticklength',[.025 .025],'tickdir','out',...
+	'fontsize',20,'fontname','helvetica');
 %%%%% bar chart
 
 % plot means and 3*sem
 
-barheights=[zcontrol_mu zdown_mu zup_mu];
-barerr=[ zcontrol_std zdown_std zup_std ];
-figure();
+barheights=zeros(1,length(groupdata));
+barerr=zeros(1,length(groupdata));
 
-for i=1:3
+for i=1:length(groupdata)
+	barheights(i)=mean(groupdata{i});
+	barerr(i)=2*std(groupdata{i})./sqrt(length(groupdata{i}));
+end
+
+
+for i=1:length(groupdata)
+	subplot(1,2,2);
 	x=i-1+.75;
 	h=bar(x,barheights(i),1);
+	baseh=get(h,'BaseLine')
+	set(baseh,'linewidth',2)
+	uistack(baseh,'top')
 	hold on;
 	plot([x;x],[barheights(i)-barerr(i);barheights(i)+barerr(i)],'k-','linewidth',1.5)
-	set(h,'FaceColor',grpcolors(i,:),'EdgeColor','none');
+	set(h,'FaceColor','none','EdgeColor',grpcolors(i,:),'linewidth',3);
+	set(gca,'xcolor',get(fig,'color'))
+	
 end
-xlim([0 3.5]);
-
+xlim([0 length(groupdata)+.5]);
 
 box off;
-set(gca,'layer','top','linewidth',2,'ticklength',[.025 .025],...
+set(gca,'layer','top','linewidth',1.5,'ticklength',[.025 .025],...
 	'tickdir','out','fontsize',20,'fontname','helvetica','xtick',[]);
-ylabel('MU activity (z-score)');
+ylabel('Power');
 
 
 
