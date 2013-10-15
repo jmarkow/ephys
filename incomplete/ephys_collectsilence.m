@@ -196,5 +196,5 @@ if ~isempty(savedir)
 		mkdir(fullfile(pwd,savedir));
 	end
 
-	save(fullfile(pwd,savedir,'silencedata.mat'),'EPHYS_DATA','MIC_DATA','START_DATENUM');
+	save(fullfile(pwd,savedir,'silencedata.mat'),'EPHYS_DATA','MIC_DATA','START_DATENUM','CHANNELS');
 end

@@ -100,6 +100,8 @@ spikeifr=[];
 trialnum=[];
 spike_data=[];
 
+
+
 % use ifr as a clustering feature
 
 % string the channels together for clustering
@@ -152,6 +154,10 @@ for j=1:length(SPIKES)
 	end
 
 	% upsample and align, then downsample and whiten!!!
+
+	spikemask=ones(size(SPIKES(j).windows));
+	spikemask([1:15 end-15:end],:,:)=0;
+	SPIKES(j).windows=SPIKES(j).windows.*spikemask;
 
 	alignspikes=ephys_spike_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align',align);	
 	CLUSTSPIKES(j)=alignspikes;

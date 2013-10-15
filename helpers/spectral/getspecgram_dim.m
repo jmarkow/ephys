@@ -25,7 +25,7 @@ columns=fix((NSAMPLES-NOVERLAP)/(N-NOVERLAP));
 
 % frequency identities are linearly spaced to Nyquist
 
-F=((1:rows)./rows).*(FS/2);
+F=((0:rows-1)./(rows-1)).*(FS/2);
 
 colidx=1+(0:(columns-1))*(N-NOVERLAP);
 

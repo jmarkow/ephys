@@ -98,11 +98,18 @@ for i=0:parameters.trial_win:ntrials
 	EPHYS_DATA=zeros(samples,length(currtrials),length(channel_labels),'single');
 	MIC_DATA=zeros(samples,length(currtrials));
 	START_DATENUM=zeros(1,length(currtrials));
+	TTL_DATA=zeros(sample,length(currtrials));
 
 	for j=1:length(currtrials)
 
-		load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys_data','mic_data','channels','fs','start_datenum');
+		load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys_data','mic_data','channels','fs','start_datenum','ttl_data');
 		MIC_DATA(:,j)=mic_data;
+		
+		if ~exist('ttl_data','var')
+			ttl_data=zeros(size(mic_data));
+		end
+			
+		TTL_DATA(:,j)=ttl_data;
 
 		for k=1:length(channels)
 
@@ -143,7 +150,8 @@ for i=0:parameters.trial_win:ntrials
 	end
 
 	CHANNELS=channel_labels;
-	save(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'aggregated_data.mat'),'EPHYS_DATA','fs','MIC_DATA','CHANNELS','START_DATENUM','-v7.3');
+	save(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'aggregated_data.mat'),...
+		'EPHYS_DATA','fs','MIC_DATA','CHANNELS','START_DATENUM','TTL_DATA','-v7.3');
 
 	if SLEEPSTATUS
 

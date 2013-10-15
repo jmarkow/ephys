@@ -63,7 +63,7 @@ if ~isempty(lowfs) & ~isempty(highfs)
 
 	[t,f]=getspecgram_dim(length(s),n,overlap,n,fs);
 	f=flipdim(f(:),1);
-	
+
 	lowpoint=min(find(f<=lowfs))
 	highpoint=max(find(f>=highfs))
 

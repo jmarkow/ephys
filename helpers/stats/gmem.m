@@ -26,7 +26,7 @@ end
 maxiter=100;
 regularize=1e-6;
 epsilon=1e-10;
-lambda=.01;
+lambda=.05; % changed from .01 to .05 9/19/13
 garbage=1;
 merge=1;
 splitepsi=1; % noise scale for splits

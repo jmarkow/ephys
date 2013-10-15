@@ -38,6 +38,8 @@ for i=1:2:nparams
 			fs=varargin{i+1};
 	        case 'w'
             		w=varargin{i+1};
+		case 'ntapers'
+			ntapers=varargin{i+1};
 	end
 end
 
@@ -70,12 +72,14 @@ freqs=fs/2*linspace(0,1,nfft/2+1);
 
 [tapers,lambda]=dpss(samples,w,ntapers);
 
+ntapers
+w
+
 % pre allocate cell arrays to store taper and trial estimates
 
 cross_spect_mean=zeros(1,nfft);
 spect1_mean=zeros(1,nfft);
 spect2_mean=zeros(1,nfft);
-
 
 store.cross_spect=zeros(trials,nfft);
 store.spect1=zeros(trials,nfft);
@@ -84,6 +88,7 @@ store.spect2=zeros(trials,nfft);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AVERAGE SPECTRA %%%%%%%%%%%%%%%%%%%%
 
+counter=1;
 for i=1:trials
 
 	% demean the data and compute the cross spectrum with the fields
@@ -112,17 +117,17 @@ for i=1:trials
 		spect1_tmp=spect1_tmp+power1./(ntapers);
 		spect2_tmp=spect2_tmp+power2./(ntapers);
 
+		store.cross_spect(counter,:)=cross;
+		store.spect1(counter,:)=power1;
+		store.spect2(counter,:)=power2;
+
+		counter=counter+1;
+
 	end
 
 	cross_spect_mean=cross_spect_mean+cross_spect_tmp./trials;
-	store.cross_spect(i,:)=cross_spect_tmp;
-
 	spect1_mean=spect1_mean+spect1_tmp./trials;	
-	store.spect1(i,:)=spect1_tmp;
-
 	spect2_mean=spect2_mean+spect2_tmp./trials;
-	store.spect2(i,:)=spect2_tmp;
-
 
 end
 

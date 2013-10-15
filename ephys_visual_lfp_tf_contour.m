@@ -118,7 +118,7 @@ hist_min_f=1;
 hist_max_f=10e3;
 
 figtitle=[];
-freq_range=[2 120]; % frequency range for filtering
+freq_range=[5 120]; % frequency range for filtering
 filt_order=7;
 channels=CHANNELS;
 scale='linear';
@@ -172,7 +172,6 @@ for i=1:2:nparams
 			wsigma=varargin{i+1};
 	end
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
@@ -248,6 +247,8 @@ columns=length(t);
 CONTOUR_SPECT.t=t;
 CONTOUR_SPECT.f=f;
 CONTOUR_SPECT.image=zeros(length(f),length(t),length(channels),'single');
+%CONTOUR_SPECT.gabor=zeros(size(CONTOUR_SPECT.image));
+%CONTOUR_SPECT.consensus=zeros(size(CONTOUR_SPECT.gabor));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PLOTTING CODE %%%%%%%%%%%%%%%%%%%%%%
@@ -314,23 +315,32 @@ for i=1:length(channels)
 	spect_ave_plot.t=t;
 	spect_ave_plot.f=f;
 
-	spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(300*nsamples/proc_fs) 800]);
-	
-	fig_title=['CH' num2str(channels(i)) ' NTRIALS' num2str(ntrials)];
+	if ~isempty(savedir)
+		spect_fig=figure('visible','off','Units','Pixels','Position',[0 0 round(300*nsamples/proc_fs) 800]);
 
-	spect_fig=time_frequency_raster(HISTOGRAM,spect_ave_plot,'fig_num',spect_fig,'fig_title',fig_title,'scale',scale,...
-		'scalelabel',scalelabel,'hist_min_f',hist_min_f,'hist_max_f',hist_max_f,'tf_min_f',lfp_min_f,'tf_max_f',lfp_max_f,...
-		'hist_colors',hist_colors,'tfimage_colors',lfp_colors);
+		fig_title=['CH' num2str(channels(i)) ' NTRIALS' num2str(ntrials)];
 
-	set(spect_fig,'PaperPositionMode','auto');
+		spect_fig=time_frequency_raster(HISTOGRAM,spect_ave_plot,'fig_num',spect_fig,'fig_title',fig_title,'scale',scale,...
+			'scalelabel',scalelabel,'hist_min_f',hist_min_f,'hist_max_f',hist_max_f,'tf_min_f',lfp_min_f,'tf_max_f',lfp_max_f,...
+			'hist_colors',hist_colors,'tfimage_colors',lfp_colors);
 
-	multi_fig_save(spect_fig,savedir,...
-		[ savefilename num2str(channels(i)) ],'png','res',100);
-	close([spect_fig]);
+		set(spect_fig,'PaperPositionMode','auto');
+
+		multi_fig_save(spect_fig,savedir,...
+			[ savefilename num2str(channels(i)) ],'png','res',100);
+		close([spect_fig]);
+	end
 
 end
 
-save(fullfile(savedir,'lfp_tf_data.mat'),'CHANNELS','channels','CONTOUR_SPECT');
+CONTOUR_SPECT.ntrials=ntrials;
+CONTOUR_SPECT.timescales=wsigma;
+CONTOUR_SPECT.angles=angles;
+CONTOUR_SPECT.channels=CHANNELS;
+
+if ~isempty(savedir)
+	save(fullfile(savedir,'lfp_tf_data.mat'),'CHANNELS','channels','CONTOUR_SPECT');
+end
 
 end
 

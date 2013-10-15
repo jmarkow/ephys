@@ -382,12 +382,12 @@ end
 
 
 if ~skip
-	[mic_data ephys_data channels used_filenames]=extract_hits(sorted_syllable,filenames,...
+	[mic_data ephys_data ttl_data channels used_filenames]=extract_hits(sorted_syllable,filenames,...
 		act_templatesize,spect_thresh,time_range,fs,n,overlap,downsampling);
 
 	disp(['Saving data to ' fullfile(proc_dir,'extracted_data.mat')]);
 
-	save(fullfile(proc_dir,'extracted_data.mat'),'used_filenames','mic_data','ephys_data','time_range','channels','-v7.3');
+	save(fullfile(proc_dir,'extracted_data.mat'),'used_filenames','mic_data','ephys_data','time_range','channels','ttl_data','-v7.3');
 end
 
 
@@ -620,11 +620,12 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA EXTRACTION %%%%%%%%%%%%%%%%%%%%
 
 
-function [MIC_DATA EPHYS_DATA CHANNELS USED_FILENAMES]=extract_hits(SELECTED_PEAKS,FILENAMES,TEMPLATESIZE,SPECT_THRESH,TIME_RANGE,fs,N,OVERLAP,DOWNSAMPLING)
+function [MIC_DATA EPHYS_DATA TTL_DATA CHANNELS USED_FILENAMES]=extract_hits(SELECTED_PEAKS,FILENAMES,TEMPLATESIZE,SPECT_THRESH,TIME_RANGE,fs,N,OVERLAP,DOWNSAMPLING)
 
 TEMPLATESIZE=TEMPLATESIZE+N;
 USED_FILENAMES={};
 MIC_DATA=[];
+TTL_DATA=[];
 
 load(FILENAMES{1});
 
@@ -685,7 +686,7 @@ parfor i=1:length(SELECTED_PEAKS)
 	else
 		ephys_data=data.ephys_data;
     	end
-        	
+
 	fs=data.fs;
 	for j=1:length(SELECTED_PEAKS{i})
 		
@@ -715,6 +716,7 @@ disp(['Found ' num2str(counter) ' trials ']);
 
 EPHYS_DATA=zeros(TEMPLATESIZE+1,counter,length(channel_labels),'single');
 MIC_DATA=zeros(TEMPLATESIZE+1,counter,'single');
+TTL_DATA=zeros(TEMPLATESIZE+1,counter,'single');
 
 disp('Extracting data');
 fprintf(1,['Progress:  ' blanks(nblanks)]);
@@ -736,7 +738,13 @@ for i=1:length(SELECTED_PEAKS)
 	else
 		ephys_data=data.ephys_data;
     	end
-	 
+
+	if ~isfield(data,'ttl_data')
+		ttl_data=zeros(size(ephys_data));
+	else
+		ttl_data=data.ttl_data;
+	end
+
 	fs=data.fs;
 	channels=data.channels;
 
@@ -756,7 +764,8 @@ for i=1:length(SELECTED_PEAKS)
 
 				USED_FILENAMES{end+1}=FILENAMES{i};
                 		MIC_DATA(:,trial)=single(sound_data(startpoint:endpoint));               
-                
+               			TTL_DATA(:,trial)=single(ttl_data(startpoint:endpoint));
+
 				% if we have differences in channel number, how to resolve?
 
 				for k=1:length(channels)

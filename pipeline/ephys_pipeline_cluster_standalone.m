@@ -191,7 +191,7 @@ end
 % else, extract
 
 templength=templength+parameters.smscore_n;
-data=load(rawfile,'mic_data','ephys_data','channels','fs');
+data=load(rawfile,'mic_data','ephys_data','channels','fs','ttl_data');
 
 % write images to 'gif', wav to 'wav' and 'mat' to mat again
 
@@ -241,9 +241,15 @@ for i=1:length(hits)
 		channels=data.channels;
 		fs=data.fs;
 
+		if isfield(data,'ttl_data')
+			ttl_data=data.ttl_data;
+		else
+			ttl_data=[];
+		end
+
 		savename=[ file(1:end-6) '_' templatename '_' num2str(i)];
 
-		save(fullfile(matdir,[savename '.mat']),'mic_data','ephys_data','channels','fs');
+		save(fullfile(matdir,[savename '.mat']),'mic_data','ephys_data','channels','fs','ttl_data');
 
 		% write out the extraction
 

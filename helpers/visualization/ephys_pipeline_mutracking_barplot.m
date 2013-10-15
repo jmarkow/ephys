@@ -1,4 +1,4 @@
-function [groupdata,fig,stats]=ephys_pipeline_mutracking_barplot(DATA,varargin)
+function [groupdata,fig,stats]=ephys_pipeline_mutracking_barplot(DATA,DATENUMS,varargin)
 %
 %
 %
@@ -14,7 +14,7 @@ stats=[];
 intan_fs=25e3;
 plotcolor=[.7 .7 .7];
 windowsize=15;
-mads=30;
+mads=20;
 grpid=[];
 grpcolors=[0 0 0;...
 	0 0 1;...
@@ -51,17 +51,27 @@ end
 
 for i=2:length(edges)
 
-	currgrp=edges(i-1):edges(i);
+	currgrp=DATA(edges(i-1):edges(i));
+	currdate=DATENUMS(edges(i-1):edges(i));
+
 	grpidx=grpid(edges(i-1));
 
-	% take the first and last 100, or percentage
+	% only take data from the same day
+	% get the day of the first trial
 
-	grpidx
+	[y,m,d]=datevec(currdate(1));
+	datebound=datenum(y,m,d,20,0,0);
 
-	len=length(edges(i-1):edges(i));
+	samedaybound=max(find(currdate<=datebound));
 
-	control=DATA(edges(i-1):edges(i-1)+len/10);
-	obs=DATA(edges(i)-len/10:edges(i));
+	currgrp=currgrp(1:samedaybound);
+
+	len=length(currgrp);
+
+	% only take trials from the same day
+
+	control=currgrp(1:len/5);
+	obs=currgrp(end-len/5:end);
 	
 	mucontrol=mean(control);
 	stdcontrol=std(control);
@@ -69,7 +79,7 @@ for i=2:length(edges)
 	control=(control-mucontrol)./stdcontrol;
 	obs=(obs-mucontrol)./stdcontrol;
 
-	[p,h]=ranksum(control,obs)
+	%[p,h]=ranksum(control,obs)
 
 	groupdata{1}=[groupdata{1} control];
 	groupdata{grpidx}=[groupdata{grpidx} obs];
@@ -98,7 +108,7 @@ barerr=zeros(1,length(groupdata));
 
 for i=1:length(groupdata)
 	barheights(i)=mean(groupdata{i});
-	barerr(i)=2*std(groupdata{i})./sqrt(length(groupdata{i}));
+	barerr(i)=std(groupdata{i})./sqrt(length(groupdata{i}));
 end
 
 
