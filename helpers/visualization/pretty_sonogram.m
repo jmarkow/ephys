@@ -18,6 +18,7 @@ nparams=length(varargin);
 nfft=[];
 low=3;
 high=10;
+zeropad=[];
 
 if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs!');
@@ -39,8 +40,18 @@ for i=1:2:nparams
 			low=varargin{i+1};
 		case 'high'
 			high=varargin{i+1};
+        case 'zeropad'
+            zeropad=varargin{i+1};
 		otherwise
 	end
+end
+
+if zeropad==0
+    zeropad=round(N/2);
+end
+
+if ~isempty(zeropad)
+    SIGNAL=[zeros(zeropad,1);SIGNAL(:);zeros(zeropad,1)];
 end
 
 if length(SIGNAL)<=N

@@ -242,10 +242,11 @@ for i=1:length(hits)
 		fs=data.fs;
 
 		if isfield(data,'ttl_data')
-			ttl_data=data.ttl_data;
+			ttl_data=data.ttl_data(startpoint:endpoint);
 		else
 			ttl_data=[];
 		end
+
 
 		savename=[ file(1:end-6) '_' templatename '_' num2str(i)];
 

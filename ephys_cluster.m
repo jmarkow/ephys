@@ -685,7 +685,7 @@ parfor i=1:length(SELECTED_PEAKS)
 		ephys_data=data.intan_data;
 	else
 		ephys_data=data.ephys_data;
-    	end
+    end
 
 	fs=data.fs;
 	for j=1:length(SELECTED_PEAKS{i})

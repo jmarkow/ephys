@@ -24,11 +24,11 @@ else
   shift 1
   args=
   while [ $# -gt 0 ]; do
-      token=`echo "$1" | sed 's/ /\\\\ /g'`   # Add blackslash before each blank
+      token=$1
       args="${args} ${token}" 
       shift
   done
-  eval "${exe_dir}"/ephys_pipeline_sua_track_standalone.app/Contents/MacOS/ephys_pipeline_sua_track_standalone $args
+  "${exe_dir}"/ephys_pipeline_sua_track_standalone.app/Contents/MacOS/ephys_pipeline_sua_track_standalone $args
 fi
 exit
 

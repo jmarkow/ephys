@@ -7,6 +7,7 @@ function [N,BINVEC]=pretty_histogram(DATA,BINS)
 %
 
 [n,x]=histc(DATA,BINS);
+n=n./sum(n);
 
 N=[];
 BINVEC=[];
