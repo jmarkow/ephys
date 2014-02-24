@@ -1,4 +1,4 @@
-function [CONSENSUS]=chirp_consensus(SONOGRAM,DX,ANGLES);
+function [CONSENSUS,CONN_COMP,STATS]=chirp_consensus(SONOGRAM,DX,ANGLES);
 %
 %
 
@@ -16,6 +16,8 @@ tScalef=1.0;
 
 CONSENSUS=zeros(size(DX));
 sonophase=angle(SONOGRAM);
+STATS={};
+CONN_COMP={};
 
 parfor i=1:nangles
 
@@ -37,5 +39,9 @@ parfor i=1:nangles
 	% average over angles
 
 	CONSENSUS=CONSENSUS+complexcontour./nangles;
+
+	% also return BWCONNCOMP structure for contours
+	
+	CONN_COMP{i}=bwconncomp(contourmask);
 
 end

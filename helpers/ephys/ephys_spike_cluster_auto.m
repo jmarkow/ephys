@@ -294,7 +294,12 @@ end
 % return labels, and windows and ISI sorted by cluster IDX
 
 [uniq_trial trial_boundary trial_group]=unique(trialnum);
-trial_boundary=[0;trial_boundary];
+
+if length(uniq_trial)==1
+	trial_boundary=[0;length(spiketimes)];
+else
+	trial_boundary=[0;trial_boundary];
+end
 
 OUTLIERS=storespikewindows(:,isnan(idx));
 

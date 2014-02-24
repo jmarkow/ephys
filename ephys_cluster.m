@@ -383,7 +383,7 @@ end
 
 if ~skip
 	[mic_data ephys_data ttl_data channels used_filenames]=extract_hits(sorted_syllable,filenames,...
-		act_templatesize,spect_thresh,time_range,fs,n,overlap,downsampling);
+		act_templatesize,spect_thresh,time_range,fs,n,overlap,downsampling,padding);
 
 	disp(['Saving data to ' fullfile(proc_dir,'extracted_data.mat')]);
 
@@ -620,7 +620,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA EXTRACTION %%%%%%%%%%%%%%%%%%%%
 
 
-function [MIC_DATA EPHYS_DATA TTL_DATA CHANNELS USED_FILENAMES]=extract_hits(SELECTED_PEAKS,FILENAMES,TEMPLATESIZE,SPECT_THRESH,TIME_RANGE,fs,N,OVERLAP,DOWNSAMPLING)
+function [MIC_DATA EPHYS_DATA TTL_DATA CHANNELS USED_FILENAMES]=extract_hits(SELECTED_PEAKS,FILENAMES,TEMPLATESIZE,SPECT_THRESH,TIME_RANGE,...
+		fs,N,OVERLAP,DOWNSAMPLING,PADDING)
 
 TEMPLATESIZE=TEMPLATESIZE+N;
 USED_FILENAMES={};

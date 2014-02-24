@@ -126,8 +126,11 @@ scalelabel='P';
 singletrials=5;
 medfilt_scale=1.5; % median filter scale (in ms)
 
-angles=-pi/4:pi/16:pi/4; % for contour image
-wsigma=.05:.02:.15; %timescales in milliseconds;
+%angles=-pi/4:pi/16:pi/4; % for contour image
+%wsigma=.05:.02:.15; %timescales in milliseconds;
+wsigma=.05:.05:.15;
+angles=-pi/4:pi/4:pi/4;
+
 padding=[];
 
 for i=1:2:nparams
@@ -272,6 +275,7 @@ for i=1:length(channels)
 
 	consensus_ave=zeros(rows,columns);
 	gabor_ave=zeros(rows,columns);
+	conn_comp={};
 
 	parfor j=1:ntrials
 
@@ -289,9 +293,9 @@ for i=1:length(channels)
 			[stft dx]=chirp_stft(currdata,'fs',proc_fs,'n',lfp_n,...
 				'overlap',lfp_overlap,'nfft',lfp_nfft,'wsigma',wsigma(k));
 
-			% build the complex contour image
+			% build the complex contour image, collect contours and statistics
 
-			consensus=contour_consensus(stft,dx,angles);
+			[consensus,conn_comp{j,k}]=contour_consensus(stft,dx,angles);
 
 			% accumulate
 
@@ -330,6 +334,12 @@ for i=1:length(channels)
 			[ savefilename num2str(channels(i)) ],'png','res',100);
 		close([spect_fig]);
 	end
+	
+	if ~isempty(savedir)
+		save(fullfile(savedir, [savefilename num2str(channels(i)) '.mat']),'CHANNELS','channels','conn_comp',...
+			'wsigma','angles','t','f');
+	end
+
 
 end
 
@@ -339,7 +349,7 @@ CONTOUR_SPECT.angles=angles;
 CONTOUR_SPECT.channels=CHANNELS;
 
 if ~isempty(savedir)
-	save(fullfile(savedir,'lfp_tf_data.mat'),'CHANNELS','channels','CONTOUR_SPECT');
+	save(fullfile(savedir,'lfp_tf_data.mat'),'CHANNELS','channels','CONTOUR_SPECT','angles','wsigma');
 end
 
 end

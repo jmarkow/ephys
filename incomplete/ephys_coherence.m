@@ -21,6 +21,9 @@ freq_range=[300]; % let's just refilter
 fs=1e3; % default Intan sampling rate
 trial_range=[];
 alpha=[.001 .01 .05]; % alpha for null hypothesis line 
+n=500;
+nfft=1024;
+overlap=450;
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -40,6 +43,12 @@ for i=1:2:nparams
             		w=varargin{i+1};
 		case 'ntapers'
 			ntapers=varargin{i+1};
+		case 'n'
+			n=varargin{i+1};
+		case 'nfft'
+			nfft=varargin{i+1};
+		case 'overlap'
+			overlap=varargin{i+1};
 	end
 end
 
@@ -70,20 +79,19 @@ freqs=fs/2*linspace(0,1,nfft/2+1);
 
 % smooth with multi-taper
 
-[tapers,lambda]=dpss(samples,w,ntapers);
+[tapers,lambda]=dpss(n,w,ntapers);
 
-ntapers
-w
-
+%ntapers
+%w
 % pre allocate cell arrays to store taper and trial estimates
 
-cross_spect_mean=zeros(1,nfft);
-spect1_mean=zeros(1,nfft);
-spect2_mean=zeros(1,nfft);
+cross_spect_mean=zeros(1,nfft/2+1);
+spect1_mean=zeros(1,nfft/2+1);
+spect2_mean=zeros(1,nfft/2+1);
 
-store.cross_spect=zeros(trials,nfft);
-store.spect1=zeros(trials,nfft);
-store.spect2=zeros(trials,nfft);
+store.cross_spect=zeros(trials,nfft/2+1);
+store.spect1=zeros(trials,nfft/2+1);
+store.spect2=zeros(trials,nfft/2+1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AVERAGE SPECTRA %%%%%%%%%%%%%%%%%%%%
@@ -93,29 +101,35 @@ for i=1:trials
 
 	% demean the data and compute the cross spectrum with the fields
 
-	sig1=SIGNAL1(i,:)-mean(SIGNAL1(i,:));
-	sig2=SIGNAL2(i,:)-mean(SIGNAL2(i,:));
+	sig1=detrend(SIGNAL1(i,:));
+	sig2=detrend(SIGNAL2(i,:));
 
 	% multi-taper estimate
 	% index by trial and taper, then we can estimate jackknife error bars
 
-	cross_spect_tmp=zeros(1,nfft);
-	spect1_tmp=zeros(1,nfft);
-	spect2_tmp=zeros(1,nfft);
+	cross_spect_tmp=zeros(1,nfft/2+1);
+	spect1_tmp=zeros(1,nfft/2+1);
+	spect2_tmp=zeros(1,nfft/2+1);
 
 	for j=1:ntapers
 
-		spect1=fft(sig1.*tapers(:,j)',nfft);
-		spect2=fft(sig2.*tapers(:,j)',nfft);
+		%spect1=fft(sig1.*tapers(:,j)',nfft);
+		%spect2=fft(sig2.*tapers(:,j)',nfft);
 
-		cross=spect1.*conj(spect2);
+		[spect1]=spectrogram(sig1,n,overlap,nfft);
+		[spect2]=spectrogram(sig2,n,overlap,nfft);
+
+		size(cross_spect_tmp)
+		size(spect1)
+
+		cross=mean(spect1.*conj(spect2),2);
 		
-		power1=spect1.*conj(spect1);
-		power2=spect2.*conj(spect2);
+		power1=mean(spect1.*conj(spect1),2);
+		power2=mean(spect2.*conj(spect2),2);
 		
-		cross_spect_tmp=cross_spect_tmp+cross./(ntapers);
-		spect1_tmp=spect1_tmp+power1./(ntapers);
-		spect2_tmp=spect2_tmp+power2./(ntapers);
+		cross_spect_tmp=cross_spect_tmp+cross'./(ntapers);
+		spect1_tmp=spect1_tmp+power1'./(ntapers);
+		spect2_tmp=spect2_tmp+power2'./(ntapers);
 
 		store.cross_spect(counter,:)=cross;
 		store.spect1(counter,:)=power1;

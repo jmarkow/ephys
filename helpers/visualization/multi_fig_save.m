@@ -8,6 +8,9 @@ function multi_fig_save(fighandle,save_dir,filename,formats,varargin)
 %
 %
 
+if nargin<2 | isempty(save_dir), save_dir=pwd; end
+if nargin<1 | isempty(fighandle), fighandle=gcf; end
+
 renderer='painters';
 res=300;
 

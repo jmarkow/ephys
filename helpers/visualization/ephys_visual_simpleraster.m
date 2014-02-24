@@ -65,7 +65,7 @@ newspikevec=[];
 
 for i=1:length(newspikes)
 	newspikevec=[newspikevec [ newspikes{i};newspikes{i}] ];
-	newtrialvec=[newtrialvec [ ones(1,length(newspikes{i})).*i+.5; ones(1,length(newspikes{i})).*i-.5] ];
+	newtrialvec=[newtrialvec [ ones(1,length(newspikes{i})).*i+spike_height; ones(1,length(newspikes{i})).*i-spike_height] ];
 end
 
 if isempty(max_time)
