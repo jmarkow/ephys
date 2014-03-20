@@ -47,6 +47,7 @@ N=1024;
 nfft=1024;
 overlap=1e3;
 mic_filtering=500; % highpass for mic trace
+mask_only=0;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -64,6 +65,10 @@ for i=1:2:nparams
 			overlap=varargin{i+1};
 		case 'mic_filtering'
 			filtering=varargin{i+1};
+        case 'mask_only'
+            mask_only=varargin{i+1};
+        case 'spect_thresh'
+            spect_thresh=varargin{i+1};
 
 	end
 end
@@ -85,7 +90,7 @@ end
 MIC_DATA=MIC_DATA./repmat(max(abs(MIC_DATA),[],1),[nsamples 1]);
 
 [HISTOGRAM.rmask HISTOGRAM.imask HISTOGRAM.f HISTOGRAM.t]=contour_histogram(MIC_DATA,'fs',fs,...
-	'tscale',tscale,'nfft',nfft,'n',N,'overlap',overlap);
+	'tscale',tscale,'nfft',nfft,'n',N,'overlap',overlap,'mask_only',mask_only,'spect_thresh',spect_thresh);
 
 % mean oscillogram
 
