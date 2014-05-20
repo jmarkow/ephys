@@ -8,9 +8,6 @@ function multi_fig_save(fighandle,save_dir,filename,formats,varargin)
 %
 %
 
-if nargin<2 | isempty(save_dir), save_dir=pwd; end
-if nargin<1 | isempty(fighandle), fighandle=gcf; end
-
 renderer='painters';
 res=300;
 
@@ -37,11 +34,11 @@ if nargin<4
 end
 
 try
-	if ~isempty(findstr('eps',formats)) || strcmp(formats,'all')
+	if ~isempty(strfind(formats,'eps')) || strcmp(formats,'all')
 		print(fighandle,'-depsc2',renderer,fullfile(save_dir,[filename '.eps']));
 	end
 
-	if ~isempty(findstr('tiffn',formats)) || strcmp(formats,'all')
+	if ~isempty(strfind(formats,'tiffn')) || strcmp(formats,'all')
 		print(fighandle,'-dtiffn',renderer,fullfile(save_dir,[filename '.tif']));
 		
 		if exist('rsetwrite')>0
@@ -64,19 +61,19 @@ try
 
 	%print(fighandle,'-dtiffn','-r300',fullfile(save_dir,[filename '.tif']));
 
-	if ~isempty(findstr('tiff',formats)) || strcmp(formats,'all')
+	if ~isempty(strfind(formats,'tiff')) || strcmp(formats,'all')
 		print(fighandle,'-dtiff',renderer,res,fullfile(save_dir,[filename '.tiff']));
 	end
 
-	if ~isempty(findstr('pdf',formats)) || strcmp(formats,'all')
+	if ~isempty(strfind(formats,'pdf')) || strcmp(formats,'all')
 		print(fighandle,'-dpdf',renderer,res,fullfile(save_dir,[filename '.pdf']));
 	end
 
-	if ~isempty(findstr('png',formats)) || strcmp(formats,'all')
+	if ~isempty(strfind(formats,'png')) || strcmp(formats,'all')
 		print(fighandle,'-dpng',renderer,res,fullfile(save_dir,[filename '.png']));
 	end
 
-	if ~isempty(findstr('fig',formats)) || strcmp(formats,'all')
+	if ~isempty(strfind(formats,'fig')) || strcmp(formats,'all')
 		saveas(fighandle,fullfile(save_dir,[filename '.fig']));
 	end
 
@@ -85,15 +82,15 @@ catch
 	disp('Save did not work (running in terminal emulation?)...')
 	disp('Trying simple file formats...')
 
-	if ~isempty(findstr('eps',formats)) || strcmp(formats,'all')
+	if ~isempty(strfind(formats,'eps')) || strcmp(formats,'all')
 		print(fighandle,'-depsc2',renderer,'-r100',fullfile(save_dir,[filename '.eps']));
 	end
 
-	if ~isempty(findstr('png',formats)) || strcmp(formats,'all')
+	if ~isempty(strfind(formats,'png')) || strcmp(formats,'all')
 		print(fighandle,'-dpng',renderer,'-r100',fullfile(save_dir,[filename '.png']));
 	end
 
-	if ~isempty(findstr('fig',formats)) || strcmp(formats,'all')
+	if ~isempty(strfind(formats,'fig')) || strcmp(formats,'all')
 		saveas(fighandle,fullfile(save_dir,[filename '.fig']));
 	end
 end

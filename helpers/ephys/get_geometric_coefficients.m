@@ -45,7 +45,7 @@ for i=1:trials
 	end
 
 	for j=loc:-1:1
-		if currwave(j)>.25*val
+		if currwave(j)>.5*val
 			break;
 		end
 	end
@@ -56,7 +56,7 @@ for i=1:trials
 	% get the width
 
 	for j=loc:1:length(currwave)
-		if currwave(j)>.25*val
+		if currwave(j)>.5*val
 			break;
 		end
 	end

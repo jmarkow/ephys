@@ -130,7 +130,7 @@ oldstate1=warning('off','stats:gmdistribution:FailedToConverge');
 oldstate2=warning('off','stats:kmeans:FailedToConvergeRep');
 oldstate3=warning('off','stats:kmeans:FailedToConverge');
 
-parfor i=1:1:length(cluststart)
+for i=1:1:length(cluststart)
 
 	tmpclustobj={};
 	startmu=[];

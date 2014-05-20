@@ -41,4 +41,4 @@ if ~exist(fullfile(path,'syllable_data'),'dir')
 	mkdir(fullfile(path,'syllable_data'));
 end
 
-save(fullfile(path,'syllable_data',[ file '_score.mat']),'features','TTL','lowfs','highfs');
+save(fullfile(path,'syllable_data',[ file '_score.mat']),'features','TTL','lowfs','highfs','parameters');

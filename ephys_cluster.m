@@ -785,7 +785,6 @@ for i=1:length(SELECTED_PEAKS)
 end
 
 CHANNELS=channel_labels;
-
 fprintf('\n');
 
 end

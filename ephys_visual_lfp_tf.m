@@ -314,10 +314,6 @@ if exist(fullfile(savedir,'singletrials'));
 	rmdir(fullfile(savedir,'singletrials'),'s');
 end
 
-lfp_n
-lfp_overlap
-lfp_nfft
-
 for i=1:length(channels)
 
 	savedir_st=fullfile(savedir,'singletrials',[ 'ch' num2str(channels(i))]);

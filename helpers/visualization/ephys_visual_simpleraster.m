@@ -39,8 +39,6 @@ for i=1:2:nparams
 	end
 end
 
-spikefig=figure();
-
 % grab the spikes from a particular cluster and triasl
 
 trials=min(CLUSTER.trials{CLUSTERNUM}):max(CLUSTER.trials{CLUSTERNUM});
@@ -72,16 +70,15 @@ if isempty(max_time)
 	max_time=maxt;
 end
 
-fig=figure();
+%fig=figure();
 
 plot(newspikevec,newtrialvec,'-','color','k');
 
-xlabel({'Time (in s)'},'FontSize',18,'FontName','Helvetica');
-ylabel('Trial','interpreter','latex','FontSize',18,'FontName','Helvetica');
-
+%xlabel({'Time (in s)'},'FontSize',18,'FontName','Helvetica');
+%ylabel('Trial','interpreter','latex','FontSize',18,'FontName','Helvetica');
 
 xlim([0 max_time]);
-set(gca,'tickdir','out','FontSize',15,'FontName','Helvetica','linewidth',1.25,'TickLength',[.025 .025],'ydir','reverse');
+set(gca,'tickdir','out','FontSize',12,'FontName','Helvetica','ydir','reverse');
 box off
 
 

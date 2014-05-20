@@ -213,12 +213,13 @@ for i=1:nspikes
 			[val loc]=max(interp_window(:,1));
 			[val2 loc2]=min(interp_window(:,1));
 
-			if abs(val2)>val
-				alignpoint=loc2;
-			else
+			if val>abs(val2)*1.05
 				alignpoint=loc;
-			end
+			else
+				alignpoint=loc2;
+			end	
 
+			
 			if abs(alignpoint-frame_center)>jitter
 				continue;
 			end
@@ -340,11 +341,11 @@ for i=1:nspikes
 				[val loc]=max(interp_window2(:,1));
 				[val2 loc2]=min(interp_window2(:,1));
 
-				if abs(val2)>val
-					alignpoint=loc2;
-				else
+				if val>abs(val2)*1.05
 					alignpoint=loc;
-				end
+				else
+					alignpoint=loc2;
+				end	
 
 				if abs(alignpoint-frame_center)>jitter
 					continue;

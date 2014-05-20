@@ -155,9 +155,11 @@ for j=1:length(SPIKES)
 
 	% upsample and align, then downsample and whiten!!!
 
-	spikemask=ones(size(SPIKES(j).windows));
-	spikemask([1:15 end-15:end],:,:)=0;
-	SPIKES(j).windows=SPIKES(j).windows.*spikemask;
+	% masking
+
+	%spikemask=ones(size(SPIKES(j).windows));
+	%spikemask([1:15 end-15:end],:,:)=0;
+	%SPIKES(j).windows=SPIKES(j).windows.*spikemask;
 
 	alignspikes=ephys_spike_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align',align);	
 	CLUSTSPIKES(j)=alignspikes;

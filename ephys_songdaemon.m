@@ -1,7 +1,7 @@
-function intan_songdet_intmic_daemon(DIR,varargin)
+function ephys_songdaemon(DIR,varargin)
 %runs Intan song detection indefinitely
 %
-%	intan_songdet_intmic_daemon(DIR);
+%	ephys_songdaemon(DIR);
 %
 %	DIR
 %	directory that contains files for processing

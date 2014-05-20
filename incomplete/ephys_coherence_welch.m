@@ -15,7 +15,6 @@ w=2;
 
 % about 200 trials seems to be our limit here...
 
-ntapers=[];
 beta=1.5; % parameter for z-transforming coherence
 freq_range=[300]; % let's just refilter
 fs=1e3; % default Intan sampling rate
@@ -63,14 +62,6 @@ if isempty(nfft)
 	nfft=max([samples 2^nextpow2(samples)]);
 end
 
-if isempty(ntapers)
-    ntapers=2*(w)-1;
-end
-
-resolution=w*1/(samples/fs);
-disp(['Resolution:  ' num2str(resolution)  ' Hz']);
-disp(['NFFT:  ' num2str(nfft)]);
-
 % take the average spectra to compute our cross spectrum
 
 % normalize spectrum by samples and sampling rate
@@ -79,23 +70,22 @@ freqs=fs/2*linspace(0,1,nfft/2+1);
 
 % smooth with multi-taper
 
-n=samples;
-[tapers,lambda]=dpss(n,w,ntapers);
-
 %ntapers
 %w
 % pre allocate cell arrays to store taper and trial estimates
 
-cross_spect_mean=zeros(1,nfft);
-spect1_mean=zeros(1,nfft);
-spect2_mean=zeros(1,nfft);
+cross_spect_mean=zeros(1,nfft/2+1);
+spect1_mean=zeros(1,nfft/2+1);
+spect2_mean=zeros(1,nfft/2+1);
 
-store.cross_spect=zeros(trials,nfft);
-store.spect1=zeros(trials,nfft);
-store.spect2=zeros(trials,nfft);
+store.cross_spect=zeros(trials,nfft/2+1);
+store.spect1=zeros(trials,nfft/2+1);
+store.spect2=zeros(trials,nfft/2+1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AVERAGE SPECTRA %%%%%%%%%%%%%%%%%%%%
+
+nfft
 
 counter=1;
 for i=1:trials
@@ -108,26 +98,26 @@ for i=1:trials
 	% multi-taper estimate
 	% index by trial and taper, then we can estimate jackknife error bars
 
-	cross_spect_tmp=zeros(1,nfft);
-	spect1_tmp=zeros(1,nfft);
-	spect2_tmp=zeros(1,nfft);
+	cross_spect_tmp=zeros(1,nfft/2+1);
+	spect1_tmp=zeros(1,nfft/2+1);
+	spect2_tmp=zeros(1,nfft/2+1);
 
 	for j=1:ntapers
 
-		spect1=fft(sig1.*tapers(:,j)',nfft);
-		spect2=fft(sig2.*tapers(:,j)',nfft);
+		%spect1=fft(sig1.*tapers(:,j)',nfft);
+		%spect2=fft(sig2.*tapers(:,j)',nfft);
 
-		%[spect1]=spectrogram(sig1,n,overlap,nfft);
-		%[spect2]=spectrogram(sig2,n,overlap,nfft);
+		[spect1]=spectrogram(sig1,n,overlap,nfft);
+		[spect2]=spectrogram(sig2,n,overlap,nfft);
 
-		cross=spect1.*conj(spect2);
+		cross=mean(spect1.*conj(spect2),2);
 		
-		power1=spect1.*conj(spect1);
-		power2=spect2.*conj(spect2);
+		power1=mean(spect1.*conj(spect1),2);
+		power2=mean(spect2.*conj(spect2),2);
 		
-		cross_spect_tmp=cross_spect_tmp+cross./(ntapers);
-		spect1_tmp=spect1_tmp+power1./(ntapers);
-		spect2_tmp=spect2_tmp+power2./(ntapers);
+		cross_spect_tmp=cross_spect_tmp+cross'./(ntapers);
+		spect1_tmp=spect1_tmp+power1'./(ntapers);
+		spect2_tmp=spect2_tmp+power2'./(ntapers);
 
 		store.cross_spect(counter,:)=cross;
 		store.spect1(counter,:)=power1;

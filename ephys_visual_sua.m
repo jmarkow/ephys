@@ -96,6 +96,9 @@ function ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
 %		maxnoisetraces
 %		maximum number of noise traces to use in spike whitening (default: 1e6)
 %
+%		align_method
+%		method for spike alignment ('min','max', or 'com', default: 'min');
+%
 % see also ephys_visual_mua.m,ephys_visual_lfp_amp.m,ephys_visual_lfp_tf.m,ephys_spike_cluster_auto.m,ephys_spike_clustergui_tetrode.m,ephys_spike_detect.m
 
 
@@ -133,7 +136,7 @@ sigma_t=4; % multiple of noise estimate for spike threshold (generally 3-4, usin
 jitter=10; % max jitter in samples for spike re-alignment (4 is reasonable
 singletrials=5; % number of random single trials to plot per cluster
 subtrials=[];
-align='min'; % how to align spike waveforms can be min, max or com for center-of-mass
+align_method='min'; % how to align spike waveforms can be min, max or com for center-of-mass
 interpolate_fs=200e3; % 200 has worked best here
 channels=CHANNELS;
 smooth_rate=1e3;
@@ -207,8 +210,8 @@ for i=1:2:nparams
 			sigma_t=varargin{i+1};
 		case 'subtrials'
 			subtrials=varargin{i+1};
-		case 'align'
-			align=varargin{i+1};
+		case 'align_method'
+			align_method=varargin{i+1};
 		case 'jitter'
 			jitter=varargin{i+1};
 		case 'interpolate_fs'
@@ -308,7 +311,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SPIKE DETECTION %%%%%%%%%%%%%%%%%%%%
 
 disp('Entering spike detection...');
-disp(['Alignment method:  ' align]);
+disp(['Alignment method:  ' align_method]);
 disp(['Interpolate FS:  ' num2str(interpolate_fs)]);
 % need a noise cutoff...let's start with 3*std or Quiroga's measure
 
@@ -337,7 +340,7 @@ for j=1:ntrials
 	%spikethreshold=10;
 	% get the threshold crossings (based on first channel)
 
-	spikes(j)=ephys_spike_detect(squeeze(sort_data(:,j,:)),spikethreshold,'fs',fs,'visualize','n','align',align,...
+	spikes(j)=ephys_spike_detect(squeeze(sort_data(:,j,:)),spikethreshold,'fs',fs,'visualize','n','align',align_method,...
 		'jitter',jitter,'window',spike_window);
 
 	% get the spikeless data
@@ -349,7 +352,7 @@ for j=1:ntrials
 
 	for k=2:nchannels
 		tmp_thresh=sigma_t*median(abs(sort_data(:,j,k))/.6745);
-		tmp_spikes=ephys_spike_detect(squeeze(sort_data(:,j,k)),tmp_thresh,'fs',fs,'visualize','n','align',align,...
+		tmp_spikes=ephys_spike_detect(squeeze(sort_data(:,j,k)),tmp_thresh,'fs',fs,'visualize','n','align',align_method,...
 			'window',spike_window);
 		tmp=ephys_spike_removespikes(sort_data(:,j,k),tmp_spikes);
 		spikeless{k}=[spikeless{k};tmp];
@@ -416,7 +419,7 @@ if spikesort
 			'fs',fs,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
 			'maxnoisetraces',maxnoisetraces,'cluststart',cluststart,'pcs',pcs,...
 			'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',...
-			modelselection,'align',align,'noisewhiten',noisewhiten);
+			modelselection,'align',align_method,'noisewhiten',noisewhiten);
 	else
 		error('GUI sorting non-functional ATM, stay tuned...');
 		[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats]=...
