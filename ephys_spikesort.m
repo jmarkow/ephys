@@ -103,10 +103,10 @@ end
 fs=25e3;
 noise='none'; % none, nn for nearest neighbor, or car for common average
 car_exclude=[];
-freq_range=[800 11e3]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
+freq_range=[400 11e3]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
 filt_type='bandpass'; % high,low or bandpass
-filt_order=6;
-filt_name='b';
+filt_order=3;
+filt_name='e';
 auto_clust=1; % 0 for manual cluster cutting (GUI), 1 for automated clustering
 noise='none'; % none, nn for nearest neighbor, or car for common average
 
