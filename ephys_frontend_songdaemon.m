@@ -23,7 +23,7 @@ function ephys_songdaemon(DIR,varargin)
 %and recording ID and placed in the "intan_data" folder. For detailed processing 
 %options be sure to check intan_songdet_intmic.m
 %
-%see also ephys_pipeline_mkdir.m,intan_songdet_intmic.m
+%see also frontend_mkdirs.m,frontend_main.m
 %
 
 %
@@ -37,7 +37,7 @@ if nargin<1
 end
 
 while 1==1
-	intan_songdet_intmic(DIR,varargin{:});
+	frontend_main(DIR,varargin{:});
 	disp('Pausing for 10 seconds');
 	pause(10);
 end
