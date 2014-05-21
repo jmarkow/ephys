@@ -15,7 +15,7 @@ function auto_delete(DIR,DATE,FILT)
 % get the DIR listing
 
 if ~isempty(FILT)
-	listing=dir(fullfile(DIR,FILT));
+	listing=dir(fullfile(DIR,['*.' FILT]));
 else
 	listing=dir(DIR);
 end
@@ -28,6 +28,10 @@ filenames={listing.name};
 oldstate=recycle;
 newstate=recycle('off');
 
+dates
+DIR
+FILT
+
 for i=1:length(dates)
 
 	% for each date check to see if it is > than
@@ -36,6 +40,7 @@ for i=1:length(dates)
 	% days elapsed
 
 	delapsed=daysdif(datenum(dates{i}),datenum(now));
+	delapsed
 
 	if delapsed>DATE
 		disp(['Deleting ' fullfile(DIR,filenames{i})]);

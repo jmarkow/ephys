@@ -23,7 +23,7 @@ OUTLIERS=[];
 MODEL=[];
 
 fs=25e3;
-interpolated_fs=200e3;
+%interpolated_fs=200e3;
 interpolate_fs=200e3;
 proc_fs=25e3;
 maxnoisetraces=1e6;
@@ -51,8 +51,8 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'fs'
 			fs=varargin{i+1};
-		case 'interpolated_fs'
-			interpolated_fs=varargin{i+1};
+		case 'interpolate_fs'
+			interpolate_fs=varargin{i+1};
 		case 'proc_fs'
 			proc_fs=varargin{i+1};
 		case 'use_spiketime'
@@ -197,7 +197,7 @@ spiketimes=cat(2,CLUSTSPIKES(:).storetimes);
 clearvars SPIKES CLUSTSPIKES clusterspikewindowscell storespikewindowscell;
 
 [idx spikedata MODEL]=ephys_spike_gmmsort(clusterspikewindows,...
-	'proc_fs',proc_fs,'fs',fs,'interpolated_fs',interpolated_fs,...
+	'proc_fs',proc_fs,'fs',fs,'interpolate_fs',interpolate_fs,...
 	'smem',smem,'garbage',garbage,'maxnoisetraces',maxnoisetraces,...
 	'cluststart',cluststart,'pcs',pcs,'workers',workers,'modelselection',...
 	modelselection);

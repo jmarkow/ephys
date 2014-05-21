@@ -29,11 +29,11 @@ function [SPIKES]=ephys_spike_detect(DATA,THRESH,varargin)
 % visualize
 % generate a figure to visualize spike detection results
 %
-% realign
-% after spike detection, realign ('y' or 'n', defeault: 'y') to peak
+% realign_method
+% after spike detection, realign_method ('y' or 'n', defeault: 'y') to peak
 %
-% align
-% alignment method (only applicable if realign=='y') ('min' for absolute minimum,
+% align_method
+% align_methodment method (only applicable if realign_method=='y') ('min' for absolute minimum,
 % 'max' for absolute maximum and 'com' for center of mass about the minimum)
 %
 % OUTPUT
@@ -78,9 +78,9 @@ window=[.0004 .0004]; % how large of a window to grab, seconds before and after 
 method='b';
 visualize='y';
 fs=25e3;
-realign='y';
+realign_method='y';
 jitter=4; % how much jitter do we allow before tossing out a spike (in samples of original fs)?
-align='min';
+align_method='min';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -104,8 +104,8 @@ for i=1:2:nparams
 			fs=varargin{i+1};
 		case 'jitter'
 			jitter=varargin{i+1};	
-		case 'align'
-			align=varargin{i+1};
+		case 'align_method'
+			align_method=varargin{i+1};
 	end
 end
 
@@ -117,7 +117,7 @@ end
 % specify the spike window in terms of samples
 
 % the frame to grab (in the original sampling rate) around the threshold crossing
-% collect jitter samples around the frame for upsample and realignment
+% collect jitter samples around the frame for upsample and realign_methodment
 
 SPIKES.frame=window;
 SPIKES.jitter=jitter;
@@ -162,14 +162,14 @@ for j=1:length(spike_times)
 
 	if spike_times(j)-frame(1)>0 && spike_times(j)+frame(2)<length(DATA(:,1))
 
-		% find the absolute minimum (or max) and use as the spike peak for alignment
+		% find the absolute minimum (or max) and use as the spike peak for align_methodment
 
 		tmp_time=spike_times(j);
 		tmp_window=DATA(tmp_time-frame(1):tmp_time+frame(2),:);
 
 		% find the absolute min in the window
 
-		switch lower(align)
+		switch lower(align_method)
 			case 'max'
 				[val loc]=max(tmp_window(:,1));
 			otherwise
@@ -201,7 +201,7 @@ SPIKES.windows(:,counter:nspikes,:)=[];
 SPIKES.fs=fs;
 SPIKES.censor=censor;
 SPIKES.window_time=timepoints./fs;
-% make sure we haven't made any alignments that violate the censor period
+% make sure we haven't made any align_methodments that violate the censor period
 
 counter=2;
 while counter<=length(SPIKES.times)

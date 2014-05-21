@@ -29,6 +29,8 @@ switch lower(ext)
 		PARAMETERS=[];
 	case '.rhd'
 		% insert RHD extraction code when ready
+	
+	% add option for open ephys?
 	otherwise
 		error('Could not recognize file type %s ', ext);
 end

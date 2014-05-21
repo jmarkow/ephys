@@ -96,7 +96,7 @@ song_thresh=.15; % between .2 and .3 seems to work best (higher is more exlusive
 songduration=.8; % moving average of ratio
 low=5;
 high=10;
-colors=hot;
+colors='hot';
 disp_minfs=1;
 disp_maxfs=10e3;
 filtering=300; % changed to 100 from 700 as a more sensible default, leave empty to filter later
@@ -108,7 +108,7 @@ ext='int';
 % parameters for folder creation
 
 folder_format='yyyy-mm-dd';
-parse_format='bimtdd'; % how to parse filenames, b=birdid, i=recid, m=micid, t=ttlid, d=date
+parse_string='bimtdd'; % how to parse filenames, b=birdid, i=recid, m=micid, t=ttlid, d=date
 		       % character position indicates which token (after delim split) contains the info
 date_string='yymmddHHMMSS'; % parse date using datestr format
 
@@ -123,12 +123,12 @@ delimiter='\_';
 nosort=0;
 subdir='pretty_bird';
 sleep_window=[ 22 7 ]; % times for keeping track of sleep data (24 hr time, start and stop)
-auto_delete=1; % delete data n days old
+auto_delete_int=1; % delete data n days old
 sleep_fileinterval=3; % specify file interval (in minutes) 
 sleep_segment=5; % how much data to keep (in seconds)
 ttl_skip=1; % skip song detection if TTL detected?
 
-mfile_path = mfilename('fullpath')
+mfile_path = mfilename('fullpath');
 [script_path,~,~]=fileparts(mfile_path);
 
 % where to place the parsed files
@@ -137,6 +137,8 @@ root_dir=fullfile(pwd,'..','..','data','intan_data'); % where will the detected 
 proc_dir=fullfile(pwd,'..','processed'); % where do we put the files after processing, maybe auto-delete
 					 % after we're confident in the operation of the pipeline
 unorganized_dir=fullfile(pwd,'..','unorganized');
+
+hline=repmat('#',[1 80]);
 
 if ~exist(root_dir,'dir')
 	mkdir(root_dir);
@@ -163,8 +165,8 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'auto_delete'
-			auto_delete=varargin{i+1};
+		case 'auto_delete_int'
+			auto_delete_int=varargin{i+1};
 		case 'sleep_window'
 			sleep_window=varargin{i+1};
 		case 'sleep_fileinterval'
@@ -195,8 +197,8 @@ for i=1:2:nparams
 			ttl_skip=varargin{i+1};
 		case 'ext'
 			ext=varargin{i+1};
-		case 'parse_format'
-			parse_format=varargin{i+1};
+		case 'parse_string'
+			parse_string=varargin{i+1};
 	end
 end
 
@@ -223,12 +225,13 @@ end
 % check all files in proc directory and delete anything older than 
 % auto-delete days
 
-if ~isempty(auto_delete)
-	auto_delete(proc_dir,auto_delete,ext);    
+if ~isempty(auto_delete_int)
+	auto_delete(proc_dir,auto_delete_int,ext);    
 end
 
 for i=1:length(proc_files)
 
+	sleep_flag=0;
 	song_bin=[];
 
 	norm_data=[];
@@ -276,8 +279,9 @@ for i=1:length(proc_files)
 		end
 	end
 
-	disp([proc_files{i}]);
-
+	disp([repmat(hline,[2 1])]);
+	disp(['Processing: ' proc_files{i}]);
+	disp(['File date: ' datestr(file_datenum)]);
 	% try reading the file, if we fail, skip
 
 	try
@@ -302,7 +306,7 @@ for i=1:length(proc_files)
 
 	[path,name,ext]=fileparts(proc_files{i});
 
-	disp(['Processing ' proc_files{i}]);
+
 
 	try
 		movefile(proc_files{i},proc_dir);
@@ -348,7 +352,13 @@ for i=1:length(proc_files)
 		norm_data=norm_data./max(abs(norm_data));
 	end
 
-	% short circuit song processing if current file is in the sleep interval
+	% prepare data as a structure to pass to processing functions
+
+	datastruct=struct('data',data,'norm_data',norm_data,'conditioned_data',conditioned_data,...
+		'ttl_data',ttl_data,'ephys_labels',ephys_labels,'ephys_channels',ephys_channels,...
+		'datenum',file_datenum,'fs',fs);
+
+	clearvars data norm_data conditioned_data ttl_data;
 
 	if ~isempty(file_datenum) & length(sleep_window)==2
 
@@ -362,16 +372,17 @@ for i=1:length(proc_files)
 
 			disp(['Processing sleep data for file ' proc_files{i}]);
 
-			frontend_sleepdata(data,conditioned_data,ephys_labels,sleep_segment,...
-				file_datenum,sleep_fileinterval,...
-				fullfile(root_dir,birdid,recid),folder_format,...
-	
+			frontend_sleepdata(datastruct,name,sleep_window,sleep_segment,sleep_fileinterval,sleep_pre,...
+				fullfile(root_dir,birdid,recid),folder_format,delimiter,parse_string);	
+			
+			sleep_flag=1;
+
 			% skip song detection?
 
 		end
 	end
 
-	frontend_extract_mkdirs(FOLDERNAME,image_pre,wav_pre,data_pre,isttl);
+	frontend_extract_mkdirs(foldername,image_pre,wav_pre,data_pre,isttl);
 
 	image_dir=fullfile(foldername,image_pre);
 	wav_dir=fullfile(foldername,wav_pre);
@@ -380,11 +391,18 @@ for i=1:length(proc_files)
 	image_dir_ttl=fullfile(foldername,[image_pre '_ttl']);
 	wav_dir_ttl=fullfile(foldername,[wav_pre '_ttl']);
 	data_dir_ttl=fullfile(foldername,[data_pre '_ttl']);
+	
+	if ~ismic & ~ttl & ~sleepflag
+
+		ephys_extraction=data;
+		audio_extraction=[];
+		ttl_extraction=[];
+		save(fullfile(data_dir,['songdet1_' name '.mat']),...
+			'ephys_extraction','ttl_extraction','audio_extraction','fs','ephys_labels','file_datenum','-v7.3');
+
+	end
 
 	% if we have a TTL trace, extract using the TTL
-
-	datastruct=struct('data',data,'norm_data',norm_data,'conditioned_data',conditioned_data,...
-		'ttl_data',ttl_data,'ephys_labels',ephys_labels,'datenum',file_datenum,'fs',fs);
 	
 	dirstructttl=struct('image',image_dir_ttl,'wav',wav_dir_ttl,'data',data_dir_ttl);
 	dirstruct=struct('image',image_dir,'wav',wav_dir,'data',data_dir);
@@ -396,9 +414,17 @@ for i=1:length(proc_files)
 		if ~isempty(ttl_pts)
 
 			ttl_idx=[0 find(diff(ttl_pts)>audio_pad*2*fs) length(ttl_pts)];
+
+			idx=1:length(ttl_idx)-1;
+
+			startpoints=floor(ttl_pts(ttl_idx(idx)+1)-audio_pad*fs);
+			stoppoints=ceil(ttl_pts(ttl_idx(idx+1))+audio_pad*fs);
+
+			ext_pts=[startpoints(:) stoppoints(:)];
+
 			disp(['TTL detected in file:  ' proc_files{i}]);
 
-			frontend_dataextract(name,datastruct,dirstructttl,ttl_idx,disp_minfs,disp_maxfs,1);
+			frontend_dataextract(name,datastruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
 
 			% if we found TTL pulses and ttl_skip is on, skip song detection and move on to next file
 
@@ -442,25 +468,20 @@ for i=1:length(proc_files)
 		% use diff to find non_continguous song bouts separated by the audio pad + 1 second
 
 		song_idx=[0 find(diff(song_pts*son_to_vec)>fs+audio_pad*2*fs) length(song_pts)];
-		sonogram_filename=fullfile(image_dir,[ name '.gif' ]);
+		
+		idx=1:length(song_idx)-1;
 
-		frontend_dataextract(name,datastruct,dirstruct,song_idx,disp_minfs,disp_maxfs,0);
+		startpoints=floor(song_pts(song_idx(idx)+1)*son_to_vec-audio_pad*fs);
+		stoppoints=ceil(song_pts(song_idx(idx+1))*son_to_vec+audio_pad*fs);
+
+		ext_pts=[startpoints(:) stoppoints(:)];
+
+		frontend_dataextract(name,datastruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors);
 
 	end
 
 	% if there is neither a mic nor a TTL signal, store everything
 
-	if ~ismic & ~ttl
-
-		ephys_extraction=data;
-		audio_extraction=[];
-		ttl_extraction=[];
-		save(fullfile(data_dir,['songdet1_' name '.mat']),...
-			'ephys_extraction','ttl_extraction','audio_extraction','fs','ephys_labels','file_datenum','-v7.3')
-
-	end
-
 	clearvars datastruct dirstruct dirstructttl;
-	clearvars data norm_data conditioned_data ttl_data;
 
 end
