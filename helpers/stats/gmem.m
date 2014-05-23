@@ -729,11 +729,23 @@ MODEL.mixing(sc1)=MODEL.mixing(sc);
 
 sd=sqrt(diag(D));
 
-MODEL.mu(sc,:);
-MODEL.mu(sc,:)=MODEL.mu(sc,:)+(splitepsi*U*(sd*randn(D,1)))';
-MODEL.mu(sc1,:)=MODEL.mu(sc,:)+(splitepsi*U*(sd*randn(D,1)))';
+%MODEL.mu(sc,:);
+%MODEL.mu(sc,:)=MODEL.mu(sc,:)+(splitepsi*U*(sd*randn(D,1)))';
+%MODEL.mu(sc1,:)=MODEL.mu(sc,:)+(splitepsi*U*(sd*randn(D,1)))';
+%
+%MODEL.sigma(:,:,sc)=DD(1,1)*eye(D);
+%MODEL.sigma(:,:,sc1)=MODEL.sigma(:,:,sc);
+
+oldmu=MODEL.mu(sc,:);
+
+MODEL.mu(sc,:)=oldmu+(splitepsi*U*(sd*randn(D,1)))';
+MODEL.mu(sc1,:)=oldmu+(splitepsi*U*(sd*randn(D,1)))';
+
+%MODEL.mu(sc,:)=oldmu+(splitepsi*randn(D,1))';
+%MODEL.mu(sc1,:)=oldmu+(splitepsi*randn(D,1))';
 
 MODEL.sigma(:,:,sc)=DD(1,1)*eye(D);
+%MODEL.sigma(:,:,sc)=det(MODEL.sigma(:,:,sc))^(1/D)*eye(D);
 MODEL.sigma(:,:,sc1)=MODEL.sigma(:,:,sc);
 
 end

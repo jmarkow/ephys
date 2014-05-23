@@ -436,7 +436,7 @@ clusterchoice=clusterchoices{clusterselection};
 cluster_data=spike_data(:,dim);
 [datapoints,features]=size(spike_data);
 
-
+clusters=unique(LABELS(LABELS>0)); % how many clusters?
 if ~draw_mode
 
 	options=statset('Display','off');

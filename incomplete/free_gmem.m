@@ -705,6 +705,8 @@ function [NEWMODEL]=splitclust(MODEL,sc,sc1,splitepsi)
 
 % take the largest eigenvalue of the covariance
 
+[U DD V]=svd(MODEL.sigma(:,:,sc));
+
 mu=MODEL.mu;
 mixing=MODEL.mixing;
 sigma=MODEL.sigma;
@@ -715,8 +717,6 @@ len=length(mixing);
 if len>nclust
 	garbage_mix=MODEL.mixing(len);
 end
-
-[U DD V]=svd(MODEL.sigma(:,:,sc));
 
 % put the new cluster in the beginning
 
@@ -729,10 +729,15 @@ end
 
 sd=sqrt(diag(d));
 
-mu(sc,:)=mu(sc,:)+(splitepsi*U*(sd*randn(d,1)))';
-mu(sc1,:)=mu(sc,:)+(splitepsi*U*(sd*randn(d,1)))';
+oldmu=mu(sc,:);
+mu(sc,:)=oldmu+(splitepsi*U*(sd*randn(d,1)))';
+mu(sc1,:)=oldmu+(splitepsi*U*(sd*randn(d,1)))';
+
+%mu(sc,:)=oldmu+(splitepsi*randn(d,1))';
+%mu(sc1,:)=oldmu+(splitepsi*randn(d,1))';
 
 sigma(:,:,sc)=DD(1,1)*eye(d);
+%sigma(:,:,sc)=det(sigma(:,:,sc))^(1/d)*eye(d);
 sigma(:,:,sc1)=sigma(:,:,sc);
 
 NEWMODEL.mu=mu;

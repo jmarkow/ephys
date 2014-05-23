@@ -13,6 +13,8 @@ if nargin<2
 	error('ephysPipeline:suavis:notenoughparams','Need 2 arguments to continue, see documentation');
 end
 
+nparams=length(varargin);
+
 SPIKEDATA=[];
 CLUSTERPOINTS=[];
 LABELS=[];
@@ -33,9 +35,7 @@ workers=1;
 garbage=1;
 smem=1;
 modelselection='icl';
-use_spiketime=0; % use spiketime as a clustering feature (usually helps if SNR is low)
-nparams=length(varargin);
-align='min';
+align_method='min';
 regularize=.01;
 noisewhiten=1;
 
@@ -55,8 +55,6 @@ for i=1:2:nparams
 			interpolate_fs=varargin{i+1};
 		case 'proc_fs'
 			proc_fs=varargin{i+1};
-		case 'use_spiketime'
-			use_spiketime=varaargin{i+1};
 		case 'spikecut'
 			spikecut=varargin{i+1};
 		case 'merge'
@@ -77,8 +75,8 @@ for i=1:2:nparams
 			workers=varargin{i+1};
 		case 'modelselection'
 			modelselection=varargin{i+1};
-		case 'align'
-			align=varargin{i+1};
+		case 'align_method'
+			align_method=varargin{i+1};
 		case 'noisewhiten'
 			noisewhiten=varargin{i+1};
 	end
@@ -99,8 +97,6 @@ spiketimes=[];
 spikeifr=[];
 trialnum=[];
 spike_data=[];
-
-
 
 % use ifr as a clustering feature
 
@@ -161,7 +157,7 @@ for j=1:length(SPIKES)
 	%spikemask([1:15 end-15:end],:,:)=0;
 	%SPIKES(j).windows=SPIKES(j).windows.*spikemask;
 
-	alignspikes=ephys_spike_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align',align);	
+	alignspikes=ephys_spike_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align_method',align_method);	
 	CLUSTSPIKES(j)=alignspikes;
 
 	% cluster with the decimated spikes
@@ -227,119 +223,13 @@ end
 %TRIALS=trialnum;
 
 clusters=unique(LABELS(LABELS>0));
+OUTLIERS=storespikewindows(:,LABELS==0);
 
 % now assess the cluster quality ,
 % take each cluster and check the FP and FN rate
 
 % use l ratio of .05
 
-for i=1:nclust
-
-	clusterlocs=find(LABELS==i);
-	otherlocs=find((LABELS~=i)&(LABELS>0));
-
-	% get the feature data
-
-	clusterpoints=spikedata(clusterlocs,:);
-	otherpoints=spikedata(otherlocs,:);
-
-	% l ratio is the sum inv chi2cdf of mahal distance of all other points over
-	% n spikes
-
-	nclustpoints=size(clusterpoints,1);
-
-	if size(otherpoints,1)<=size(otherpoints,2) || size(clusterpoints,1)<=size(clusterpoints,2)
-		warning('ephysPipeline:spikesort:toofewrowsmahal',...
-			'Too few rows for Mahal distance calculation');
-		STATS.lratio(i)=NaN;
-		STATS.isod(i)=NaN;
-		continue;
-	end
-
-
-	% regularize the covariance matrix to make sure it's invertible
-
-	covm=MODEL.sigma(:,:,i)+eye(size(MODEL.sigma(:,:,i)))*1e-5;
-	invcovm=inv(covm);	
-	refmean=MODEL.mu(i,:);
-
-	mahaldist=zeros(1,size(otherpoints,1));
-
-	% take the square mahal distance
-
-	for j=1:size(otherpoints,1)
-		mahaldist(j)=(otherpoints(j,:)-refmean)*invcovm*(otherpoints(j,:)-refmean)';
-	end
-	
-	% l-ratio
-
-	if length(otherpoints>0)
-		STATS.lratio(i)=sum(1-chi2cdf(mahaldist,features))/nclustpoints;
-	else
-		STATS.lratio(i)=NaN;
-	end
-
-	% iso distance
-
-	if length(mahaldist)>=nclustpoints
-		sortmahal=sort(mahaldist,'ascend');
-		STATS.isod(i)=sortmahal(nclustpoints);
-	else
-		STATS.isod(i)=NaN;
-	end
-
-end
-
-% resort labels by number of spikes, first vector is cluster id, and the second the 
-% point where those labels end (e.g. 1 1 1 2 2 2 2 would return 1 2 and 3 7)
-
-% return labels, and windows and ISI sorted by cluster IDX
-
-[uniq_trial trial_boundary trial_group]=unique(trialnum);
-
-if length(uniq_trial)==1
-	trial_boundary=[0;length(spiketimes)];
-else
-	trial_boundary=[0;trial_boundary];
-end
-
-OUTLIERS=storespikewindows(:,isnan(idx));
-
-for i=1:nclust
-
-	WINDOWS{i}=storespikewindows(:,LABELS==i);
-	TIMES{i}=spiketimes(LABELS==i);
-	SPIKEDATA{i}=spikedata(LABELS==i,:);
-
-	spikeisitmp=[];
-	trialtmp=[];
-
-	for j=1:length(uniq_trial)
-		
-		% all spike times in this trial	
-
-		currtrial=spiketimes(trial_boundary(j)+1:trial_boundary(j+1));
-
-		% now all spike ids from this trial
-
-		currlabels=LABELS(trialnum==uniq_trial(j));
-
-		% spike times for this cluster
-
-		currtrial=currtrial(currlabels==clusters(i));
-		trialtmp=[trialtmp;uniq_trial(j)*ones(length(currtrial),1)];
-		currisi=(diff(currtrial));
-		spikeisitmp=[spikeisitmp;currisi(:)];
-	end
-
-	TRIALS{i}=trialtmp';
-	ISI{i}=spikeisitmp'; 
-end
-
-if ~isempty(OUTLIERS)
-	SPIKEDATA{end+1}=spikedata(isnan(idx),:);
-end
-% if we have any outliers, assign them to the final cluster
-
-
+[WINDOWS TIMES TRIALS SPIKEDATA ISI STATS]=...
+	check_clusterquality(storespikewindows,spiketimes,spikedata,LABELS,trialnum,MODEL);
 
