@@ -155,7 +155,6 @@ for j=1:nplots
 
 end
 
-
 if nplots<8
 
 	if savemode
@@ -176,18 +175,23 @@ if nplots<8
 		close([stats_fig]);
 	end
 
-	if savemode
-		stats_fig=figure('Visible','off');
-	else
-		stats_fig=figure('Visible','on');
-	end
 
-	stats_fig=gaussvis(CLUSTER.model,CLUSTER.spikedata,'fig_num',stats_fig);
-	
-	if savemode
-		multi_fig_save(stats_fig,savedir,...
-			[ savefilename_stats 'clustplot' ],'eps,png','res',150);
-		close([stats_fig]);
+	if size(CLUSTER.model.mu,2)>1
+
+		if savemode
+			stats_fig=figure('Visible','off');
+		else
+			stats_fig=figure('Visible','on');
+		end
+
+
+		stats_fig=gaussvis(CLUSTER.model,CLUSTER.spikedata,'fig_num',stats_fig);
+		
+		if savemode
+			multi_fig_save(stats_fig,savedir,...
+				[ savefilename_stats 'clustplot' ],'eps,png','res',150);
+			close([stats_fig]);
+		end
 	end
 
 end

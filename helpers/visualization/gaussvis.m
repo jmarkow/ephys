@@ -52,6 +52,7 @@ NDIM=size(MODEL.mu,2);
 
 % get the dimensions we're plotting
 
+%TODO: simple 1d plot
 if NDIM<2
 	error('gaussvis:toofewdimensions','Need more than 1 dimensions for plotting');
 end

@@ -54,6 +54,9 @@ end
 
 columns=length(SPIKEWINDOWS);
 
+
+coords=[1 columns+1 columns*2+1];
+
 for i=1:columns
 
 	wins=SPIKEWINDOWS{i};
@@ -95,7 +98,7 @@ for i=1:columns
 	edges{1}=.5:1:samples+.5;
 	edges{2}=linspace(voltmin,voltmax,y_res);	
 
-	subplot(3,columns,1+(i-1));
+	subplot(3,columns,coords(1)+(i-1));
 	plot(timevec,wins,'m-');
 	ylimits=ylim();
 	if ~isempty(channelboundary)
@@ -135,7 +138,7 @@ for i=1:columns
 		yticks(2)=yticks(1)+1;
 	end
 
-	subplot(3,columns,4+(i-1));
+	subplot(3,columns,coords(2)+(i-1));
 	density=hist3(coordmat,'Edges',edges);
 	imagesc(timevec(1:end-1),edges{2},density(1:length(timevec)-1,:)');
 	ylimits=ylim();
@@ -157,7 +160,7 @@ for i=1:columns
 	box off
 	axis tight
 
-	subplot(3,columns,7+(i-1));
+	subplot(3,columns,coords(3)+(i-1));
 
 	if isempty(isi);
 		warning('ephysPipeline:visualspikestats:emptyspikeisi','ISI vector is empty, skipping ISI density plot.');
