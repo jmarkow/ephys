@@ -91,7 +91,7 @@ for i=plotorder
 		patchcolor,'edgecolor',edgecolor,'facealpha',1);
 
 	hold on;
-	plot(timevec,meanwave,'-','color',linecolor,'linewidth',2);
+	plot(timevec,meanwave,'-','color',linecolor,'linewidth',1);
 
 end
 
@@ -105,8 +105,8 @@ if ~isempty(legend_labels)
 	legend boxoff;
 end
 
-prettify_axis(gca,'FontSize',17,'FontName','Helvetica');
-prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
 
 if ~isempty(legend_labels)
 	set(L,'location','SouthEast','FontSize',10);

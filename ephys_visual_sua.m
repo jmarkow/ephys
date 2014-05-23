@@ -110,6 +110,10 @@ if nargin<3
 	error('ephysPipeline:suavis:notenoughparams','Need 3 arguments to continue, see documentation');
 end
 
+if isvector(EPHYS_DATA)
+	EPHYS_DATA=EPHYS_DATA(:);
+end
+
 nparams=length(varargin);
 
 if mod(nparams,2)>0
@@ -137,12 +141,14 @@ jitter=10; % max jitter in samples for spike re-alignment (4 is reasonable
 singletrials=5; % number of random single trials to plot per cluster
 subtrials=[];
 align_method='min'; % how to align spike waveforms can be min, max or com for center-of-mass
-interpolate_fs=200e3; % 200 has worked best here
 channels=CHANNELS;
 smooth_rate=1e3;
 sigma=.0025;
 car_trim=40;
 decomp_level=7;
+
+interpolate_f=8; % interpolate factor
+sort_f=[]; % if empty, downsamples back to original fs
 
 savename=''; % add if doing multiple manual sorts, will append a name to the filename
 isi_cutoff=.01; % percentage of ISI values <.001
@@ -151,7 +157,6 @@ isod_cutoff=20; % isolation distance defined by Harris et al.
 snr_cutoff=8; % SNR definition from Ludwig et al. 2009 (J. Neurophys)
 spike_window=[.0005 .0005];
 trial_timestamps=[];
-sort_fs=25e3;
 cluststart=1:8;
 pcs=2;
 spikelimit=[];
@@ -174,8 +179,6 @@ for i=1:2:nparams
 			fs=varargin{i+1};
 		case 'noise'
 			noise=varargin{i+1};
-		case 'sigma_t'
-			sigma_t=varargin{i+1};
 		case 'filtering'
 			filtering=varargin{i+1};
 		case 'savedir'
@@ -214,8 +217,8 @@ for i=1:2:nparams
 			align_method=varargin{i+1};
 		case 'jitter'
 			jitter=varargin{i+1};
-		case 'interpolate_fs'
-			interpolate_fs=varargin{i+1};
+		case 'interpolate_f'
+			interpolate_f=varargin{i+1};
 		case 'isi_cutoff'
 			isi_cutoff=varargin{i+1};
 		case 'isod_cutoff'
@@ -230,8 +233,8 @@ for i=1:2:nparams
 			spike_window=varargin{i+1};
 		case 'trial_timestamps'
 			trial_timestamps=varargin{i+1};
-		case 'sort_fs'
-			sort_fs=varargin{i+1};
+		case 'sort_f'
+			sort_f=varargin{i+1};
 		case 'method'
 			method=varargin{i+1};
 		case 'maxnoisetraces'
@@ -267,6 +270,13 @@ for i=1:2:nparams
 	end
 end
 
+
+if isempty(sort_f)
+	sort_f=interpolate_f;
+end
+
+interpolate_fs=fs*interpolate_f;
+sort_fs=interpolate_fs/sort_f;
 
 [samples,ntrials,ncarelectrodes]=size(EPHYS_DATA);
 proc_data=zeros(samples,ntrials,length(channels));

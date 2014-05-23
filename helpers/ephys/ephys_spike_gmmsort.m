@@ -130,8 +130,7 @@ oldstate1=warning('off','stats:gmdistribution:FailedToConverge');
 oldstate2=warning('off','stats:kmeans:FailedToConvergeRep');
 oldstate3=warning('off','stats:kmeans:FailedToConverge');
 
-for i=1:1:length(cluststart)
-
+if smem==2
 	tmpclustobj={};
 	startmu=[];
 	startcov=[];
@@ -140,59 +139,98 @@ for i=1:1:length(cluststart)
 	startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
 
 	loglikelihood=zeros(1,clustreplicates);
-	idx=kmeans(newscore(:,1:rankcut),cluststart(i),'replicates',5);
+	idx=kmeans(newscore(:,1:rankcut),cluststart(1),'replicates',5);
 
 	%% set up initial model
 
 	mu=[];
-	for j=1:cluststart(i)
-		startmu(j,:)=mean(newscore(idx==j,1:rankcut))';
-		startcov(:,:,j)=diag(var(newscore(:,1:rankcut)));
+	for i=1:cluststart(1)
+		startmu(i,:)=mean(newscore(idx==i,1:rankcut))';
+		startcov(:,:,i)=diag(var(newscore(:,1:rankcut)));
 	end
 
 	startobj.mu=startmu;
 	startobj.sigma=startcov;
 
-	for j=1:cluststart(i)
-		startobj.mixing(j)=sum(idx==j)/length(idx);
+	for i=1:cluststart(1)
+		startobj.mixing(i)=sum(idx==i)/length(idx);
 	end
 
-	
-	for j=1:clustreplicates
-		tmpclustobj{j}=gmem(newscore(:,1:rankcut),startobj,cluststart(i),...
+	for i=1:clustreplicates
+		tmpclustobj{i}=free_gmem(newscore(:,1:rankcut),startobj,cluststart(1),...
 			'garbage',garbage,'merge',smem,'debug',0);
-		loglikelihood(j)=tmpclustobj{j}.likelihood;
+		loglikelihood(i)=tmpclustobj{i}.likelihood;
 	end
-
-	% only keep the clustobj with the best likelihood
 
 	[~,loc]=max(loglikelihood);
-	clustobj{i}=tmpclustobj{loc(1)};
-	BIC(i)=clustobj{i}.BIC;
-	MML(i)=clustobj{i}.MML;
-	ICL(i)=clustobj{i}.ICL;
+	clustermodel=tmpclustobj{loc(1)};
+else
+	for i=1:1:length(cluststart)
+
+		tmpclustobj={};
+		startmu=[];
+		startcov=[];
+		mixing=[];
+
+		startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
+
+		loglikelihood=zeros(1,clustreplicates);
+		idx=kmeans(newscore(:,1:rankcut),cluststart(i),'replicates',5);
+
+		%% set up initial model
+
+		mu=[];
+		for j=1:cluststart(i)
+			startmu(j,:)=mean(newscore(idx==j,1:rankcut))';
+			startcov(:,:,j)=diag(var(newscore(:,1:rankcut)));
+		end
+
+		startobj.mu=startmu;
+		startobj.sigma=startcov;
+
+		for j=1:cluststart(i)
+			startobj.mixing(j)=sum(idx==j)/length(idx);
+		end
+
+		
+		for j=1:clustreplicates
+			tmpclustobj{j}=gmem(newscore(:,1:rankcut),startobj,cluststart(i),...
+				'garbage',garbage,'merge',smem,'debug',0);
+			loglikelihood(j)=tmpclustobj{j}.likelihood;
+		end
+
+		% only keep the clustobj with the best likelihood
+
+		[~,loc]=max(loglikelihood);
+		clustobj{i}=tmpclustobj{loc(1)};
+		BIC(i)=clustobj{i}.BIC;
+		MML(i)=clustobj{i}.MML;
+		ICL(i)=clustobj{i}.ICL;
+
+	end
+
+	if isdeployed
+		matlabpool('close');
+	end
+
+	warning(oldstate1);
+	warning(oldstate2);
+	warning(oldstate3);
+
+	switch lower(modelselection(1))
+		case 'b'
+			[~,loc]=min(BIC);
+		case 'm'
+			[~,loc]=max(MML);
+		case 'i'
+			[~,loc]=min(ICL);
+		otherwise
+	end
+
+	clustermodel=clustobj{loc(1)};
 
 end
 
-if isdeployed
-	matlabpool('close');
-end
-
-warning(oldstate1);
-warning(oldstate2);
-warning(oldstate3);
-
-switch lower(modelselection(1))
-	case 'b'
-		[~,loc]=min(BIC);
-	case 'm'
-		[~,loc]=max(MML);
-	case 'i'
-		[~,loc]=min(ICL);
-	otherwise
-end
-
-clustermodel=clustobj{loc(1)};
 MODEL=clustermodel;
 
 % get the labels from the responsibilities (probability of each cluster given each datapoint)

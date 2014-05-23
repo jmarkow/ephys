@@ -494,9 +494,15 @@ mixing=MODEL.mixing;
 
 R=estep(DATA,MODEL,unip);
 
-normalizationR=sum(R(:,idx),2);
 [datapoints,D]=size(DATA);
 NCLUST=size(mu,1);
+
+if garbage
+	normalizationR=sum(R(:,[idx NCLUST+1]),2);
+else
+	normalizationR=sum(R(:,[idx]),2);
+end
+
 prev_likelihood=1e-9;
 
 for i=1:maxiter
@@ -585,6 +591,12 @@ for i=1:maxiter
 		sigma(:,:,j)=(Rdx*dx'+lambda*eye(D))/(totalR+lambda);
 		mixing(j)=mean(R(:,j));
 	end
+
+	if garbage
+		mixing(NCLUST+1)=mean(R(:,NCLUST+1));
+	end
+
+
 
 end
 
@@ -782,6 +794,13 @@ if garbage
 
 end
 
+for i=1:NCLUST
+	R(:,i)=R(:,i)./(den+1e-300);
+end
+
+if garbage
+	R(:,NCLUST+1)=R(:,NCLUST+1)./(den+1e-300);
+end
 
 end
 

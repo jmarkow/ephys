@@ -1,4 +1,4 @@
-function cluster=ephys_spikesort(EPHYS_DATA,varargin)
+function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %generates song-aligned single-unit rasters
 %
 %	cluster=ephys_spikesort(EPHYS_DATA,varargin)
@@ -94,6 +94,10 @@ if nargin<1
 	error('ephysPipeline:suavis:notenoughparams','Need 1 arguments to continue, see documentation');
 end
 
+if isvector(EPHYS_DATA)
+	EPHYS_DATA=EPHYS_DATA(:);
+end
+
 nparams=length(varargin);
 
 if mod(nparams,2)>0
@@ -117,7 +121,8 @@ singletrials=5; % number of random single trials to plot per cluster
 subtrials=[];
 align_method='min'; % how to align spike waveforms can be min, max or com for center-of-mass
 method='n';
-interpolate_fs=200e3; % 200 has worked best here
+interpolate_f=8; % interpolate factor
+sort_f=[]; % if empty, downsamples back to original fs
 
 smooth_rate=1e3;
 ifr_sigma=.0025;
@@ -125,7 +130,6 @@ car_trim=40;
 decomp_level=7;
 
 spike_window=[.0005 .0005];
-sort_fs=25e3;
 cluststart=1:8;
 pcs=2;
 garbage=1;
@@ -170,12 +174,12 @@ for i=1:2:nparams
 			align_method=varargin{i+1};
 		case 'jitter'
 			jitter=varargin{i+1};
-		case 'interpolate_fs'
-			interpolate_fs=varargin{i+1};
+		case 'interpolate_f'
+			interpolate_f=varargin{i+1};
 		case 'spike_window'
 			spike_window=varargin{i+1};
-		case 'sort_fs'
-			sort_fs=varargin{i+1};
+		case 'sort_f'
+			sort_f=varargin{i+1};
 		case 'method'
 			method=varargin{i+1};
 		case 'maxnoisetraces'
@@ -209,8 +213,14 @@ for i=1:2:nparams
 	end
 end
 
-[samples,ntrials,ncarelectrodes]=size(EPHYS_DATA);
+if isempty(sort_f)
+	sort_f=interpolate_f;
+end
 
+interpolate_fs=fs*interpolate_f;
+sort_fs=interpolate_fs/sort_f;
+
+[samples,ntrials,ncarelectrodes]=size(EPHYS_DATA);
 if ncarelectrodes==1 & strcmp(noise,'car')
 	disp('Turning off CAR, number of electrodes is 1');
 	noise='none';
@@ -229,6 +239,7 @@ proc_data=ephys_denoise_signal(EPHYS_DATA,channels,channels,'method',noise,'car_
 proc_data=ephys_condition_signal(proc_data,'s','freq_range',...
 	freq_range,'filt_type',filt_type,'filt_order',filt_order,'filt_name',filt_name,...
 	'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
+
 
 if ~isempty(tetrode_channels)
 	tetrode_data=ephys_denoise_signal(EPHYS_DATA,channels,tetrode_channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
@@ -271,7 +282,7 @@ for j=1:nchannels
 end
 
 for j=1:ntrials
-	
+
 	spikethreshold=sigma_t*median(abs(sort_data(:,j,1))/.6745);
 	%spikethreshold=10;
 	% get the threshold crossings (based on first channel)

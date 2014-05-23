@@ -56,13 +56,7 @@ end
 car_electrodes=setdiff(1:length(CHIN),exclude_channels); % which electrodes are good for CAR?
 ndims_ephys=ndims(EPHYS_DATA);
 
-if ndims_ephys==3
-	[samples,ntrials,nchannels]=size(EPHYS_DATA);
-elseif ndims_ephys==2
-	[samples,nchannels]=size(EPHYS_DATA);
-else
-	error('Number of dimensions for EPHYS_DATA must be 2 or 3!');
-end
+[samples,ntrials,nchannels]=size(EPHYS_DATA);
 
 % map each channel appropriately
 
@@ -74,67 +68,36 @@ for i=1:length(CHOUT)
 	end
 end
 
-if ndims_ephys==3
+DATA=zeros(samples,ntrials,length(chmap));
 
-	DATA=zeros(samples,ntrials,length(chmap));
+switch lower(method)
 
-	switch lower(method)
+	case 'car'
 
-		case 'car'
+		% trimmed mean to avoid subtracting in artifacts and spikes
 
-			% trimmed mean to avoid subtracting in artifacts and spikes
+		disp(['Using electrodes ' num2str(CHIN(car_electrodes)) ' for CAR']);
+		disp(['Trimmed mean prctile ' num2str(car_trim)]);
 
-			disp(['Using electrodes ' num2str(CHIN(car_electrodes)) ' for CAR']);
-			disp(['Trimmed mean prctile ' num2str(car_trim)]);
+		CAR=trimmean(EPHYS_DATA(:,:,car_electrodes),car_trim,'round',3);
 
-			CAR=trimmean(EPHYS_DATA(:,:,car_electrodes),car_trim,'round',3);
+		for i=1:length(chmap)
+			DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-CAR;
+		end
 
-			for i=1:length(chmap)
-				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-CAR;
-			end
+	case 'nn'
 
-		case 'nn'
+		for i=1:length(chmap)
+			DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-EPHYS_DATA(:,:,find(channel_map==chmap(i)));
+		end
 
-			for i=1:length(chmap)
-				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-EPHYS_DATA(:,:,find(channel_map==chmap(i)));
-			end
+	otherwise
 
-		otherwise
-
-			for i=1:length(chmap)
-				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i));
-			end
-
-	end
-
-else
-	DATA=zeros(samples,length(chmap));
-
-	switch lower(method)
-
-		case 'car'
-
-			disp(['Using electrodes ' num2str(CHIN(car_electrodes)) ' for CAR']);
-
-			CAR=mean(EPHYS_DATA(:,car_electrodes),2);
-
-			for i=1:length(chmap)
-				DATA(:,i)=EPHYS_DATA(:,chmap(i))-CAR;
-			end
-
-		case 'nn'
-
-			for i=1:length(chmap)
-				DATA(:,i)=EPHYS_DATA(:,chmap(i))-EPHYS_DATA(:,find(channel_map==chmap(i)));
-			end
-
-		otherwise
-
-			for i=1:length(chmap)
-				DATA(:,i)=EPHYS_DATA(:,chmap(i));
-			end
-	end	
+		for i=1:length(chmap)
+			DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i));
+		end
 
 end
+
 
 

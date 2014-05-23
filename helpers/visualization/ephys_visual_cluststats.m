@@ -87,16 +87,17 @@ nrows=max(2,K)+K;
 ncols=2+K-1;
 
 legends={};
-if ~isempty(stats)
-	for i=1:length(stats.isod)
-		legends{i}=[ 'L ' sprintf('%.2f',stats.lratio(i)) ...
-			' ID ' sprintf('%.0f',stats.isod(i)) ];
-	end
-end
+%if ~isempty(stats)
+%	for i=1:length(stats.isod)
+%		legends{i}=[ 'L ' sprintf('%.2f',stats.lratio(i)) ...
+%			' ID ' sprintf('%.0f',stats.isod(i)) ];
+%	end
+%end
+
 
 subaxis(nrows,ncols,1,1,2,2,'margin',.13,'spacingvert',.1,'spacinghor',.2);
 ephys_visual_clustresults(SPIKEWINDOWS,'spike_fs',spike_fs,'fig_num',fig_num,'legend_labels',legends);
-set(gca,'ticklength',[0 0]);
+set(gca,'ticklength',[0 0],'linewidth',1);
 
 % move to the top right for the Fisher plot
 % top right, Fisher projection
@@ -125,8 +126,8 @@ if multi_clust
 		patch(xcoord,ycoord2,1,'facecolor',colors(clustercombos(i,2),:),...
 			'edgecolor','none');
 
-		prettify_axis(gca,'FontSize',17,'FontName','Helvetica');
-		set(gca,'layer','top','linewidth',2,'ticklength',[0 0]);
+		prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+		set(gca,'layer','top','linewidth',1,'ticklength',[0 0]);
 		box off;
 		axis tight;
 
@@ -135,7 +136,7 @@ if multi_clust
 			xlabel('Fisher Score');
 		end
 
-		prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+		prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
 
 
 	end
@@ -155,8 +156,8 @@ for i=1:K
 		'fig_num',fig_num,'type','auto','maxlag',maxlag,'xres',xres,...
 		'color',colors(i,:));
 
-	prettify_axis(gca,'FontSize',17,'FontName','Helvetica');
-	set(gca,'xtick',[-maxlag*1e3:50:maxlag*1e3],'ticklength',[0 0],'layer','top','linewidth',2);
+	prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+	set(gca,'xtick',[-maxlag*1e3:50:maxlag*1e3],'ticklength',[0 0],'layer','top');
 
 	if i==K
 		xlabel('Lag (ms)');
@@ -167,7 +168,7 @@ for i=1:K
 
 	box off
 	axis tight
-	prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+	prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
 	
 end
 
@@ -186,8 +187,8 @@ if multi_clust
 			'fig_num',fig_num,'type','cross','maxlag',maxlag,'xres',xres,...
 			'color',crosscolor);
 
-		prettify_axis(gca,'FontSize',17,'FontName','Helvetica');
-		set(gca,'xtick',[-maxlag*1e3 maxlag*1e3],'ticklength',[0 0],'layer','top','linewidth',2);
+		prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+		set(gca,'xtick',[-maxlag*1e3 maxlag*1e3],'ticklength',[0 0],'layer','top');
 
 		if i==1
 			xlabel('Lag (ms)');
@@ -196,7 +197,7 @@ if multi_clust
 			set(gca,'xtick',[]);
 		end
 
-		prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+		prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
 
 		% shift zero ytick up
 

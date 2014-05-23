@@ -48,146 +48,159 @@ end
 
 % TODO: spike autocorrelation and cross-correlations functions, simply xcorr of binned spikes-mean(lambda)
 
-
-% patch coordinates
-
-[samples,trials]=size(SPIKEWINDOWS);
-
-% isi bin edges (msec)
-% also plot 2D histogram
-
-isipoints=[0:.1:100];
-
-% need the upper/lower edges for the 2D histogram
-
-voltmin=inf;
-voltmax=-inf;
-
-timevec=([1:samples]./spike_fs)*1e3;
-timevec_mat=[1:samples]';
-coordmat=[];
-
-% reshape takes elements columnwise, so should simply have samples*trials values
-
-spikevalues=reshape(SPIKEWINDOWS,[samples*trials 1]);
-
-% simply repeat the time vector
-
-samplemat=repmat(timevec_mat,[trials 1]);
-coordmat=[samplemat spikevalues];
-
-% construct 2D histogram
-% for voltmin and voltmax cover 99% of voltage values
-
-voltmin=prctile(coordmat(:,2),1)-10;
-voltmax=prctile(coordmat(:,2),99)+10;
-
-edges{1}=.5:1:samples+.5;
-edges{2}=linspace(voltmin,voltmax,y_res);
-
 if isempty(fig_num)
 	fig_num=figure('Visible','on');
 end
 
-subplot(3,1,1);
-plot(timevec,SPIKEWINDOWS,'m-');
-ylimits=ylim();
-if ~isempty(channelboundary)
-	hold on;
-	plot([timevec(channelboundary);timevec(channelboundary)],...
-		[ylimits(1).*ones(size(channelboundary));ylimits(2).*ones(size(channelboundary))],'b--','linewidth',1.5);
+columns=length(SPIKEWINDOWS);
+
+for i=1:columns
+
+	wins=SPIKEWINDOWS{i};
+	isi=SPIKEISI{i};
+
+	% patch coordinates
+
+	[samples,trials]=size(wins);
+
+	% isi bin edges (msec)
+	% also plot 2D histogram
+
+	isipoints=[0:.1:100];
+
+	% need the upper/lower edges for the 2D histogram
+
+	voltmin=inf;
+	voltmax=-inf;
+
+	timevec=([1:samples]./spike_fs)*1e3;
+	timevec_mat=[1:samples]';
+	coordmat=[];
+
+	% reshape takes elements columnwise, so should simply have samples*trials values
+
+	spikevalues=reshape(wins,[samples*trials 1]);
+
+	% simply repeat the time vector
+
+	samplemat=repmat(timevec_mat,[trials 1]);
+	coordmat=[samplemat spikevalues];
+
+	% construct 2D histogram
+	% for voltmin and voltmax cover 99% of voltage values
+
+	voltmin=prctile(coordmat(:,2),1)-10;
+	voltmax=prctile(coordmat(:,2),99)+10;
+
+	edges{1}=.5:1:samples+.5;
+	edges{2}=linspace(voltmin,voltmax,y_res);	
+
+	subplot(3,columns,1+(i-1));
+	plot(timevec,wins,'m-');
+	ylimits=ylim();
+	if ~isempty(channelboundary)
+		hold on;
+		plot([timevec(channelboundary);timevec(channelboundary)],...
+			[ylimits(1).*ones(size(channelboundary));ylimits(2).*ones(size(channelboundary))],'b--','linewidth',1.5);
+	end
+	
+	if i==1
+		ylabel('Voltage ($\mu$Volts)','FontName','Helvetica','FontSize',13,'interpreter','latex');
+	end
+	set(gca,'layer','top');
+	box off
+	axis tight;
+
+	if ~isempty(noise_p2p)
+		mean_waveform=mean(wins,2);
+		peaktopeak=max(mean_waveform)-min(mean_waveform);
+		title([' SNR:  ' num2str(peaktopeak/noise_p2p)],'FontName','Helvetica','FontSize',13)
+	end
+
+	ylimits=ylim();
+	yticks=[ ceil(ylimits(1)/10)*10 floor(ylimits(2)/10)*10 ];
+
+	if yticks(2)<=yticks(1)
+		yticks(2)=yticks(1)+1;
+	end
+
+	set(gca,'YTick',yticks);
+	prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
+	prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+	set(gca,'xcolor',get(gcf,'color'));
+
+	yticks=[ceil(voltmin/10)*10 floor(voltmax/10)*10];
+
+	if yticks(2)<=yticks(1)
+		yticks(2)=yticks(1)+1;
+	end
+
+	subplot(3,columns,4+(i-1));
+	density=hist3(coordmat,'Edges',edges);
+	imagesc(timevec(1:end-1),edges{2},density(1:length(timevec)-1,:)');
+	ylimits=ylim();
+	if ~isempty(channelboundary)
+		hold on;
+		plot([timevec(channelboundary);timevec(channelboundary)],...
+			[ylimits(1).*ones(size(channelboundary));ylimits(2).*ones(size(channelboundary))],'y--','linewidth',1.5);
+	end
+
+	set(gca,'YTick',yticks);
+	colormap(hot);
+
+	%box off
+
+	xlabel('Time (ms)','FontName','Helvetica','FontSize',13);
+	prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
+	prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+	axis xy
+	box off
+	axis tight
+
+	subplot(3,columns,7+(i-1));
+
+	if isempty(isi);
+		warning('ephysPipeline:visualspikestats:emptyspikeisi','ISI vector is empty, skipping ISI density plot.');
+		return;
+	end
+
+	[density,xi]=ksdensity((isi/fs)*1e3,isipoints,'support','positive');
+	%density=density./sum(density); % normalization UNNECESSARY w/ ksdensity
+
+	%density=histc((SPIKEISI/fs)*1e3,isipoints);
+	%h=bar(isipoints,density,'histc');
+
+	% get percentage of ISI values below 1 msec
+
+	violations=sum((isi/fs)<.001)/length(isi);
+
+	% round off to percent
+
+	violations=round(1000*violations)/10;
+
+	semilogx(xi,density,'r-','linewidth',3);
+	hline=findobj(gca,'type','line');
+	set(hline,'clipping','off');
+	box off
+	%set(h,'FaceColor',[.7 .7 .7],'EdgeColor','k','LineWidth',1.5);
+	xlabel({['ISI (ms), ' num2str(violations) '% < 1 ms '];[note]});
+	if i==1
+		ylabel('P(ISI)');
+	end
+
+	ylimits(1)=min(density);
+	ylimits(2)=ceil(max(density)*1e3)/1e3;
+
+	if ylimits(1)<ylimits(2)
+		set(gca,'YLim',ylimits,'YTick',ylimits);
+	end
+
+	prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
+	prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+	set(gca,'layer','top');
+	xlim([xi(1) xi(end)]);
+	set(gca,'XTick',[ .1 1 10 100 ],'XTickLabel',[ .1 1 10 100 ],'XMinorTick','off');
+
+	%linkaxes(ax,'x');
+
 end
-ylabel('Voltage (µVolts)','FontName','Helvetica','FontSize',13);
-set(gca,'layer','top');
-box off
-axis tight;
-
-if ~isempty(noise_p2p)
-	mean_waveform=mean(SPIKEWINDOWS,2);
-	peaktopeak=max(mean_waveform)-min(mean_waveform);
-	title([' SNR:  ' num2str(peaktopeak/noise_p2p)],'FontName','Helvetica','FontSize',13)
-end
-
-ylimits=ylim();
-yticks=[ ceil(ylimits(1)/10)*10 floor(ylimits(2)/10)*10 ];
-
-if yticks(2)<=yticks(1)
-	yticks(2)=yticks(1)+1;
-end
-
-set(gca,'YTick',yticks);
-prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
-prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
-set(gca,'xcolor',get(gcf,'color'));
-
-yticks=[ceil(voltmin/10)*10 floor(voltmax/10)*10];
-
-if yticks(2)<=yticks(1)
-	yticks(2)=yticks(1)+1;
-end
-
-subplot(3,1,2);
-density=hist3(coordmat,'Edges',edges);
-imagesc(timevec(1:end-1),edges{2},density(1:length(timevec)-1,:)');
-ylimits=ylim();
-if ~isempty(channelboundary)
-	hold on;
-	plot([timevec(channelboundary);timevec(channelboundary)],...
-		[ylimits(1).*ones(size(channelboundary));ylimits(2).*ones(size(channelboundary))],'y--','linewidth',1.5);
-end
-
-set(gca,'YTick',yticks);
-colormap(hot);
-
-%box off
-
-xlabel('Time (ms)','FontName','Helvetica','FontSize',13);
-prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
-prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
-axis xy
-box off
-axis tight
-
-subplot(3,1,3);
-
-if isempty(SPIKEISI);
-	warning('ephysPipeline:visualspikestats:emptyspikeisi','ISI vector is empty, skipping ISI density plot.');
-	return;
-end
-
-[density,xi]=ksdensity((SPIKEISI/fs)*1e3,isipoints,'support','positive');
-%density=density./sum(density); % normalization UNNECESSARY w/ ksdensity
-
-%density=histc((SPIKEISI/fs)*1e3,isipoints);
-%h=bar(isipoints,density,'histc');
-
-% get percentage of ISI values below 1 msec
-
-violations=sum((SPIKEISI/fs)<.001)/length(SPIKEISI);
-
-% round off to percent
-
-violations=round(1000*violations)/10;
-
-semilogx(xi,density,'r-','linewidth',3);
-hline=findobj(gca,'type','line');
-set(hline,'clipping','off');
-box off
-%set(h,'FaceColor',[.7 .7 .7],'EdgeColor','k','LineWidth',1.5);
-xlabel({['ISI (ms), ' num2str(violations) '% < 1 ms '];[note]});
-ylabel('P(ISI)');
-
-ylimits(1)=min(density);
-ylimits(2)=ceil(max(density)*1e2)/1e2;
-
-if ylimits(1)<ylimits(2)
-	set(gca,'YLim',ylimits,'YTick',ylimits);
-end
-
-prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
-prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
-set(gca,'layer','top');
-xlim([xi(1) xi(end)]);
-set(gca,'XTick',[ .1 1 10 100 ],'XTickLabel',[ .1 1 10 100 ],'XMinorTick','off');
-
-%linkaxes(ax,'x');

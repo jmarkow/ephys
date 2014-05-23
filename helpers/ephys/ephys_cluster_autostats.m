@@ -10,6 +10,7 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
 end
 
+savemode=1;
 savedir=pwd;
 savefilename_stats='stats';
 ntrials=[];
@@ -43,6 +44,8 @@ for i=1:2:nparams
 			isod_cutoff=varargin{i+1};
 		case 'channels'
 			channels=varargin{i+1};
+		case 'savemode'
+			savemode=varargin{i+1};
 	end
 end
 
@@ -82,48 +85,59 @@ end
 % delete old stats figures if they exist
 
 
-for j=1:nplots
 
-	% estimate SNR from 6*std of spikeless trace
+% estimate SNR from 6*std of spikeless trace
 
-	noise_p2p=std(SPIKELESS{1});
+noise_p2p=std(SPIKELESS{1});
 
-	noise_p2p(isnan(noise_p2p))=[];
-	mean_noise_p2p=mean(noise_p2p);
-	mean_wave=mean(CLUSTER.windows{j},2);
-	max_wave=max(mean_wave);
-	min_wave=min(mean_wave);
+noise_p2p(isnan(noise_p2p))=[];
+mean_noise_p2p=mean(noise_p2p);
+mean_wave=mean(CLUSTER.windows{j},2);
+max_wave=max(mean_wave);
+min_wave=min(mean_wave);
 
-	CLUSTER.stats.snr(j)=[ abs(max_wave-min_wave)/mean_noise_p2p ];
+CLUSTER.stats.snr(j)=[ abs(max_wave-min_wave)/mean_noise_p2p ];
+
+if savemode
 	stats_fig=figure('Visible','off');
+else
+	stats_fig=figure('Visible','on');
+end
 
-	note=[];
+note=[];
 
-	note=['L-ratio ' sprintf('%.2f',CLUSTER.stats.lratio(j)) ...
-		' IsoD ' sprintf('%.2f',CLUSTER.stats.isod(j)) ];
+note=['L-ratio ' sprintf('%.2f',CLUSTER.stats.lratio(j)) ...
+	' IsoD ' sprintf('%.2f',CLUSTER.stats.isod(j)) ];
 
-	if ~isempty(CLUSTER.parameters.tetrode_channels)
-		channelboundary=round(cumsum(ones(1,length(CLUSTER.parameters.tetrode_channels)).*...
-			sum(CLUSTER.parameters.spike_window*CLUSTER.parameters.interpolate_fs)));
-	end
+if ~isempty(CLUSTER.parameters.tetrode_channels)
+	channelboundary=round(cumsum(ones(1,length(CLUSTER.parameters.tetrode_channels)).*...
+		sum(CLUSTER.parameters.spike_window*CLUSTER.parameters.interpolate_fs)));
+end
 
-	stats_fig=ephys_visual_spikestats(CLUSTER.windows{j},CLUSTER.isi{j},...
-		'noise_p2p',mean_noise_p2p,'fs',CLUSTER.parameters.fs,'spike_fs',...
-		CLUSTER.parameters.interpolate_fs,'fig_num',stats_fig,'note',note,...
-		'channelboundary',channelboundary);
+stats_fig=ephys_visual_spikestats(CLUSTER.windows,CLUSTER.isi,...
+	'noise_p2p',mean_noise_p2p,'fs',CLUSTER.parameters.fs,'spike_fs',...
+	CLUSTER.parameters.interpolate_fs,'fig_num',stats_fig,'note',note,...
+	'channelboundary',channelboundary);
 
-	set(stats_fig,'Position',[0 0 450 600]);
-	set(stats_fig,'PaperPositionMode','auto');
+set(stats_fig,'Position',[0 0 900 700]);
+set(stats_fig,'PaperPositionMode','auto');
 
-	% label candidate units if they meet our criteria
-	% isi intervals < absolute refractory period
+% label candidate units if they meet our criteria
+% isi intervals < absolute refractory period
 
-	isi_violations=sum((CLUSTER.isi{j}./CLUSTER.parameters.fs)<.001);
-	isi_violations=isi_violations/length(CLUSTER.isi{j});
+isi_violations=sum((CLUSTER.isi{j}./CLUSTER.parameters.fs)<.001);
+isi_violations=isi_violations/length(CLUSTER.isi{j});
 
-	% are there enough spikes?
+% are there enough spikes?
 
-	if length(CLUSTER.times{j})>=spikecut*ntrials
+if savemode
+	multi_fig_save(stats_fig,savedir,...
+		[ savefilename_stats],'png','res',200);
+	close([stats_fig]);
+end
+
+for j=1:nplots
+	if length(CLUSTER.times{j})>=spikecut*ntrials & savemode
 
 		if CLUSTER.stats.snr(j)>=snr_cutoff && ...
 				(isnan(CLUSTER.stats.lratio(j)) || ...
@@ -137,35 +151,44 @@ for j=1:nplots
 		end
 	end
 
-	multi_fig_save(stats_fig,savedir,...
-		[ savefilename_stats num2str(j)],'png','res',200);
-	close([stats_fig]);
+	
 
 end
 
 
 if nplots<8
 
-	stats_fig=figure('Visible','off','renderer','painters');
+	if savemode
+		stats_fig=figure('Visible','off','renderer','painters');
+	else
+		stats_fig=figure('Visible','on','renderer','painters');
+	end
 
 	stats_fig=ephys_visual_cluststats(CLUSTER.windows,clustspiketimes,CLUSTER.spikedata,...
 		'spike_fs',CLUSTER.parameters.interpolate_fs,'fig_num',stats_fig,'stats',CLUSTER.stats);
 
-	set(stats_fig,'Position',[0 0 250+500*nplots 250+500*nplots]);
+	set(stats_fig,'Position',[0 0 250+200*nplots 250+200*nplots]);
 	set(stats_fig,'PaperPositionMode','auto');
 
-	multi_fig_save(stats_fig,savedir,...
-		[ savefilename_stats 'clstats' ],'eps,png','res',150,'renderer','painters');
+	if savemode
+		multi_fig_save(stats_fig,savedir,...
+			[ savefilename_stats 'clstats' ],'eps,png','res',150,'renderer','painters');
+		close([stats_fig]);
+	end
 
-	close([stats_fig]);
-
-	stats_fig=figure('Visible','off');
+	if savemode
+		stats_fig=figure('Visible','off');
+	else
+		stats_fig=figure('Visible','on');
+	end
 
 	stats_fig=gaussvis(CLUSTER.model,CLUSTER.spikedata,'fig_num',stats_fig);
-	multi_fig_save(stats_fig,savedir,...
-		[ savefilename_stats 'clustplot' ],'eps,png','res',150);
-
-	close([stats_fig]);
+	
+	if savemode
+		multi_fig_save(stats_fig,savedir,...
+			[ savefilename_stats 'clustplot' ],'eps,png','res',150);
+		close([stats_fig]);
+	end
 
 end
 
