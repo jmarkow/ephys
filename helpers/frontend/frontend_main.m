@@ -128,6 +128,8 @@ sleep_fileinterval=3; % specify file interval (in minutes)
 sleep_segment=5; % how much data to keep (in seconds)
 ttl_skip=1; % skip song detection if TTL detected?
 
+file_check=.2; % how long to wait between file reads to check if file is no longer being written (in seconds)
+
 mfile_path = mfilename('fullpath');
 [script_path,~,~]=fileparts(mfile_path);
 
@@ -284,29 +286,43 @@ for i=1:length(proc_files)
 	disp(['File date: ' datestr(file_datenum)]);
 	% try reading the file, if we fail, skip
 
-	try
-		[t,amps,data,aux]=frontend_readdata(proc_files{i});
-	catch err
+	%%% check if file is still being written to, check byte change within N msec
 
-		file_age=daysdif(file_datenum,datenum(now));
+	dir1=dir(proc_files{i});
+	pause(file_check);
+	dir2=dir(proc_files{i});
 
-		if file_age>error_buffer
-			disp(['File too old and cannot process, deleting ' proc_files{i}]);
-			delete(proc_files{i});
+	bytedif=dir1.bytes-dir2.bytes;
+
+	% if we haven't written any new data in the past (file_check) seconds, assume
+	% file has been written
+
+	if bytedif==0
+		try
+			[t,amps,data,aux,misc]=frontend_readdata(proc_files{i});
+		catch err
+
+			file_age=daysdif(file_datenum,datenum(now));
+
+			if file_age>error_buffer
+				disp(['File too old and cannot process, deleting ' proc_files{i}]);
+				delete(proc_files{i});
+				continue;
+			end
+
+			disp([err])
+			disp('Could not read file, continuing...');
+			fclose('all'); % read_intan does not properly close file if it bails
 			continue;
 		end
-
-		disp([err])
-		disp('Could not read file, continuing...');
-		fclose('all'); % read_intan does not properly close file if it bails
+	else
+		disp('File still being written, continuing...');
 		continue;
 	end
 
 	% if we're successful reading, then move the file to a processed directory
 
 	[path,name,ext]=fileparts(proc_files{i});
-
-
 
 	try
 		movefile(proc_files{i},proc_dir);

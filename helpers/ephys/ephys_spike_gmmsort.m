@@ -76,7 +76,7 @@ disp(['Model selection ' modelselection]);
 
 % downsample spikes back to original FS
 
-downfact=interpolate_fs/fs;
+downfact=interpolate_fs/proc_fs;
 
 if mod(downfact,1)~=0
 	error('ephyspipeline:templatesortexact:baddownfact',...
@@ -94,7 +94,7 @@ if isdeployed
 end
 
 likelihood=zeros(1,pcareplicates);
-parfor i=1:pcareplicates
+for i=1:pcareplicates
 	tmpnewmodel{i}=gmem(SPIKE_DATA',[],1,'garbage',1,'merge',0,'debug',0);
 	likelihood(i)=tmpnewmodel{i}.likelihood;
 end

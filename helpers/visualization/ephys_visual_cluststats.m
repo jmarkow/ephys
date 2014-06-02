@@ -17,6 +17,8 @@ end
 fig_num=[];
 maxlag=.2;
 xres=.00075;
+spacingvert=.15;
+spacinghor=.15;
 
 colors=[...	
 	1 .6445 0;... % orange	
@@ -83,8 +85,12 @@ end
 % bottom left Kx2 axes (autocorr)
 % bottom right KxK axes (crosscorr)
 
-nrows=max(2,K)+K;
+nrows=max(2,K-1)+K-1;
 ncols=2+K-1;
+
+left_spacinghor=.15.*(1/(1+log(K)));
+left_spacingvert=.05.*(1/(1+log(K)));
+left_margin=.15.*(1/(1+log(K)));
 
 legends={};
 %if ~isempty(stats)
@@ -94,9 +100,12 @@ legends={};
 %	end
 %end
 
+spikeheight=max(1,K-2);
 
-subaxis(nrows,ncols,1,1,2,2,'margin',.13,'spacingvert',.1,'spacinghor',.2);
+subaxis(nrows,ncols,1,1,2,spikeheight,'margin',left_margin,'spacingvert',left_spacingvert,'spacinghor',left_spacinghor);
 ephys_visual_clustresults(SPIKEWINDOWS,'spike_fs',spike_fs,'fig_num',fig_num,'legend_labels',legends);
+xlabel('');
+ylabel('Amplitude ($\mu$Volts)','interpreter','latex');
 set(gca,'ticklength',[0 0],'linewidth',1);
 
 % move to the top right for the Fisher plot
@@ -104,6 +113,10 @@ set(gca,'ticklength',[0 0],'linewidth',1);
 
 row=0;
 col=2;
+
+right_margin=.05;
+right_spacingvert=(1/K).*spacingvert;
+right_spacinghor=(1/K).*spacinghor;
 
 if multi_clust
 	for i=1:ncombos
@@ -116,7 +129,7 @@ if multi_clust
 		ycoord2=[zeros(size(xi)) fliplr(density2)];
 
 		subaxis(nrows,ncols,clustercombos(i,2)+col-1,clustercombos(i,1)+row,1,1,...
-			'margin',.1,'spacingvert',.05,'spacinghor',.05);
+			'margin',right_margin,'spacingvert',right_spacingvert,'spacinghor',right_spacinghor);
 
 		% on a Mac transparency is completely borked :(
 
@@ -137,6 +150,7 @@ if multi_clust
 		end
 
 		prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica','linewidth',1);
+		axis off;
 
 
 	end
@@ -144,13 +158,13 @@ end
 
 % bottom left, autocorr
 
-row=2;
+row=spikeheight;
 col=0;
 
 for i=1:K
 
 	subaxis(nrows,ncols,1+col,i+row,2,1,...
-		'margin',.13,'spacingvert',.03,'spacinghor',.2);
+		'margin',left_margin,'spacingvert',left_spacingvert,'spacinghor',left_spacinghor);
 
 	get_spike_correlogram(SPIKETIMES{i},SPIKETIMES{i},...
 		'fig_num',fig_num,'type','auto','maxlag',maxlag,'xres',xres,...
@@ -174,14 +188,14 @@ end
 
 row=K-1;
 col=2;
-spacinghor=.05;
+spacinghor=.025;
 
 if multi_clust
 	for i=1:ncombos
 
 
 		subaxis(nrows,ncols,clustercombos(i,2)+col-1,clustercombos(i,1)+row,1,1,...
-			'margin',.1,'spacingvert',.05,'spacinghor',spacinghor);
+			'margin',right_margin,'spacingvert',right_spacingvert,'spacinghor',right_spacinghor);
 
 		get_spike_correlogram(SPIKETIMES{clustercombos(i,1)},SPIKETIMES{clustercombos(i,2)},...
 			'fig_num',fig_num,'type','cross','maxlag',maxlag,'xres',xres,...
@@ -203,6 +217,7 @@ if multi_clust
 
 		box off
 		axis tight
+
 
 	end
 end

@@ -7,9 +7,10 @@ function NEWSPIKES=ephys_spike_upsample_align(SPIKES,varargin)
 
 visualize='y';
 interpolate_fs=200e3; % what fs should we intepolate to? (50e3 has worked in my hands, consider going higher for low SNR)
-align='min'; % you'll want to use COM here, others seem a bit unreliable
+align_method='min'; % you'll want to use COM here, others seem a bit unreliable
 peak_frac=.6; % fraction of peak to use as cutoff for COM calculation (i.e. all samples below peak_frac*peak are included)
 peak_width=4; % how many samples about the peak to include in COM (interpolated space, 5-8 is reasonable here for 50e3 fs)
+auto_factor=1.8; % fraction that max must exceed min to use for alignment (1.2=20% higher)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -29,10 +30,12 @@ for i=1:2:nparams
 			visualize=varargin{i+1};
 		case 'interpolate_fs'
 			interpolate_fs=varargin{i+1};
-		case 'align'
-			align=varargin{i+1};
+		case 'align_method'
+			align_method=varargin{i+1};
 		case 'tetrode_data'
 			tetrode_data=varargin{i+1};
+		case 'auto_factor'
+			auto_factor=varargin{i+1};
 	end
 end
 
@@ -118,7 +121,7 @@ for i=1:nspikes
 	% align by com (center of mass), min or max
 	% first realign to min or max, whichever is more reliable
 
-	switch lower(align)
+	switch lower(align_method)
 
 		case 'com'
 
@@ -213,7 +216,7 @@ for i=1:nspikes
 			[val loc]=max(interp_window(:,1));
 			[val2 loc2]=min(interp_window(:,1));
 
-			if val>abs(val2)*1.05
+			if val>abs(val2)*auto_factor
 				alignpoint=loc;
 			else
 				alignpoint=loc2;
@@ -246,7 +249,7 @@ for i=1:nspikes
 
 	if isfield(SPIKES,'storewindows') 
 			
-		switch lower(align)
+		switch lower(align_method)
 
 			case 'com'
 
@@ -341,7 +344,7 @@ for i=1:nspikes
 				[val loc]=max(interp_window2(:,1));
 				[val2 loc2]=min(interp_window2(:,1));
 
-				if val>abs(val2)*1.05
+				if val>abs(val2)*auto_factor
 					alignpoint=loc;
 				else
 					alignpoint=loc2;

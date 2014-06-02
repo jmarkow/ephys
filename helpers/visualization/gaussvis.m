@@ -28,6 +28,8 @@ colors=[...
 	.5430 .2695 .0742;... % saddle-brown
 	1 .2695 0;... % orange red
 	]; 
+contour_res=100; % grid spacing for the mesh to evaluate confidence levels
+dim_labels=[];
 
 if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
@@ -37,6 +39,10 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'fig_num'
 			fig_num=varargin{i+1};
+		case 'dim_labels'
+			dim_labels=varargin{i+1};
+		case 'contour_res'
+			contour_res=varargin{i+1};
 	end
 end
 
@@ -57,10 +63,15 @@ if NDIM<2
 	error('gaussvis:toofewdimensions','Need more than 1 dimensions for plotting');
 end
 
-dimpairs=nchoosek(1:NDIM,2)
+dimpairs=nchoosek(1:NDIM,2);
 
 rows=max(dimpairs(:,1));
 columns=max(dimpairs(:,2));
+
+if isempty(dim_labels)
+	tmp{1}='PC';
+	dim_labels=repmat(tmp,[1 NDIM]);
+end
 
 for ii=1:size(dimpairs,1)
 
@@ -74,27 +85,23 @@ for ii=1:size(dimpairs,1)
 
 	if iscell(DATA)
 		for i=1:length(DATA)
-
 			currpoints=DATA{i};
 			scatter(DATA{i}(:,cx),DATA{i}(:,cy),20,colors(i,:));
-			axis tight;
 			hold on;
 		end
 	else
 		scatter(DATA(:,cx),DATA(:,cy),20);
-		axis tight;
 		hold on;
 	end
 
-
-	xlimits=xlim();
-	ylimits=ylim();
+	xlimits=xlim().*1.25;
+	ylimits=ylim().*1.25;
 
 	for i=1:NCLUST
 
 		% evaluate x and y over a grid
 
-		[x1,y1]=meshgrid(xlimits(1):.3:xlimits(2),ylimits(1):.3:ylimits(2));
+		[x1,y1]=meshgrid(linspace(xlimits(1),xlimits(2),contour_res),linspace(ylimits(1),ylimits(2),contour_res));
 
 		% get the mahal distance between each point in the grid and our cluster
 
@@ -113,10 +120,15 @@ for ii=1:size(dimpairs,1)
 
 		levels=chi2inv([.6827 .9545],2);
 
-		contour(x1,y1,mahal,levels,'linewidth',1.5);
+		[C,h]=contour(x1,y1,mahal,levels,'linewidth',1.5);
 		colormap(colorsmap);
 		hold on;
 	end
 
-	set(gca,'linewidth',2,'FontSize',18,'FontName','Helvetica','TickDir','out');
+	% TODO: reset x and y limits to include confidence contours
+
+	set(gca,'linewidth',1,'FontSize',12,'FontName','Helvetica','TickDir','out','TickLength',[0 0]);
+	xlabel([dim_labels{cx} ' ' num2str(dimpairs(ii,1))]);
+	ylabel([dim_labels{cy} ' ' num2str(dimpairs(ii,2))]);
+
 end

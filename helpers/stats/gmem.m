@@ -95,8 +95,12 @@ end
 
 % number of parameters (full covariance)
 
+% df per component is (1+d+d(d+1)/2)
+
 nparams=(NCLUST*D*((D+1)/2));
 nparams=nparams+NCLUST-1+NCLUST*D;
+
+%nparams=NCLUST*(1+D+(D*(D+1))/2); % new parameter number
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%% FULL EM
@@ -239,7 +243,6 @@ end
 
 
 newmodel.BIC=-2*newmodel.likelihood+log(datapoints)*nparams;
-
 % get the total entropy
 
 for i=1:NCLUST

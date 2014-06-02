@@ -1,4 +1,4 @@
-function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=ephys_spike_clustergui_tetrode(SPIKES,NOISEDATA,varargin)
+function [WINDOWS TIMES TRIALS ISI STATS OUTLIERS SPIKEDATA MODEL]=ephys_spike_clustergui_tetrode(SPIKES,NOISEDATA,PARAMETERS,varargin)
 %GUI for spike cluster cutting
 %
 %
@@ -50,7 +50,6 @@ align_method='min';
 regularize=.01;
 noisewhiten=1;
 
-
 % the template cutoff could be defined by the 95th prctile of the abs(noise) magnitude
 
 if mod(nparams,2)>0
@@ -73,6 +72,8 @@ for i=1:2:nparams
 			noisewhiten=varargin{i+1};
 		case 'align_method'
 			align_method=varargin{i+1};
+		case 'spike_window'
+			spike_window=varargin{i+1};
 	end
 end
 
@@ -134,7 +135,7 @@ for j=1:length(SPIKES)
 	%spikemask([1:15 end-15:end],:,:)=0;
 	%SPIKES(j).windows=SPIKES(j).windows.*spikemask;
 
-	alignspikes=ephys_spike_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align',align_method);	
+	alignspikes=ephys_spike_upsample_align(SPIKES(j),'interpolate_fs',interpolate_fs,'align_method',align_method);	
 	CLUSTSPIKES(j)=alignspikes;
 
 	% cluster with the decimated spikes
@@ -350,7 +351,6 @@ viewdim(3)=get(pop_up_z,'value');
 
 view_data=spike_data(:,viewdim);
 clusters=unique(LABELS(LABELS>0));
-LABELS
 
 if NDIMS==2
 	for i=1:length(clusters)
@@ -515,7 +515,7 @@ end
 
 LABELS=zeros(size(idx));
 
-for i=1:length(clusters)
+for i=1:nclust
 	LABELS(idx==clusters(loc(i)))=i;	
 end
 
@@ -528,14 +528,18 @@ end
 
 LEGEND_LABELS={};
 for i=1:nclust
-	LEGEND_LABELS{i}=num2str(i);
+	LEGEND_LABELS{i}=['Cluster ' num2str(i)];
+end
+
+if garbage & any(isnan(idx))
+	LEGEND_LABELS{end+1}='Outliers';
 end
 
 % compute any other stats we want, ISI, etc...
 
 [WINDOWS TIMES TRIALS SPIKEDATA ISI STATS]=...
 	check_clusterquality(storespikewindows,spiketimes,cluster_data,LABELS,trialnum,clustermodel);
-
+STATS
 change_plot();
 
 end
@@ -546,11 +550,11 @@ function show_stats(varargin)
 
 % get the labels from the main_window
 
-statfig=figure('Visible','off');
-
-ephys_visual_cluststats(WINDOWS,TIMES,SPIKEDATA,'fig_num',stat_fig)
-
-set(statfig,'visible','on');
+cluster=[];
+cluster=struct('windows',{WINDOWS},'times',{TIMES},'trials',{TRIALS},'spikedata',{SPIKEDATA},'stats',{STATS},...
+	'isi',{ISI},'model',MODEL);
+cluster.parameters=PARAMETERS;
+ephys_cluster_autostats(cluster,NOISEDATA,'fig_num',[],'clust_plot',0,'savemode',0)
 
 end
 

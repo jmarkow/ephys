@@ -22,6 +22,11 @@ y_res=200;
 spike_fs=50e3;
 note=[];
 channelboundary=[];
+spacinghor=.2;
+spacingvert=.1;
+margin=.12;
+marginleft=.25;
+marginright=.08;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -56,6 +61,11 @@ columns=length(SPIKEWINDOWS);
 
 
 coords=[1 columns+1 columns*2+1];
+
+spacinghor=spacinghor/(1+columns.^(1/1.5));
+%spacingvert=spacingvert/(1+log(columns));
+marginleft=marginleft/(1+log(columns));
+
 
 for i=1:columns
 
@@ -98,7 +108,9 @@ for i=1:columns
 	edges{1}=.5:1:samples+.5;
 	edges{2}=linspace(voltmin,voltmax,y_res);	
 
-	subplot(3,columns,coords(1)+(i-1));
+	%subaxis(3,columns,coords(1)+(i-1),'spacingvert',.5);
+	subaxis(3,columns,i,1,'spacingvert',spacingvert,'spacinghor',spacinghor,'margin',margin,'marginleft',marginleft,'marginright',marginright,...
+	'mb',0.01);
 	plot(timevec,wins,'m-');
 	ylimits=ylim();
 	if ~isempty(channelboundary)
@@ -108,7 +120,7 @@ for i=1:columns
 	end
 	
 	if i==1
-		ylabel('Voltage ($\mu$Volts)','FontName','Helvetica','FontSize',13,'interpreter','latex');
+		ylabel('Voltage ($\mu$Volts)','FontName','Helvetica','FontSize',12,'interpreter','latex');
 	end
 	set(gca,'layer','top');
 	box off
@@ -117,7 +129,7 @@ for i=1:columns
 	if ~isempty(noise_p2p)
 		mean_waveform=mean(wins,2);
 		peaktopeak=max(mean_waveform)-min(mean_waveform);
-		title([' SNR:  ' num2str(peaktopeak/noise_p2p)],'FontName','Helvetica','FontSize',13)
+		title([' SNR:  ' num2str(peaktopeak/noise_p2p)],'FontName','Helvetica','FontSize',12)
 	end
 
 	ylimits=ylim();
@@ -128,8 +140,8 @@ for i=1:columns
 	end
 
 	set(gca,'YTick',yticks);
-	prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
-	prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+	prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1,'ticklength',[0 0]);
+	prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
 	set(gca,'xcolor',get(gcf,'color'));
 
 	yticks=[ceil(voltmin/10)*10 floor(voltmax/10)*10];
@@ -137,8 +149,10 @@ for i=1:columns
 	if yticks(2)<=yticks(1)
 		yticks(2)=yticks(1)+1;
 	end
-
-	subplot(3,columns,coords(2)+(i-1));
+	
+	subaxis(3,columns,i,2,'spacingvert',spacingvert,'spacinghor',spacinghor,'margin',margin,'marginleft',marginleft,'marginright',marginright,...
+	'mt',.06);
+	%subaxis(3,columns,coords(2)+(i-1),'spacingvert',.5);
 	density=hist3(coordmat,'Edges',edges);
 	imagesc(timevec(1:end-1),edges{2},density(1:length(timevec)-1,:)');
 	ylimits=ylim();
@@ -153,15 +167,16 @@ for i=1:columns
 
 	%box off
 
-	xlabel('Time (ms)','FontName','Helvetica','FontSize',13);
-	prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
-	prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+	xlabel('Time (ms)','FontName','Helvetica','FontSize',12);
+	prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1,'ticklength',[0 0]);
+	prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
 	axis xy
 	box off
 	axis tight
 
-	subplot(3,columns,coords(3)+(i-1));
-
+	%subaxis(3,columns,coords(3)+(i-1),'spacingvert',.5);
+	subaxis(3,columns,i,3,'spacingvert',spacingvert,'spacinghor',spacinghor,'margin',margin,'marginleft',marginleft,'marginright',marginright,'mt',.05);
+	
 	if isempty(isi);
 		warning('ephysPipeline:visualspikestats:emptyspikeisi','ISI vector is empty, skipping ISI density plot.');
 		return;
@@ -186,20 +201,20 @@ for i=1:columns
 	set(hline,'clipping','off');
 	box off
 	%set(h,'FaceColor',[.7 .7 .7],'EdgeColor','k','LineWidth',1.5);
-	xlabel({['ISI (ms), ' num2str(violations) '% < 1 ms '];[note]});
+	xlabel({['ISI (ms), ' num2str(violations) '% < 1 ms '];[note{i}]});
 	if i==1
 		ylabel('P(ISI)');
 	end
 
 	ylimits(1)=min(density);
-	ylimits(2)=ceil(max(density)*1e3)/1e3;
+	ylimits(2)=ceil(max(density)*1e2)/1e2;
 
 	if ylimits(1)<ylimits(2)
 		set(gca,'YLim',ylimits,'YTick',ylimits);
 	end
 
-	prettify_axis(gca,'FontSize',12,'FontName','Helvetica');
-	prettify_axislabels(gca,'FontSize',15,'FontName','Helvetica');
+	prettify_axis(gca,'FontSize',12,'FontName','Helvetica','linewidth',1,'ticklength',[0 0]);
+	prettify_axislabels(gca,'FontSize',12,'FontName','Helvetica');
 	set(gca,'layer','top');
 	xlim([xi(1) xi(end)]);
 	set(gca,'XTick',[ .1 1 10 100 ],'XTickLabel',[ .1 1 10 100 ],'XMinorTick','off');

@@ -243,7 +243,7 @@ if filtering
 			disp(['Filter order ' num2str(filt_order)]);
 			disp(['Frequency range ' num2str(freq_range)]);
 
-			[b,a]=ellip(filt_order,.2,40,[freq_range]/(fs/2));
+			[b,a]=ellip(filt_order,.2,40,[freq_range]/(fs/2),filt_type);
 
 			for i=1:nchannels
 				EPHYS_DATA(:,:,i)=filtfilt(b,a,squeeze(EPHYS_DATA(:,:,i)));

@@ -1,5 +1,5 @@
 function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
-%generates song-aligned single-unit rasters
+%spike sorting without automated visualizations (as in ephys_visual_sua)
 %
 %	cluster=ephys_spikesort(EPHYS_DATA,varargin)
 %
@@ -7,6 +7,12 @@ function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %	Data for spike sorting (samples x trials)
 %
 %	the following may be specified as parameter/value pairs:
+%
+%		interpolate_f
+%		interpolation factor used for spike alignment (cubic splines, default: 8, i.e. upsample by factor of 8)
+%
+%		sort_f
+%		downsample factor after alignment for clustering (default: interpolate_f, i.e. spikes upsampled then downsampled to original fs)
 %
 %		tetrode_channels
 %		channels may act as a putative n-trode (can specify an arbitrary number of channels),
@@ -37,30 +43,9 @@ function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %		sigma_t
 %		multiple of variance estimate for automatic threshold setting (uses the Quiroga formulation, default: 4)
 %
-%		singletrials
-%		number of singletrials to plot
-%
-%		savedir
-%		directory to store results (default: pwd)
-%
-%		subtrials
-%		vector of trials to include in the analysis (default: all trials)
-%
 %		modelselection
 %		method of choosing the number of components for GMM clustering (default: icl, options, 
 %		'BIC' for Bayes Information, 'mml' for minimum message length, 'icl' for BIC-ICL)
-%
-%		isi_cutoff
-%		cutoff in ISI violation probability for candidate clusters (p<5 milliseconds, default: .05)
-%
-%		lratio_cutoff
-%		cutoff in l-ratio for candidate clusters (default: .2)
-%
-%		isod_cutoff
-%		cutoff in isolation distance for candidate clusters (default: 20)
-%
-%		snr_cutoff
-%		cutoff in SNR (p2p of mean waveform/(6*noise_estimate)) for candidate clusters (default: 1.1)
 %
 %		spike_window
 %		seconds before and after threshold crossing to store (in seconds, default: [.0005 .0005])
@@ -75,15 +60,31 @@ function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %		include a garbage-collecting uniform density in GMM clustering (0 or 1, default: 1)
 %
 %		smem
-%		use split-and-merge algorithm for GMM clustering (0 or 1, default: 1)
+%		use split-and-merge algorithm for GMM clustering (0, 1, or 2 forr FREE smem, default: 1)
 %	
 %		maxnoisetraces
 %		maximum number of noise traces to use in spike whitening (default: 1e6)
 %
 %		align_method
 %		method for spike alignment ('min','max', or 'com', default: 'min');
+%		
+%		noise
+%		denoising method ('car' for common average, 'none' for none, default: 'none');
 %
-% see also ephys_visual_mua.m,ephys_visual_lfp_amp.m,ephys_visual_lfp_tf.m,ephys_spike_cluster_auto.m,ephys_spike_clustergui_tetrode.m,ephys_spike_detect.m
+%		jitter
+%		maximum jitter for spike realignment in samples (default: 10)
+%
+%		noisewhiten
+%		whiten noise using Cholesky decomposition (0 or 1, default: 1)
+%
+%		wavelet_denoise
+%		denoise using wavelets (0 or 1, default: 0)
+%
+%		decomp_level
+%		parameter for wavelet denoising (default: 7)
+%
+%
+% see also ephys_visual_sua.m,ephys_spike_cluster_auto.m,ephys_spike_clustergui.m,ephys_spike_detect.m
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
@@ -107,8 +108,11 @@ end
 fs=25e3;
 noise='none'; % none, nn for nearest neighbor, or car for common average
 car_exclude=[];
-freq_range=[400 11e3]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
-filt_type='bandpass'; % high,low or bandpass
+
+% 300 Hz E high-pass, see Quiroga et al. 2013
+
+freq_range=[400]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
+filt_type='high'; % high,low or bandpass
 filt_order=3;
 filt_name='e';
 auto_clust=1; % 0 for manual cluster cutting (GUI), 1 for automated clustering
@@ -117,7 +121,6 @@ noise='none'; % none, nn for nearest neighbor, or car for common average
 tetrode_channels=[];
 sigma_t=4; % multiple of noise estimate for spike threshold (generally 3-4, using Quiroga's method)
 jitter=10; % max jitter in samples for spike re-alignment (4 is reasonable
-singletrials=5; % number of random single trials to plot per cluster
 subtrials=[];
 align_method='min'; % how to align spike waveforms can be min, max or com for center-of-mass
 method='n';
@@ -125,7 +128,6 @@ interpolate_f=8; % interpolate factor
 sort_f=[]; % if empty, downsamples back to original fs
 
 smooth_rate=1e3;
-ifr_sigma=.0025;
 car_trim=40;
 decomp_level=7;
 
@@ -136,7 +138,6 @@ garbage=1;
 smem=1;
 
 spikeworkers=1;
-spikecut=1;
 modelselection='icl';
 maxnoisetraces=1e6;
 wavelet_denoise=0;
@@ -152,8 +153,6 @@ for i=1:2:nparams
 			noise=varargin{i+1};
 		case 'sigma_t'
 			sigma_t=varargin{i+1};
-		case 'filtering'
-			filtering=varargin{i+1};
 		case 'car_exclude'
 			car_exclude=varargin{i+1};
 		case 'filt_type'
@@ -168,8 +167,6 @@ for i=1:2:nparams
 			spikesort=varargin{i+1};
 		case 'auto_clust'
 			auto_clust=varargin{i+1};
-		case 'ifr_sigma'
-			ifr_sigma=varargin{i+1};
 		case 'align_method'
 			align_method=varargin{i+1};
 		case 'jitter'
@@ -192,8 +189,6 @@ for i=1:2:nparams
 			car_trim=varargin{i+1};
 		case 'pcs'
 			pcs=varargin{i+1};
-		case 'spikecut'
-			spikecut=varargin{i+1};
 		case 'pcs'
 			pcs=varargin{i+1};
 		case 'garbage'
@@ -215,6 +210,7 @@ end
 
 if isempty(sort_f)
 	sort_f=interpolate_f;
+	disp(['Setting sort downsample factor to spike upsample factor:  ' num2str(sort_f)]);
 end
 
 interpolate_fs=fs*interpolate_f;
@@ -318,6 +314,14 @@ clear sort_data;
 
 disp(['Channel ' num2str(channels)]);
 
+cluster.parameters.fs=fs;
+cluster.parameters.interpolate_fs=interpolate_fs;
+cluster.parameters.sort_fs=sort_fs;
+cluster.parameters.threshold=threshold;
+cluster.parameters.tetrode_channels=tetrode_channels;
+cluster.parameters.spike_window=spike_window;
+cluster.parameters.align_method=align_method;
+
 if auto_clust
 	[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats... 
 		cluster.outliers cluster.spikedata cluster.model]=...
@@ -329,20 +333,13 @@ if auto_clust
 else
 	[cluster.windows cluster.times cluster.trials cluster.isi cluster.stats...
 		cluster.outliers cluster.spikedata cluster.model]=...
-		ephys_spike_clustergui(spikes,spikeless,...
+		ephys_spike_clustergui(spikes,spikeless,cluster.parameters,...
 			'fs',fs,'interpolate_fs',interpolate_fs,'proc_fs',sort_fs,...
 			'maxnoisetraces',maxnoisetraces,'cluststart',cluststart,'pcs',pcs,...
 			'workers',spikeworkers,'garbage',garbage,'smem',smem,'modelselection',...
 			modelselection,'align_method',align_method,'noisewhiten',noisewhiten);
 end
 
-cluster.parameters.fs=fs;
-cluster.parameters.interpolate_fs=interpolate_fs;
-cluster.parameters.sort_fs=sort_fs;
-cluster.parameters.threshold=threshold;
-cluster.parameters.tetrode_channels=tetrode_channels;
-cluster.parameters.spike_window=spike_window;
-cluster.parameters.align_method=align_method;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IFR, SMOOTH RATE %%%%%%%%%%%%%%%%%%%
@@ -370,10 +367,4 @@ if ~isempty(cluster.windows)
 	end
 end
 
-if ~isempty(cluster.windows)
-
-	% compute stats and generate stats figures
-
-	
-end
-
+cluster.IFR=IFR;

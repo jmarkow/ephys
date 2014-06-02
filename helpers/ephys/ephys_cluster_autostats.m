@@ -21,6 +21,8 @@ lratio_cutoff=1;
 isod_cutoff=1;
 isi_cutoff=.01;
 channels=[];
+clust_plot=1;
+dim_labels=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -46,6 +48,10 @@ for i=1:2:nparams
 			channels=varargin{i+1};
 		case 'savemode'
 			savemode=varargin{i+1};
+		case 'clust_plot'
+			clust_plot=varargin{i+1};
+		case 'dim_labels'
+			dim_labels=varargin{i+1};
 	end
 end
 
@@ -106,8 +112,12 @@ end
 
 note=[];
 
-note=['L-ratio ' sprintf('%.2f',CLUSTER.stats.lratio(j)) ...
-	' IsoD ' sprintf('%.2f',CLUSTER.stats.isod(j)) ];
+% TODO: modify note to show stats for all clusters!
+
+for j=1:nplots
+	note{j}=['L-ratio ' sprintf('%.2f',CLUSTER.stats.lratio(j)) ...
+		' IsoD ' sprintf('%.2f',CLUSTER.stats.isod(j)) ];
+end
 
 if ~isempty(CLUSTER.parameters.tetrode_channels)
 	channelboundary=round(cumsum(ones(1,length(CLUSTER.parameters.tetrode_channels)).*...
@@ -119,7 +129,7 @@ stats_fig=ephys_visual_spikestats(CLUSTER.windows,CLUSTER.isi,...
 	CLUSTER.parameters.interpolate_fs,'fig_num',stats_fig,'note',note,...
 	'channelboundary',channelboundary);
 
-set(stats_fig,'Position',[0 0 900 700]);
+set(stats_fig,'Position',[0 0 250*nplots 600]);
 set(stats_fig,'PaperPositionMode','auto');
 
 % label candidate units if they meet our criteria
@@ -132,7 +142,7 @@ isi_violations=isi_violations/length(CLUSTER.isi{j});
 
 if savemode
 	multi_fig_save(stats_fig,savedir,...
-		[ savefilename_stats],'png','res',200);
+		[ savefilename_stats 'spikestats' ],'eps','res',200);
 	close([stats_fig]);
 end
 
@@ -155,7 +165,7 @@ for j=1:nplots
 
 end
 
-if nplots<8
+if nplots<=10
 
 	if savemode
 		stats_fig=figure('Visible','off','renderer','painters');
@@ -171,12 +181,12 @@ if nplots<8
 
 	if savemode
 		multi_fig_save(stats_fig,savedir,...
-			[ savefilename_stats 'clstats' ],'eps,png','res',150,'renderer','painters');
+			[ savefilename_stats 'cluststats' ],'eps','res',150,'renderer','painters');
 		close([stats_fig]);
 	end
 
 
-	if size(CLUSTER.model.mu,2)>1
+	if size(CLUSTER.model.mu,2)>1 & clust_plot
 
 		if savemode
 			stats_fig=figure('Visible','off');
@@ -185,11 +195,11 @@ if nplots<8
 		end
 
 
-		stats_fig=gaussvis(CLUSTER.model,CLUSTER.spikedata,'fig_num',stats_fig);
+		stats_fig=gaussvis(CLUSTER.model,CLUSTER.spikedata,'fig_num',stats_fig,'dim_labels',dim_labels);
 		
 		if savemode
 			multi_fig_save(stats_fig,savedir,...
-				[ savefilename_stats 'clustplot' ],'eps,png','res',150);
+				[ savefilename_stats 'clustplot' ],'eps','res',150);
 			close([stats_fig]);
 		end
 	end
