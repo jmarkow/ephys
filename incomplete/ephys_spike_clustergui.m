@@ -68,6 +68,8 @@ for i=1:2:nparams
 			pcs=varargin{i+1};
 		case 'garbage'
 			garbage=varargin{i+1};
+		case 'proc_fs'
+			proc_fs=varargin{i+1};
 		case 'noisewhiten'
 			noisewhiten=varargin{i+1};
 		case 'align_method'
@@ -173,6 +175,18 @@ spiketimes=cat(2,CLUSTSPIKES(:).storetimes);
 
 spike_data=[];
 property_names={};
+
+% downsample spikes back to original FS
+
+downfact=interpolate_fs/proc_fs;
+
+if mod(downfact,1)~=0
+	error('ephyspipeline:templatesortexact:baddownfact',...
+		'Need to downsample by an integer factor');
+end
+
+clusterspikewindows=downsample(clusterspikewindows,downfact);
+
 
 % cheap to compute standard features
 
@@ -307,8 +321,6 @@ end
 % now align everything and send the main_window handle to the output
 % so we can use the gui with uiwait (requires the handle as a return value)
 
-
-
 align([pop_up_clusters,pop_up_clusters_text,push_replot_save],'Center','None');
 align([pop_up_x,pop_up_x_text],'Center','None');
 align([pop_up_y,pop_up_y_text],'Center','None');
@@ -439,7 +451,7 @@ startmu=[];
 startcov=[];
 mixing=[];
 
-nclust=str2num(clusterchoice)
+nclust=str2num(clusterchoice);
 
 startobj=struct('mu',startmu,'sigma',startcov,'mixing',mixing);
 idx=kmeans(cluster_data,nclust,'replicates',5);
@@ -539,7 +551,6 @@ end
 
 [WINDOWS TIMES TRIALS SPIKEDATA ISI STATS]=...
 	check_clusterquality(storespikewindows,spiketimes,cluster_data,LABELS,trialnum,clustermodel);
-STATS
 change_plot();
 
 end

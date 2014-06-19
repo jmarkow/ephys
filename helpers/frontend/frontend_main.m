@@ -208,21 +208,29 @@ if nargin<1
 	DIR=pwd;
 end
 
-% list the files to process
+% read in int or rhd files
 
-if ~isempty(filtering)
-	[b,a]=butter(5,[filtering/(fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
-else
-    b=[];
-    a=[];
-end
+filelisting=dir(fullfile(DIR));
 
-filelisting=dir(fullfile(DIR,'*.int'));
+% delete directories
+
+isdir=cat(1,filelisting(:).isdir);
+filelisting(isdir)=[];
+
+% read in appropriate suffixes 
+
+filenames={filelisting(:).name};
+hits=regexp(filenames,'\.(rhd|int)','match');
+hits=cellfun(@length,hits)>0;
+
+filenames(~hits)=[];
 
 proc_files={};
-for i=1:length(filelisting)
-	proc_files{i}=fullfile(DIR,filelisting(i).name);
+for i=1:length(filenames)
+	proc_files{i}=fullfile(DIR,filenames{i});
 end
+
+clear filenames;
 
 % check all files in proc directory and delete anything older than 
 % auto-delete days
@@ -298,8 +306,11 @@ for i=1:length(proc_files)
 	% file has been written
 
 	if bytedif==0
+
 		try
-			[t,amps,data,aux,misc]=frontend_readdata(proc_files{i});
+
+			[t,amps,data,amps_aux,aux,parameters,dig,adc]=frontend_readdata(proc_files{i});
+
 		catch err
 
 			file_age=daysdif(file_datenum,datenum(now));
@@ -320,6 +331,21 @@ for i=1:length(proc_files)
 		continue;
 	end
 
+	% if file contains sampling rate, overwrite and use file's fs
+
+	if isfield(parameters,'amplifier_sample_rate')
+		fs=parameters.amplifier_sample_rate;
+	end
+
+	% set up high-pass for mic data if indicated by the user
+	
+	if ~isempty(filtering)
+	    [b,a]=butter(5,[filtering/(fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
+	else
+	    b=[];
+	    a=[];
+	end
+
 	% if we're successful reading, then move the file to a processed directory
 
 	[path,name,ext]=fileparts(proc_files{i});
@@ -338,25 +364,21 @@ for i=1:length(proc_files)
 
 	% standard song detection
 
-
-	mic_channel=find(amps==mic_trace);
-	ephys_labels=setdiff(amps,mic_trace);
-
 	ismic=~isempty(mic_trace);
 	isttl=~isempty(ttl_trace);
 
 	disp(['Flags: mic ' num2str(ismic) ' ttl ' num2str(isttl)]);
 
-	ephys_channels=[];
-	for j=1:length(ephys_labels)
-		ephys_channels(j)=find(amps==ephys_labels(j));
-	end
 
 	if isttl
-		ttl_data=aux(:,ttl_trace);
+		ttl_data=aux(:,find(ttl_trace==amps_aux));
 	end
 
 	if ismic		
+
+		mic_channel=find(amps==mic_trace);
+		ephys_labels=setdiff(amps,mic_trace);
+		
 		conditioned_data=data(:,mic_channel);
 
 		if ~isempty(filtering)
@@ -366,13 +388,21 @@ for i=1:length(proc_files)
 		end
 
 		norm_data=norm_data./max(abs(norm_data));
+	else
+		ephys_labels=amps;
+	end
+
+	ephys_channels=[];
+	for j=1:length(ephys_labels)
+		ephys_channels(j)=find(amps==ephys_labels(j));
 	end
 
 	% prepare data as a structure to pass to processing functions
 
 	datastruct=struct('data',data,'norm_data',norm_data,'conditioned_data',conditioned_data,...
 		'ttl_data',ttl_data,'ephys_labels',ephys_labels,'ephys_channels',ephys_channels,...
-		'datenum',file_datenum,'fs',fs);
+		'datenum',file_datenum,'fs',fs,'aux',aux,'amps_aux',amps_aux,'dig',dig,'adc',adc,...
+		'parameters',parameters);
 
 	clearvars data norm_data conditioned_data ttl_data;
 
@@ -408,13 +438,17 @@ for i=1:length(proc_files)
 	wav_dir_ttl=fullfile(foldername,[wav_pre '_ttl']);
 	data_dir_ttl=fullfile(foldername,[data_pre '_ttl']);
 	
-	if ~ismic & ~ttl & ~sleepflag
+	if ~ismic & ~isttl & ~sleep_flag
 
-		ephys_extraction=data;
+		ephys_extraction=datastruct.data;
 		audio_extraction=[];
 		ttl_extraction=[];
+
 		save(fullfile(data_dir,['songdet1_' name '.mat']),...
-			'ephys_extraction','ttl_extraction','audio_extraction','fs','ephys_labels','file_datenum','-v7.3');
+			'ephys_extraction','ttl_extraction','audio_extraction','fs','ephys_labels','file_datenum',...
+			'parameters','dig','adc','-v7.3');
+
+		continue;
 
 	end
 

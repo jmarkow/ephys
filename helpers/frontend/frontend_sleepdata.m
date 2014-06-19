@@ -29,6 +29,7 @@ end
 sleep_foldername=fullfile(BASE_DIR,datestr(new_datenum,FOLDER_FORMAT));
 sleep_dir=fullfile(sleep_foldername,SLEEP_FOLDER);
 sleep_listing=dir(fullfile(sleep_dir,'*.mat'));
+parameters=DATA.parameters;
 
 % get the date number of the last saved file
 
@@ -73,7 +74,8 @@ if time_elapsed>=SLEEP_FILEINTERVAL*60
 	end
 	
 	save(fullfile(sleep_dir,['sleepdata1_' FILENAME '.mat']),...
-		'ephys_extraction','audio_extraction','ttl_extraction','fs','ephys_labels','file_datenum');
+		'ephys_extraction','audio_extraction','ttl_extraction','fs','ephys_labels','file_datenum',...
+		'parameters','-v7.3');
 
 end
 

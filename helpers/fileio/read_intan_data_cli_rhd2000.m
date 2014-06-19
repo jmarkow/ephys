@@ -280,7 +280,7 @@ end
 
 num_data_blocks = bytes_remaining / bytes_per_block;
 
-num_amplifier_samples = 60 * num_data_blocks
+num_amplifier_samples = 60 * num_data_blocks;
 num_aux_input_samples = 15 * num_data_blocks;
 num_supply_voltage_samples = 1 * num_data_blocks;
 num_board_adc_samples = 60 * num_data_blocks;
@@ -375,7 +375,7 @@ if (data_present)
     end
 
     % Make sure we have read exactly the right amount of data.
-    bytes_remaining = filesize - ftell(fid)
+    bytes_remaining = filesize - ftell(fid);
     if (bytes_remaining ~= 0)
         %error('Error: End of file not reached.');
     end
@@ -453,7 +453,7 @@ end
 % Move variables to base workspace.
 
 params=frequency_parameters;
-notes=notes;
+%notes=notes;
 
 if num_amplifier_channels>0
 	amp.channels=amplifier_channels;
@@ -489,8 +489,8 @@ end
 if num_board_adc_channels>0
 	adc.channels=board_adc_channels;
 	if data_present
-		board_adc.data=board_adc_data;
-		board_adc.t=t_board_adc;
+		adc.data=board_adc_data;
+		adc.t=t_board_adc;
 	end
 else
 	adc=[];

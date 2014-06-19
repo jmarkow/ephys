@@ -35,6 +35,8 @@ sonogram_im=flipdim(sonogram_im,1);
 [f,t]=size(sonogram_im);
 im_son_to_vec=(length(DATA.norm_data)-350)/t;
 
+parameters=DATA.parameters;
+
 for i=1:size(EXT_PTS,1)
 
 	startpoint=EXT_PTS(i,1);
@@ -69,7 +71,8 @@ for i=1:size(EXT_PTS,1)
 
 	imwrite(uint8(chunk_sonogram_im),colormap([ COLORS '(63)']),fullfile(DIRS.image,[ save_name '.gif']),'gif');
 	save(fullfile(DIRS.data,['songdet1_' save_name '.mat']),...
-		'ephys_extraction','audio_extraction','ttl_extraction','fs','ephys_labels','file_datenum');
+		'ephys_extraction','audio_extraction','ttl_extraction','fs','ephys_labels','file_datenum',...
+		'parameters','-v7.3');
 
 	% normalize audio to write out to wav file
 

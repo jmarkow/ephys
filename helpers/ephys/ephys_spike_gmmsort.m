@@ -1,11 +1,4 @@
 function [LABELS SPIKE_DATA MODEL]=ephys_pipeline_gmmsort(SPIKE_DATA,varargin)
-%
-%
-%
-%
-%
-%
-
 % calculate merge and accept thresholds based on estimate of the noise
 % match the noise sampling rate to the spike sampling rate and 
 
@@ -14,16 +7,16 @@ nparams=length(varargin);
 interpolate_fs=200e3;
 fs=25e3;
 proc_fs=25e3; % downsample the spikes by a factor of 4 and upsample the noise by
-mergecut=3;
-maxnoisetraces=1e6;
-cluststart=10;
-pcs=2;
-pcareplicates=5;
-clustreplicates=1;
-garbage=1;
-workers=1;
-modelselection='icl';
-smem=1;
+
+maxnoisetraces=1e6; % maximum number of noise traces to use for Cholesky decomposition
+cluststart=1:6; % number of clusters to start with
+pcs=2; % number of PCs to use for clustering
+pcareplicates=5; % replicates for robust pca
+clustreplicates=1; % replicates for clustering procedure
+garbage=1; % use uniform garbage collection density
+workers=1; % number of workers when deployed
+modelselection='icl'; % icl, bic, aic
+smem=1; % smem 1 uses split and merge, 0 is standard em, 2 for free split and merge
 outliercut=.9; % exclude outliers from robpca
 
 if mod(nparams,2)>0
@@ -192,7 +185,6 @@ else
 			startobj.mixing(j)=sum(idx==j)/length(idx);
 		end
 
-		
 		for j=1:clustreplicates
 			tmpclustobj{j}=gmem(newscore(:,1:rankcut),startobj,cluststart(i),...
 				'garbage',garbage,'merge',smem,'debug',0);
