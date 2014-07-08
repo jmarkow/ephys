@@ -1,4 +1,4 @@
-function [T,AMPS,DATA,AUX_AMPS,AUX,PARAMETERS,DIG,ADC]=frontend_fileparse(FILENAME)
+function [T,AMPS,DATA,AMPS_AUX,AUX,AMPS_ADC,ADC,PARAMETERS,DIG]=frontend_fileparse(FILENAME)
 %frontend_readdata returns t amps data and aux
 %
 %	t
@@ -28,22 +28,23 @@ function [T,AMPS,DATA,AUX_AMPS,AUX,PARAMETERS,DIG,ADC]=frontend_fileparse(FILENA
 T=[];
 AMPS=[];
 DATA=[];
-AUX_AMPS=[];
+AMPS_AUX=[];
 AUX=[];
 PARAMETERS=[];
 DIG=[];
 ADC=[];
+AMPS_ADC=[];
 
 switch lower(ext)
 
 	case '.int'
 		
 		[T,AMPS,DATA,AUX]=read_intan_data_cli(FILENAME);	
-		AUX_AMPS=1:size(AUX,2);
+		AMPS_AUX=1:size(AUX,2);
 		
 	case '.rhd'
 
-		[amp,aux_input,PARAMETERS,notes,supply_voltage,ADC,dig_in,dig_out,temp_sensor]=...
+		[amp,aux_input,PARAMETERS,notes,supply_voltage,adc,dig_in,dig_out,temp_sensor]=...
 			read_intan_data_cli_rhd2000(FILENAME);
 
 		T=amp.t;
@@ -54,14 +55,19 @@ switch lower(ext)
 		DIG.IN=dig_in;
 		DIG.OUT=dig_out;
 
-		AUX=aux_input.data;
-		AMPS_AUX=cat(1,aux_input.channels(:).native_order)+1;
+		if ~isempty(aux)
+			AUX=aux_input.data;
+			AMPS_AUX=cat(1,aux_input.channels(:).native_order)+1;
+		end
+
+		if ~isempty(adc)
+		       AMPS_ADC=cat(1,adc.channels(:).native_order)+1;
+		       ADC=adc.data;
+	        end
 
 		% pack most of the data into a misc structure, the rest can be unpacked into
 		% T AMPS DATA and AUX as before
 	
-		% insert RHD extraction code when ready
-
 	case '.continuous'
 
 		% open ephys extraction code here

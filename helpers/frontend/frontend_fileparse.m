@@ -1,4 +1,4 @@
-function [BIRDID,RECID,MICTRACE,TTLTRACE,DATENUM]=frontend_fileparse(FILENAME,DELIM,FMT,DATEFMT)
+function [BIRDID,RECID,MICTRACE,MICSOURCE,TTLTRACE,DATENUM]=frontend_fileparse(FILENAME,DELIM,FMT,DATEFMT)
 %frontend_fileparse
 %
 %	frontend_fileparse(FILENAME,DELIM,FMT)
@@ -31,6 +31,7 @@ DATENUM=[];
 birdtoken=strfind(lower(FMT),'b');
 rectoken=strfind(lower(FMT),'i');
 mictoken=strfind(lower(FMT),'m');
+sourcetoken=strfind(lower(FMT),'s');
 ttltoken=strfind(lower(FMT),'t');
 datetoken=strfind(lower(FMT),'d');
 
@@ -77,7 +78,25 @@ if ~isempty(ttltoken)
 	TTLTRACE=str2num(ttltokens{1});
 end
 
+if ~isempty(sourcetoken)
+	tmp=tokens{sourcetoken};
+
+	if strcmp(lower(tmp(1)),'m')
+		MICSOURCE='m';
+	elseif strcmp(lower(tmp(1:2)),'au') 
+		MICSOURCE='a';
+	elseif strcmp(lower(tmp(1:2)),'ad')
+		MICSOURCE='d';
+	else
+		warning('Did not understand mic source %s setting to main.',tmp);
+		MICSOURCE='m';
+	end
+end
+
+
 % parse the date
 
-DATENUM=datenum([tokens{datetoken}],'yymmddHHMMSS');
+if ~isempty(datetoken)
+	DATENUM=datenum([tokens{datetoken}],'yymmddHHMMSS');
+end
 

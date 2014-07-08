@@ -268,7 +268,7 @@ for i=1:length(proc_files)
 
 		% parse the file using the format string
 
-		[birdid,recid,mic_trace,ttl_trace,file_datenum]=frontend_fileparse(proc_files{i},delimiter,parse_string,date_string);
+		[birdid,recid,mic_trace,mic_source,ttl_trace,file_datenum]=frontend_fileparse(proc_files{i},delimiter,parse_string,date_string);
 
 		% now create the folder it doesn't exist already
 
@@ -309,7 +309,7 @@ for i=1:length(proc_files)
 
 		try
 
-			[t,amps,data,amps_aux,aux,parameters,dig,adc]=frontend_readdata(proc_files{i});
+			[t,amps,data,amps_aux,aux,amps_adc,adc,parameters,dig]=frontend_readdata(proc_files{i});
 
 		catch err
 
@@ -376,10 +376,32 @@ for i=1:length(proc_files)
 
 	if ismic		
 
-		mic_channel=find(amps==mic_trace);
-		ephys_labels=setdiff(amps,mic_trace);
-		
-		conditioned_data=data(:,mic_channel);
+		% (m)ain channels (i.e. electrode channel), (a)ux or a(d)c?
+
+		switch lower(mic_source(1))
+
+			case 'm'
+
+				mic_channel=find(amps==mic_trace);
+
+				% take out the mic channel from the ephys labels
+
+				ephys_labels=setdiff(amps,mic_trace);
+				conditioned_data=data(:,mic_channel);
+
+			case 'a'
+
+				mic_channel=find(amps_aux==mic_trace);
+				ephys_labels=amps;
+				conditioned_data=aux(:,mic_channel);
+
+			case 'd'
+
+				mic_channel=find(amps_adc==mic_trace);
+				ephys_labels=amps;
+				conditioned_data=adc(:,mic_channel);
+
+		end	
 
 		if ~isempty(filtering)
 			norm_data=filtfilt(b,a,conditioned_data);
