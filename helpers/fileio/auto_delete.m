@@ -28,9 +28,7 @@ filenames={listing.name};
 oldstate=recycle;
 newstate=recycle('off');
 
-dates
-DIR
-FILT
+
 
 for i=1:length(dates)
 
@@ -40,8 +38,7 @@ for i=1:length(dates)
 	% days elapsed
 
 	delapsed=daysdif(datenum(dates{i}),datenum(now));
-	delapsed
-
+	
 	if delapsed>DATE
 		disp(['Deleting ' fullfile(DIR,filenames{i})]);
 		delete(fullfile(DIR,filenames{i}));

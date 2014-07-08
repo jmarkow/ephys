@@ -103,12 +103,12 @@ filtering=300; % changed to 100 from 700 as a more sensible default, leave empty
 fs=25e3;
 audio_pad=5; % pad on either side of the extraction
 error_buffer=5; % if we can't load a file, how many days old before deleting
-ext='int';
+ext='rhd';
 
 % parameters for folder creation
 
 folder_format='yyyy-mm-dd';
-parse_string='bimtdd'; % how to parse filenames, b=birdid, i=recid, m=micid, t=ttlid, d=date
+parse_string='bimsdd'; % how to parse filenames, b=birdid, i=recid, m=micid, t=ttlid, d=date
 		       % character position indicates which token (after delim split) contains the info
 date_string='yymmddHHMMSS'; % parse date using datestr format
 
@@ -311,6 +311,10 @@ for i=1:length(proc_files)
 
 			[t,amps,data,amps_aux,aux,amps_adc,adc,parameters,dig]=frontend_readdata(proc_files{i});
 
+            size(data)
+            size(aux)
+            size(adc)
+            
 		catch err
 
 			file_age=daysdif(file_datenum,datenum(now));
@@ -401,8 +405,8 @@ for i=1:length(proc_files)
 				ephys_labels=amps;
 				conditioned_data=adc(:,mic_channel);
 
-		end	
-
+        end
+        
 		if ~isempty(filtering)
 			norm_data=filtfilt(b,a,conditioned_data);
 		else

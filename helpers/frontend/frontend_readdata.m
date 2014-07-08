@@ -48,22 +48,22 @@ switch lower(ext)
 			read_intan_data_cli_rhd2000(FILENAME);
 
 		T=amp.t;
-		DATA=amp.data;
+		DATA=amp.data';
 		AMPS=cat(1,amp.channels(:).native_order)+1;
 		PARAMETERS.notes=notes;
 		PARAMETERS.amps=AMPS;
 		DIG.IN=dig_in;
 		DIG.OUT=dig_out;
 
-		if ~isempty(aux)
-			AUX=aux_input.data;
+		if ~isempty(aux_input)
+			AUX=aux_input.data';
 			AMPS_AUX=cat(1,aux_input.channels(:).native_order)+1;
 		end
 
 		if ~isempty(adc)
-		       AMPS_ADC=cat(1,adc.channels(:).native_order)+1;
-		       ADC=adc.data;
-	        end
+		    AMPS_ADC=cat(1,adc.channels(:).native_order)+1;
+		    ADC=adc.data';
+	    end
 
 		% pack most of the data into a misc structure, the rest can be unpacked into
 		% T AMPS DATA and AUX as before
