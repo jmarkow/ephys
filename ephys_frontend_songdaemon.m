@@ -38,6 +38,6 @@ end
 
 while 1==1
 	frontend_main(DIR,varargin{:});
-	disp('Pausing for 10 seconds');
+	%disp('Pausing for 10 seconds');
 	pause(10);
 end

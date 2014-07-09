@@ -310,10 +310,6 @@ for i=1:length(proc_files)
 		try
 
 			[t,amps,data,amps_aux,aux,amps_adc,adc,parameters,dig]=frontend_readdata(proc_files{i});
-
-            size(data)
-            size(aux)
-            size(adc)
             
 		catch err
 
@@ -518,6 +514,7 @@ for i=1:length(proc_files)
 	if ismic
 		
 		try
+            disp('Entering song detection...');
 			[song_bin]=song_det(datastruct.norm_data,fs,minfs,maxfs,window,...
 				noverlap,songduration,ratio_thresh,song_thresh);
 		catch err
@@ -531,6 +528,7 @@ for i=1:length(proc_files)
 		song_pts=find(song_bin>0);
 
 		if isempty(song_pts)
+            disp(['No song detected in file:  ' proc_files{i}]);
 			continue;
 		else
 			disp(['Song detected in file:  ' proc_files{i}]);
