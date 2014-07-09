@@ -49,7 +49,7 @@ switch lower(ext)
 
 		T=amp.t;
 		DATA=amp.data';
-		AMPS=cat(1,amp.channels(:).native_order)+1;
+		AMPS=cat(1,amp.channels(:).native_order);
 		PARAMETERS.notes=notes;
 		PARAMETERS.amps=AMPS;
 		DIG.IN=dig_in;
@@ -57,11 +57,11 @@ switch lower(ext)
 
 		if ~isempty(aux_input)
 			AUX=aux_input.data';
-			AMPS_AUX=cat(1,aux_input.channels(:).native_order)+1;
+			AMPS_AUX=cat(1,aux_input.channels(:).native_order);
 		end
 
 		if ~isempty(adc)
-		    AMPS_ADC=cat(1,adc.channels(:).native_order)+1;
+		    AMPS_ADC=cat(1,adc.channels(:).native_order);
 		    ADC=adc.data';
 	    end
 
