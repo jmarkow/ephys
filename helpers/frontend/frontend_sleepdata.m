@@ -34,11 +34,14 @@ parameters=DATA.parameters;
 % get the date number of the last saved file
 
 if ~isempty(sleep_listing)
-	[~,~,~,~,last_datenum]=frontend_fileparse(sleep_listing(end).name,DELIM,newstring);
+	[~,~,~,~,~,last_datenum]=frontend_fileparse(sleep_listing(end).name,DELIM,newstring);
 	time_elapsed=etime(datevec(DATA.datenum),datevec(last_datenum));
 else
 	time_elapsed=(SLEEP_FILEINTERVAL*60)+1;
 end
+
+data_types={'ephys','ttl','digout','digin','adc','aux'};
+savefun=@(filename,datastruct) save(filename,'-struct','datastruct','-v7.3');
 
 % is it greater than the proposed file interval?
 
@@ -60,22 +63,19 @@ if time_elapsed>=SLEEP_FILEINTERVAL*60
 		disp('File too short to keep, skipping...');
 		return;
 	end
-
-	if ~isempty(DATA.conditioned_data)
-		audio_extraction=DATA.conditioned_data(1:stopsample);
-	end
-
-	ephys_extraction=DATA.data(1:stopsample,DATA.ephys_channels);
-
-	if ~isempty(DATA.ttl_data)
-	    ttl_extraction=DATA.ttl_data(1:stopsample);
-	else
-	    ttl_extraction=[];
-	end
 	
-	save(fullfile(sleep_dir,['sleepdata1_' FILENAME '.mat']),...
-		'ephys_extraction','audio_extraction','ttl_extraction','fs','ephys_labels','file_datenum',...
-		'parameters','-v7.3');
+	for j=1:length(data_types)
+		if ~isempty(DATA.(data_types{j}).data)
+			DATA.(data_types{j}).data=DATA.(data_types{j}).data(1:stopsample,:);
+			DATA.(data_types{j}).t=DATA.(data_types{j}).t(1:stopsample);
+		end
+	end
+
+	EXTDATA.audio=rmfield(EXTDATA.audio,'norm_data');
+
+	DATA.audio.data=DATA.audio.data(1:stopsample);
+
+	savefun(fullfile(sleep_dir,['sleepdata1_' FILENAME '.mat']),DATA);
 
 end
 

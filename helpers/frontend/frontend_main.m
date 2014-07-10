@@ -89,7 +89,7 @@ function intan_songdet_intmic(DIR,varargin)
 mic_pre=12;
 minfs=2e3; % the song 'band'
 maxfs=6e3; % the song 'band'
-ratio_thresh=4; % power ratio between song and non-song band
+ratio_thresh=2; % power ratio between song and non-song band
 window=250; % window to calculate ratio in (samples)
 noverlap=0; % just do no overlap, faster
 song_thresh=.15; % between .2 and .3 seems to work best (higher is more exlusive)
@@ -108,7 +108,7 @@ ext='rhd';
 % parameters for folder creation
 
 folder_format='yyyy-mm-dd';
-parse_string='bimsdd'; % how to parse filenames, b=birdid, i=recid, m=micid, t=ttlid, d=date
+parse_string='bimdd'; % how to parse filenames, b=birdid, i=recid, m=micid, t=ttlid, d=date
 		       % character position indicates which token (after delim split) contains the info
 date_string='yymmddHHMMSS'; % parse date using datestr format
 
@@ -119,7 +119,8 @@ wav_pre='wav';
 data_pre='mat';
 sleep_pre='sleep';
 
-delimiter='\_';
+delimiter='\_'; % delimiter for splitting fields in filename
+bird_delimiter='\|'; % delimiter for splitting multiple birds
 nosort=0;
 subdir='pretty_bird';
 sleep_window=[ 22 7 ]; % times for keeping track of sleep data (24 hr time, start and stop)
@@ -241,57 +242,15 @@ end
 
 for i=1:length(proc_files)
 
-	sleep_flag=0;
-	song_bin=[];
-
-	norm_data=[];
-	conditioned_data=[];
-	ttl_data=[];
-	
-	norm_extraction=[];
-	audio_extraction=[];
-	ephys_extraction=[];
-	ttl_extraction=[];
-	sonogram_im=[];
-	chunk_sonogram_im=[];
 
 	% read in the data
 
 	% parse for the bird name,zone and date
 	% new folder format, yyyy-mm-dd for easy sorting (on Unix systems at least)	
 
-	if nosort
-		foldername=fullfile(unorganized_dir,subdir);
-		mic_trace=mic_pre;
-		file_datenum=[];
-	else
-
-		% parse the file using the format string
-
-		[birdid,recid,mic_trace,mic_source,ttl_trace,file_datenum]=frontend_fileparse(proc_files{i},delimiter,parse_string,date_string);
-
-		% now create the folder it doesn't exist already
-
-		foldername=fullfile(root_dir,birdid,recid,datestr(file_datenum,folder_format));	
-
-		% create the bird directory
-
-		if ~exist(fullfile(root_dir,birdid),'dir')
-			mkdir(fullfile(root_dir,birdid));
-		end
-
-		% create the template directory and a little readme
-
-		if ~exist(fullfile(root_dir,birdid,'templates'),'dir')
-			mkdir(fullfile(root_dir,birdid,'templates'));
-			copyfile(fullfile(script_path,'template_readme.txt'),...
-				fullfile(root_dir,birdid,'templates','README.txt'));
-		end
-	end
-
 	disp([repmat(hline,[2 1])]);
 	disp(['Processing: ' proc_files{i}]);
-	disp(['File date: ' datestr(file_datenum)]);
+
 	% try reading the file, if we fail, skip
 
 	%%% check if file is still being written to, check byte change within N msec
@@ -309,7 +268,8 @@ for i=1:length(proc_files)
 
 		try
 
-			[t,amps,data,amps_aux,aux,amps_adc,adc,parameters,dig]=frontend_readdata(proc_files{i});
+			datastruct=frontend_readdata(proc_files{i});
+			datastruct.original_filename=proc_files{i};
             
 		catch err
 
@@ -331,231 +291,316 @@ for i=1:length(proc_files)
 		continue;
 	end
 
-	% if file contains sampling rate, overwrite and use file's fs
-
-	if isfield(parameters,'amplifier_sample_rate')
-		fs=parameters.amplifier_sample_rate;
-	end
-
-	% set up high-pass for mic data if indicated by the user
-	
-	if ~isempty(filtering)
-	    [b,a]=butter(5,[filtering/(fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
-	else
-	    b=[];
-	    a=[];
-	end
 
 	% if we're successful reading, then move the file to a processed directory
 
 	[path,name,ext]=fileparts(proc_files{i});
 
-	try
-		movefile(proc_files{i},proc_dir);
-	catch
-		disp(['Could not move file ' proc_files{i}]);
-		fclose('all');
-		continue;
-	end
+	% if user passes multiple birds, they are split by bird_delimiter, parsing is done
+	% independently for each bird
 
-	if ~exist(foldername,'dir')
-		mkdir(foldername);
-	end
+	bird_split=regexp(proc_files{i},bird_delimiter,'split');
+	nbirds=length(bird_split);
 
-	% standard song detection
+	% clear out all extraction variables to be safe
 
-	ismic=~isempty(mic_trace);
-	isttl=~isempty(ttl_trace);
+	port_id=unique(datastruct.ephys.ports); % which ports are currently being used?
 
-	disp(['Flags: mic ' num2str(ismic) ' ttl ' num2str(isttl)]);
+	for j=1:nbirds
+		
+		sleep_flag=0;
+		song_bin=[];
 
-
-	if isttl
-		ttl_data=aux(:,find(ttl_trace==amps_aux));
-	end
-
-	if ismic		
-
-		% (m)ain channels (i.e. electrode channel), (a)ux or a(d)c?
-
-		switch lower(mic_source(1))
-
-			case 'm'
-
-				mic_channel=find(amps==mic_trace);
-
-				% take out the mic channel from the ephys labels
-
-				ephys_labels=setdiff(amps,mic_trace);
-				conditioned_data=data(:,mic_channel);
-
-			case 'a'
-
-				mic_channel=find(amps_aux==mic_trace);
-				ephys_labels=amps;
-				conditioned_data=aux(:,mic_channel);
-
-			case 'd'
-
-				mic_channel=find(amps_adc==mic_trace);
-				ephys_labels=amps;
-				conditioned_data=adc(:,mic_channel);
-
-        end
-        
-		if ~isempty(filtering)
-			norm_data=filtfilt(b,a,conditioned_data);
-		else
-			norm_data=conditioned_data;
-		end
-
-		norm_data=norm_data./max(abs(norm_data));
-	else
-		ephys_labels=amps;
-	end
-
-	ephys_channels=[];
-	for j=1:length(ephys_labels)
-		ephys_channels(j)=find(amps==ephys_labels(j));
-	end
-
-	% prepare data as a structure to pass to processing functions
-
-	datastruct=struct('data',data,'norm_data',norm_data,'conditioned_data',conditioned_data,...
-		'ttl_data',ttl_data,'ephys_labels',ephys_labels,'ephys_channels',ephys_channels,...
-		'datenum',file_datenum,'fs',fs,'aux',aux,'amps_aux',amps_aux,'dig',dig,'adc',adc,...
-		'parameters',parameters);
-
-	clearvars data norm_data conditioned_data ttl_data;
-
-	if ~isempty(file_datenum) & length(sleep_window)==2
-
-		% convert the sleep window times to datenum
-
-		[~,~,~,hour]=datevec(file_datenum);
-
-		% compare hour, are we in the window?
-
-		if hour>=sleep_window(1) | hour<=sleep_window(2)
-
-			disp(['Processing sleep data for file ' proc_files{i}]);
-
-			frontend_sleepdata(datastruct,name,sleep_window,sleep_segment,sleep_fileinterval,sleep_pre,...
-				fullfile(root_dir,birdid,recid),folder_format,delimiter,parse_string);	
-			
-			sleep_flag=1;
-
-			% skip song detection?
-
-		end
-	end
-
-	frontend_extract_mkdirs(foldername,image_pre,wav_pre,data_pre,isttl);
-
-	image_dir=fullfile(foldername,image_pre);
-	wav_dir=fullfile(foldername,wav_pre);
-	data_dir=fullfile(foldername,data_pre);
-
-	image_dir_ttl=fullfile(foldername,[image_pre '_ttl']);
-	wav_dir_ttl=fullfile(foldername,[wav_pre '_ttl']);
-	data_dir_ttl=fullfile(foldername,[data_pre '_ttl']);
-	
-	if ~ismic & ~isttl & ~sleep_flag
-
-		ephys_extraction=datastruct.data;
+		norm_data=[];
+		conditioned_data=[];
+		ttl_data=[];
+		
+		norm_extraction=[];
 		audio_extraction=[];
+		ephys_extraction=[];
 		ttl_extraction=[];
+		sonogram_im=[];
+		chunk_sonogram_im=[];
 
-		save(fullfile(data_dir,['songdet1_' name '.mat']),...
-			'ephys_extraction','ttl_extraction','audio_extraction','fs','ephys_labels','file_datenum',...
-			'parameters','dig','adc','-v7.3');
+		if nosort
+			foldername=fullfile(unorganized_dir,subdir);
+			mic_trace=mic_pre;
+			file_datenum=[];
+		else
 
-		continue;
+			% parse the file using the format string
 
-	end
 
-	% if we have a TTL trace, extract using the TTL
+			[birdid,recid,mic_trace,mic_source,mic_port,ports,ttl_trace,ttl_source,file_datenum]=...
+				frontend_fileparse(bird_split{j},delimiter,parse_string,date_string);
+
+			disp(['Processing bird ' num2str(j) ' of ' num2str(nbirds) ]);
+			disp(['File date: ' datestr(file_datenum)]);
+
+			% now create the folder it doesn't exist already
+
+			foldername=fullfile(root_dir,birdid,recid,datestr(file_datenum,folder_format));	
+
+			% create the bird directory
+
+			if ~exist(fullfile(root_dir,birdid),'dir')
+				mkdir(fullfile(root_dir,birdid));
+			end
+
+			% create the template directory and a little readme
+
+			if ~exist(fullfile(root_dir,birdid,'templates'),'dir')
+				mkdir(fullfile(root_dir,birdid,'templates'));
+				copyfile(fullfile(script_path,'template_readme.txt'),...
+					fullfile(root_dir,birdid,'templates','README.txt'));
+			end
+		end
+
+		% if file contains sampling rate, overwrite and use file's fs
+
+		
+		if ~exist(foldername,'dir')
+			mkdir(foldername);
+		end
+
+		% standard song detection
+
+		ismic=~isempty(mic_trace);
+		isttl=~isempty(ttl_trace);
+
+		disp(['Flags: mic ' num2str(ismic) ' ttl ' num2str(isttl)]);
+
+		% if we use a ttl trigger, assume the source is digital
+
+		if isttl
+
+			switch lower(ttl_source(1))
+
+				case 'c'
+					datastruct.ttl.data=datastruct.adc.data(:,ttl_trace==datastruct.adc.labels);
+				case 'd'
+					datastruct.ttl.data=datastruct.digin.data(:,ttl_trace==datastruct.digin.labels);
+
+			end
+		else
+			datastruct.ttl.data=[];
+		end
+
+		if ismic		
+
+			% (m)ain channels (i.e. electrode channel), (a)ux or a(d)c?
+
+			switch lower(mic_source(1))
+
+				case 'm'
+
+					mic_channel=find(datastruct.ephys.labels==mic_trace&datastruct.ephys.ports==mic_port);
+
+					% take out the mic channel from the ephys labels
+				
+					datastruct.audio.data=datastruct.ephys.data(:,mic_channel);
+					datastruct.audio.fs=datastruct.ephys.fs;
+					datastruct.audio.t=datastruct.ephys.t;
+
+					datastruct.ephys.data(:,mic_channels)=[];
+					datastruct.ephys.labels(mic_channel)=[];
+
+				case 'a'
+
+					mic_channel=find(datastruct.aux.labels==mic_trace&datastruct.aux.ports==mic_port);
+
+					datastruct.audio.data=datastruct.aux.data(:,mic_channel);
+					datastruct.audio.fs=datastruct.aux.fs;
+					datastruct.audio.t=datastruct.aux.t;
+					
+					datastruct.aux.data(:,mic_channel)=[];
+					datastruct.aux.labels(mic_channel)=[];
+
+				case 'c'
+
+					mic_channel=find(datastruct.adc.labels==mic_trace);
+					
+					datastruct.audio.data=datastruct.adc.data(:,mic_channel);
+					datastruct.audio.fs=datastruct.adc.fs;
+					datastruct.audio.t=datastruct.adc.t;
+						
+					datastruct.adc.data(:,mic_channel)=[];
+					datastruct.adc.labels(mic_channel)=[];
+
+
+			end
 	
-	dirstructttl=struct('image',image_dir_ttl,'wav',wav_dir_ttl,'data',data_dir_ttl);
-	dirstruct=struct('image',image_dir,'wav',wav_dir,'data',data_dir);
+			% set up high-pass for mic data if indicated by the user
+	
+			if ~isempty(filtering)
+			    [b,a]=butter(5,[filtering/(fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
+			else
+			    b=[];
+			    a=[];
+			end
 
-	if isttl
 
-		ttl_pts=find(ttl_data>.5)';
+			if ~isempty(filtering)
+				datastruct.audio.norm_data=filtfilt(b,a,datastruct.audio.data);
+			else
+				datastruct.audio.norm_data=datastruct.audio.data;
+			end
 
-		if ~isempty(ttl_pts)
+			datastruct.audio.norm_data=datastruct.audio.norm_data./max(abs(datastruct.audio.norm_data));
+		else
+			datastruct.audio.data=[];
+			datastruct.audio.norm_data=[];
+		
+		end
 
-			ttl_idx=[0 find(diff(ttl_pts)>audio_pad*2*fs) length(ttl_pts)];
+		% TODO:  finish mapping ports, copy structure ONLY with data from included ports
 
-			idx=1:length(ttl_idx)-1;
+		if ~isempty(ports)
+			include_ports=[];
 
-			startpoints=floor(ttl_pts(ttl_idx(idx)+1)-audio_pad*fs);
-			stoppoints=ceil(ttl_pts(ttl_idx(idx+1))+audio_pad*fs);
+			for k=1:length(ports)
+
+			end
+		end
+
+		% split the data here? according to the ports for this bird
+
+		if ~isempty(file_datenum) & length(sleep_window)==2
+
+			% convert the sleep window times to datenum
+
+			[~,~,~,hour]=datevec(file_datenum);
+
+			% compare hour, are we in the window?
+
+			if hour>=sleep_window(1) | hour<=sleep_window(2)
+
+				disp(['Processing sleep data for file ' proc_files{i}]);
+
+				frontend_sleepdata(datastruct,name,sleep_window,sleep_segment,sleep_fileinterval,sleep_pre,...
+					fullfile(root_dir,birdid,recid),folder_format,delimiter,parse_string);	
+				
+				sleep_flag=1;
+
+				% skip song detection?
+
+			end
+		end
+
+		frontend_extract_mkdirs(foldername,image_pre,wav_pre,data_pre,isttl);
+
+		image_dir=fullfile(foldername,image_pre);
+		wav_dir=fullfile(foldername,wav_pre);
+		data_dir=fullfile(foldername,data_pre);
+
+		image_dir_ttl=fullfile(foldername,[image_pre '_ttl']);
+		wav_dir_ttl=fullfile(foldername,[wav_pre '_ttl']);
+		data_dir_ttl=fullfile(foldername,[data_pre '_ttl']);
+		
+		if ~ismic & ~isttl & ~sleep_flag
+
+			save(fullfile(data_dir,['songdet1_' name '.mat']),'-struct','datastruct','-v7.3');
+			clearvars datastruct;
+
+			continue;
+
+		end
+
+		% if we have a TTL trace, extract using the TTL
+		
+		dirstructttl=struct('image',image_dir_ttl,'wav',wav_dir_ttl,'data',data_dir_ttl);
+		dirstruct=struct('image',image_dir,'wav',wav_dir,'data',data_dir);
+
+		if isttl
+
+			ttl_pts=find(datastruct.ttl.data(:)>.5)';
+
+			if ~isempty(ttl_pts)
+
+				ttl_idx=[0 find(diff(ttl_pts)>audio_pad*2*fs) length(ttl_pts)];
+
+				idx=1:length(ttl_idx)-1;
+
+				startpoints=floor(ttl_pts(ttl_idx(idx)+1)-audio_pad*fs);
+				stoppoints=ceil(ttl_pts(ttl_idx(idx+1))+audio_pad*fs);
+
+				ext_pts=[startpoints(:) stoppoints(:)];
+
+				disp(['TTL detected in file:  ' proc_files{i}]);
+
+				frontend_dataextract(name,datastruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
+
+				% if we found TTL pulses and ttl_skip is on, skip song detection and move on to next file
+
+				if ttl_skip
+					disp('Skipping song detection...');
+					continue;
+				end	
+
+
+			end
+		end
+
+		% did we detect song?
+
+		if ismic
+			
+			try
+				disp('Entering song detection...');
+				[song_bin]=song_det(datastruct.audio.norm_data,fs,minfs,maxfs,window,...
+					noverlap,songduration,ratio_thresh,song_thresh);
+			catch err
+				disp([err]);
+				disp('Song detection failed, continuing...');
+				fclose('all');
+				continue;
+			end
+
+
+			song_pts=find(song_bin>0);
+
+			if isempty(song_pts)
+				disp(['No song detected in file:  ' proc_files{i}]);
+				continue;
+			else
+				disp(['Song detected in file:  ' proc_files{i}]);
+			end
+
+			% if we're here, we've detected song
+			% factor to move from sonogram coordinates to raw audio data coordinates
+
+			son_to_vec=(length(datastruct.audio.norm_data)-noverlap)/(length(song_bin));
+
+			% use diff to find non_continguous song bouts separated by the audio pad + 1 second
+
+			song_idx=[0 find(diff(song_pts*son_to_vec)>fs+audio_pad*2*fs) length(song_pts)];
+			
+			idx=1:length(song_idx)-1;
+
+			startpoints=floor(song_pts(song_idx(idx)+1)*son_to_vec-audio_pad*fs);
+			stoppoints=ceil(song_pts(song_idx(idx+1))*son_to_vec+audio_pad*fs);
 
 			ext_pts=[startpoints(:) stoppoints(:)];
 
-			disp(['TTL detected in file:  ' proc_files{i}]);
-
-			frontend_dataextract(name,datastruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
-
-			% if we found TTL pulses and ttl_skip is on, skip song detection and move on to next file
-
-			if ttl_skip
-				disp('Skipping song detection...');
-				continue;
-			end	
-
+			frontend_dataextract(name,datastruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors);
 
 		end
-	end
-
-	% did we detect song?
-
-	if ismic
-		
-		try
-            disp('Entering song detection...');
-			[song_bin]=song_det(datastruct.norm_data,fs,minfs,maxfs,window,...
-				noverlap,songduration,ratio_thresh,song_thresh);
-		catch err
-			disp([err]);
-			disp('Song detection failed, continuing...');
-			fclose('all');
-			continue;
-		end
-
-
-		song_pts=find(song_bin>0);
-
-		if isempty(song_pts)
-            disp(['No song detected in file:  ' proc_files{i}]);
-			continue;
-		else
-			disp(['Song detected in file:  ' proc_files{i}]);
-		end
-
-		% if we're here, we've detected song
-		% factor to move from sonogram coordinates to raw audio data coordinates
-
-		son_to_vec=(length(datastruct.norm_data)-noverlap)/(length(song_bin));
-
-		% use diff to find non_continguous song bouts separated by the audio pad + 1 second
-
-		song_idx=[0 find(diff(song_pts*son_to_vec)>fs+audio_pad*2*fs) length(song_pts)];
-		
-		idx=1:length(song_idx)-1;
-
-		startpoints=floor(song_pts(song_idx(idx)+1)*son_to_vec-audio_pad*fs);
-		stoppoints=ceil(song_pts(song_idx(idx+1))*son_to_vec+audio_pad*fs);
-
-		ext_pts=[startpoints(:) stoppoints(:)];
-
-		frontend_dataextract(name,datastruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors);
 
 	end
 
 	% if there is neither a mic nor a TTL signal, store everything
 
 	clearvars datastruct dirstruct dirstructttl;
+
+	
+	try
+		%movefile(proc_files{i},proc_dir);
+	catch
+		disp(['Could not move file ' proc_files{i}]);
+		fclose('all');
+		continue;
+	end
+
+
 
 end
