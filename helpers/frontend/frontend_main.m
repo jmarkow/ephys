@@ -594,6 +594,7 @@ for i=1:length(proc_files)
 
 	
 	try
+	
 		movefile(proc_files{i},proc_dir);
 	catch
 		disp(['Could not move file ' proc_files{i}]);
