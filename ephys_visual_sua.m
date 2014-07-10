@@ -1,17 +1,21 @@
-function ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
+function ephys_visual_sua(EPHYS,HISTOGRAM,varargin)
 %generates song-aligned single-unit rasters
 %
-%	ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
+%	ephys_visual_sua(EPHYS.data,HISTOGRAM,EPHYS.labels,varargin)
 %
-%	EPHYS_DATA
+%	EPHYS
+%	structure with the following fields
+%
+%	EPHYS.data
 %	sound-aligned voltage traces from extracted_data.mat (should be the variable ephys_data)
+%
+%	EPHYS.labels
+%	channel labels (i.e. the channel that corresponds to a given element in the cell array
+%	ephys_data) from extracted_data.mat
 %
 %	HISTOGRAM
 %	contour histogram returned by ephys_visual_histogram.m (or loaded from histogram.mat)
 %
-%	CHANNELS
-%	channel labels (i.e. the channel that corresponds to a given element in the cell array
-%	ephys_data) from extracted_data.mat
 %
 %	the following may be specified as parameter/value pairs:
 %
@@ -110,8 +114,8 @@ if nargin<3
 	error('ephysPipeline:suavis:notenoughparams','Need 3 arguments to continue, see documentation');
 end
 
-if isvector(EPHYS_DATA)
-	EPHYS_DATA=EPHYS_DATA(:);
+if isvector(EPHYS.data)
+	EPHYS.data=EPHYS.data(:);
 end
 
 nparams=length(varargin);
@@ -145,7 +149,7 @@ jitter=10; % max jitter in samples for spike re-alignment (4 is reasonable
 singletrials=5; % number of random single trials to plot per cluster
 subtrials=[];
 align_method='min'; % how to align spike waveforms can be min, max or com for center-of-mass
-channels=CHANNELS;
+channels=EPHYS.labels;
 
 car_trim=40;
 decomp_level=7;
@@ -281,7 +285,7 @@ end
 interpolate_fs=fs*interpolate_f;
 sort_fs=interpolate_fs/sort_f;
 
-[samples,ntrials,ncarelectrodes]=size(EPHYS_DATA);
+[samples,ntrials,ncarelectrodes]=size(EPHYS.data);
 proc_data=zeros(samples,ntrials,length(channels));
 
 if isempty(subtrials)
@@ -298,20 +302,20 @@ TIME=[1:samples]./fs; % time vector for plotting
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
-proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
+proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
 proc_data=ephys_condition_signal(proc_data,'s','freq_range',...
 	freq_range,'filt_type',filt_type,'filt_order',filt_order,'filt_name',filt_name,...
 	'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
 
 if ~isempty(tetrode_channels)
-	tetrode_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,tetrode_channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
+	tetrode_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,tetrode_channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
 	tetrode_data=ephys_condition_signal(tetrode_data,'s','freq_range',freq_range,'filt_type',filt_type,'filt_order',...
 		filt_order,'filt_name',filt_name,'wavelet_denoise',wavelet_denoise,'decomp_level',decomp_level);
 else
 	tetrode_data=[];
 end
 
-clear EPHYS_DATA;
+clear EPHYS.data;
 
 proc_data=proc_data(:,subtrials,:);
 
@@ -544,14 +548,14 @@ singleunit_raster(TIME,HISTOGRAM,cluster,proc_data,'figtitle',figtitle,'savefile
 
 if spikesort & auto_clust 
 	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),...
-		'cluster','CHANNELS','channels','TIME','proc_data','freq_range',...
+		'cluster','channels','TIME','proc_data','freq_range',...
 		'spikeless','IFR','subtrials','trial_timestamps');
 elseif spikesort
 	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),...
-		'cluster','threshold','CHANNELS','channels','TIME','proc_data','freq_range',...
+		'cluster','threshold','channels','TIME','proc_data','freq_range',...
 		'spikeless','IFR','subtrials','trial_timestamps');
 else
 	save(fullfile(savedir,['sua_channels ' num2str(channels) '.mat']),...
-		'threshold','CHANNELS','channels','TIME','proc_data','freq_range','fs','trial_timestamps');
+		'threshold','channels','TIME','proc_data','freq_range','fs','trial_timestamps');
 end
 

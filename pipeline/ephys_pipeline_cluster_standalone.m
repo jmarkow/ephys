@@ -14,7 +14,7 @@ colors=hot(63); % uint8 colormap
 disp_minfs=1;
 disp_maxfs=10e3;
 parameters.smscore_n=1024;
-parameters.fs=25e3;
+
 padding=[];
 % takes the classifier object, template features and data features and extracts any instances
 % of the template as determined by the classifier 
@@ -98,6 +98,10 @@ fid=fopen(fullfile(savedir,'.songextraction'),'w');
 fclose(fid);
 
 % compute in a sliding 1 sec window perhaps...
+
+disp(['Checking ' ' for matches to ' TEMPLATEFILE]);
+
+error_count=0;
 
 for i=1:length(features)
 	
@@ -191,18 +195,42 @@ end
 % else, extract
 
 templength=templength+parameters.smscore_n;
-data=load(rawfile,'mic_data','ephys_data','channels','fs','ttl_data');
+
+
+is_legacy=check_legacy(rawfile);
+
+if is_legacy
+	load(rawfile,'audio.data','ephys_data','channels','fs','ttl_data','t');
+	
+	ephys.data=ephys_data;
+	ephys.fs=fs;
+	ephys.t=t;
+	ephys.ports='';
+
+	audio.audio.data;
+	audio.fs=fs;
+	audio.t=t;
+	
+	ttl.data=ttl_data;
+
+else
+	load(rawfile,'audio','ephys','ttl');
+end
+
+if audio.fs~=ephys.fs
+	error('Unequal audio (%g) and ephys (%g) sampling rates not yet supported',audio.fs,ephys.fs);
+end
 
 % write images to 'gif', wav to 'wav' and 'mat' to mat again
 
-[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(data.mic_data,data.fs,'n',500,'overlap',450,'low',2.5);
+[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(audio.data,audio.fs,'n',500,'overlap',450,'low',2.5);
 startidx=max([find(sonogram_f<=disp_minfs)]);
 stopidx=min([find(sonogram_f>=disp_maxfs)]);
 sonogram_im=sonogram_im(startidx:stopidx,:);
 sonogram_im=flipdim(sonogram_im,1);
 
 [f,t]=size(sonogram_im);
-im_son_to_vec=(length(data.mic_data)-450)/t;
+im_son_to_vec=(length(audio.data)-450)/t;
 
 % make sure we don't pull out overlapping data
 
@@ -210,12 +238,13 @@ startpoints=hits.*(parameters.smscore_n-parameters.smscore_overlap)*parameters.s
 
 % prevent overlap by only using hits sufficiently spaced from each other
 
-%keeppoints=find(diff(startpoints)>fulltemplength+sum(padding)*parameters.fs);
-%hits=hits(keeppoints);
+prev_endpoint=0;
 
-%
+store_audio=audio;
+store_ephys=ephys;
+store_ttl=ttl;
 
-prevendpoint=0;
+disp(['Extracting ' num2str(length(hits)) ' hits']);
 
 for i=1:length(hits)
 
@@ -225,46 +254,49 @@ for i=1:length(hits)
 	endpoint=startpoint+fulltemplength;
 
 	if length(padding)==2
-		startpoint=startpoint-floor(padding(1)*parameters.fs);
-		endpoint=endpoint+ceil(padding(2)*parameters.fs);
+		startpoint=startpoint-floor(padding(1)*audio.fs);
+		endpoint=endpoint+ceil(padding(2)*audio.fs);
 	end
 
-	if startpoint-prevendpoint<=0
+	if startpoint-prev_endpoint<=0
 		disp('Hits are overlapping, skipping...');
 		continue;
 	end
 
-	if length(data.mic_data)>endpoint && startpoint>0	
+	if length(audio.data)>endpoint && startpoint>0	
 
-		mic_data=data.mic_data(startpoint:endpoint);
-		ephys_data=data.ephys_data(startpoint:endpoint,:);
+		audio.data=store_audio.data(startpoint:endpoint);
+		ephys.data=store_ephys.data(startpoint:endpoint,:);
+		
+		audio.t=store_audio.t(startpoint:endpoint);
+		ephys.t=store_ephys.t(startpoint:endpoint);
+
 		channels=data.channels;
-		fs=data.fs;
+		fs=audio.fs;
 
 		if isfield(data,'ttl_data')
-			ttl_data=data.ttl_data(startpoint:endpoint);
+			ttl.data=store_ttl.data(startpoint:endpoint);
 		else
-			ttl_data=[];
+			ttl.data=[];
 		end
-
 
 		savename=[ file(1:end-6) '_' templatename '_' num2str(i)];
 
-		save(fullfile(matdir,[savename '.mat']),'mic_data','ephys_data','channels','fs','ttl_data');
+		save(fullfile(matdir,[savename '.mat']),'audio','ephys','ttl');
 
 		% write out the extraction
 
 		sonogram_im(1:10,ceil(startpoint/im_son_to_vec):ceil(endpoint/im_son_to_vec))=63;
 
-		[chunk_sonogram_im chunk_sonogram_f chunk_sonogram_t]=pretty_sonogram(mic_data,fs,'low',2.5);
+		[chunk_sonogram_im chunk_sonogram_f chunk_sonogram_t]=pretty_sonogram(audio.data,audio.fs,'low',2.5);
 
 		startidx=max([find(chunk_sonogram_f<=disp_minfs)]);
 		stopidx=min([find(chunk_sonogram_f>=disp_maxfs)]);
 		chunk_sonogram_im=chunk_sonogram_im(startidx:stopidx,:);
 		chunk_sonogram_im=flipdim(chunk_sonogram_im,1);
 		imwrite(uint8(chunk_sonogram_im),colors,fullfile(imagedir,[savename '.gif']),'gif');
-		wavwrite(mic_data,fs,fullfile(wavdir,[savename '.wav']));
-		prevendpoint=endpoint;
+		wavwrite(audio.data,audio.fs,fullfile(wavdir,[savename '.wav']));
+		prev_endpoint=endpoint;
 	
 	end
 

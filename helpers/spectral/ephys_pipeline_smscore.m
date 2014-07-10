@@ -1,5 +1,5 @@
-function [features]=ephys_pipeline_smscore(s,fs,varargin)
-%computes spectral features of a given signal
+function [FEATURES,PARAMETERS]=ephys_pipeline_smscore(s,fs,varargin)
+%computes spectral FEATURES of a given signal
 %
 %
 
@@ -12,7 +12,7 @@ end
 
 n=1024; % spectrogram window size
 overlap=1000; % spectrogram overlap
-sigma=1.5; % Gaussian timescale (in ms)
+spec_sigma=1.5; % Gaussian timescale (in ms)
 downsampling=5; % downsampling factor (skip columns)
 filter_scale=10; % disk filter scale (samples)
 norm_amp=1; % normalize the amplitude
@@ -25,8 +25,8 @@ for i=1:2:nparams
 			n=varargin{i+1};
 		case 'overlap'
 			overlap=varargin{i+1};
-		case 'sigma'
-			sigma=varargin{i+1};
+		case 'spec_sigma'
+			spec_sigma=varargin{i+1};
 		case 'filter_scale'
 			filter_scale=varargin{i+1};
 		case 'downsampling'
@@ -40,6 +40,20 @@ for i=1:2:nparams
 	end
 end
 
+
+% map to parameters structure
+
+PARAMETERS.normalize_amplitude=norm_amp;
+PARAMETERS.low_cutoff=lowfs;
+PARAMETERS.high_cutoff=highfs;
+PARAMETERS.filter_scale=filter_scale;
+PARAMETERS.spectrogram.timescale=spec_sigma;
+PARAMETERS.downsample_factor=downsampling;
+PARAMETERS.spectrogram.n=n;
+PARAMETERS.spectrogram.overlap=overlap;
+PARAMETERS.feature_names={'Cos(angle) from the reassignment vector',...
+	'dx','dy','Smoothed spectrogram'};
+	
 % TODO remove dynamic allocation of feature matrix
 
 if norm_amp
@@ -49,13 +63,13 @@ end
 disp('Computing score');
 t=-n/2+1:n/2;
 
-sigma=(sigma/1000)*fs;
+spec_sigma=(spec_sigma/1000)*fs;
 
 %Gaussian and first derivative as windows.
 % let's remove redundant angles and gradients, maybe just cos
 
-w=exp(-(t/sigma).^2);
-dw=(w).*((t)/(sigma^2))*-2;
+w=exp(-(t/spec_sigma).^2);
+dw=(w).*((t)/(spec_sigma^2))*-2;
 q=spectrogram(s,w,overlap,n)+eps; %gaussian windowed spectrogram
 q2=spectrogram(s,dw,overlap,n)+eps; %deriv gaussian windowed spectrogram
 
@@ -119,10 +133,12 @@ for k=1:length(v)
 	
 	%subsample the image by grouping columns
 
-	features{k}=[];
+	len=length(1:downsampling:b-downsampling);
+	
+	FEATURES{k}=zeros(size(v{k},1),len);
 
 	for i=1:downsampling:b-downsampling
-		features{k}(:,jj)=sum(v{k}(:,i:i+downsampling),2);
+		FEATURES{k}(:,jj)=sum(v{k}(:,i:i+downsampling),2);
 		jj=jj+1;
 	end
 end

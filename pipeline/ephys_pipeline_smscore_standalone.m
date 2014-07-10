@@ -3,9 +3,22 @@ function smscore_standalone(FILENAME,CONFIG)
 [path,file,ext]=fileparts(FILENAME);
 
 if ext=='.mat'
-	load(FILENAME,'mic_data','fs');
+	
+	% check for filetype
+
+	is_legacy=check_legacy(FILENAME);
+	
+	if is_legacy
+		load(FILENAME,'mic_data','fs');
+		audio.data=mic_data;
+		audio.fs=fs;
+		clearvars fs mic_data;
+	else
+		load(FILENAME,'audio');
+	end
+
 elseif ext=='.wav'
-	[mic_data,fs]=wavread(FILENAME);
+	[audio.data,audio.fs]=wavread(FILENAME);
 else 
 	error('Cannot recognize file type!');
 end
@@ -30,7 +43,7 @@ fprintf('Parameters\n\n%-10s%-10s%-10s%-10s\n\n','N','Overlap','FiltScale','Down
 fprintf('%-10d%-10d%-10d%-10d\n\n\n',...
 	parameters.smscore_n,parameters.smscore_overlap,parameters.smscore_filter_scale,parameters.smscore_downsampling);
 
-features=ephys_pipeline_smscore(mic_data,fs,'n',parameters.smscore_n,'overlap',parameters.smscore_overlap,...
+features=ephys_pipeline_smscore(audio.data,audio.fs,'n',parameters.smscore_n,'overlap',parameters.smscore_overlap,...
 	'filter_scale',parameters.smscore_filter_scale,'downsampling',parameters.smscore_downsampling,...
 	'norm_amp',parameters.smscore_norm_amp,'lowfs',lowfs,'highfs',highfs);
 

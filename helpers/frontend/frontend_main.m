@@ -304,7 +304,9 @@ for i=1:length(proc_files)
 
 	% clear out all extraction variables to be safe
 
-	port_id=unique(datastruct.ephys.ports); % which ports are currently being used?
+	found_ports=unique(datastruct.ephys.ports); % which ports are currently being used?
+
+	disp(['Found ports:  ' found_ports]);
 
 	for j=1:nbirds
 		
@@ -356,9 +358,47 @@ for i=1:length(proc_files)
 			end
 		end
 
-		% if file contains sampling rate, overwrite and use file's fs
+		if ~isempty(ports)
+			include_ports=[];
 
-		
+			for k=1:length(ports)
+				if ismember(lower(found_ports(:)),lower(ports(k)))
+					include_ports=[include_ports ports(k)];
+				end
+			end
+		else
+			include_ports=found_ports;
+		end
+
+		include_ports=upper(include_ports);
+
+		disp(['Will extract from ports: ' include_ports]);
+
+		include_ephys=[];
+		include_aux=[];
+
+		for k=1:length(include_ports)
+			include_ephys=[include_ephys find(datastruct.ephys.ports==include_ports(k))];
+			include_aux=[include_aux find(datastruct.aux.ports==include_ports(k))];
+		end
+
+
+		% map to a new structure with the appropriate ports
+
+		datastruct.file_datenum=file_datenum;
+
+		birdstruct=datastruct;
+
+		birdstruct.ephys.labels=birdstruct.ephys.labels(include_ephys);
+		birdstruct.ephys.ports=birdstruct.ephys.ports(include_ephys);
+		birdstruct.ephys.data=birdstruct.ephys.data(:,include_ephys);
+
+		birdstruct.aux.labels=birdstruct.aux.labels(include_aux);
+		birdstruct.aux.ports=birdstruct.aux.ports(include_aux);
+		birdstruct.aux.data=birdstruct.aux.data(:,include_aux);
+
+		% if file contains sampling rate, overwrite and use file's fs
+	
 		if ~exist(foldername,'dir')
 			mkdir(foldername);
 		end
@@ -377,13 +417,13 @@ for i=1:length(proc_files)
 			switch lower(ttl_source(1))
 
 				case 'c'
-					datastruct.ttl.data=datastruct.adc.data(:,ttl_trace==datastruct.adc.labels);
+					birdstruct.ttl.data=birdstruct.adc.data(:,ttl_trace==birdstruct.adc.labels);
 				case 'd'
-					datastruct.ttl.data=datastruct.digin.data(:,ttl_trace==datastruct.digin.labels);
+					birdstruct.ttl.data=birdstruct.digin.data(:,ttl_trace==birdstruct.digin.labels);
 
 			end
 		else
-			datastruct.ttl.data=[];
+			birdstruct.ttl.data=[];
 		end
 
 		if ismic		
@@ -394,40 +434,51 @@ for i=1:length(proc_files)
 
 				case 'm'
 
-					mic_channel=find(datastruct.ephys.labels==mic_trace&datastruct.ephys.ports==mic_port);
+					mic_channel=find(birdstruct.ephys.labels==mic_trace&birdstruct.ephys.ports==mic_port);
 
 					% take out the mic channel from the ephys labels
 				
-					datastruct.audio.data=datastruct.ephys.data(:,mic_channel);
-					datastruct.audio.fs=datastruct.ephys.fs;
-					datastruct.audio.t=datastruct.ephys.t;
+					birdstruct.audio.data=birdstruct.ephys.data(:,mic_channel);
+					birdstruct.audio.fs=birdstruct.ephys.fs;
+					birdstruct.audio.t=birdstruct.ephys.t;
 
-					datastruct.ephys.data(:,mic_channels)=[];
-					datastruct.ephys.labels(mic_channel)=[];
+					birdstruct.ephys.data(:,mic_channels)=[];
+					birdstruct.ephys.labels(mic_channel)=[];
+
+					if isempty(birdstruct.ephys.data)
+						birdstruct.ephys.t=[];
+					end
 
 				case 'a'
 
-					mic_channel=find(datastruct.aux.labels==mic_trace&datastruct.aux.ports==mic_port);
+					mic_channel=find(birdstruct.aux.labels==mic_trace&birdstruct.aux.ports==mic_port);
 
-					datastruct.audio.data=datastruct.aux.data(:,mic_channel);
-					datastruct.audio.fs=datastruct.aux.fs;
-					datastruct.audio.t=datastruct.aux.t;
+					birdstruct.audio.data=birdstruct.aux.data(:,mic_channel);
+					birdstruct.audio.fs=birdstruct.aux.fs;
+					birdstruct.audio.t=birdstruct.aux.t;
 					
-					datastruct.aux.data(:,mic_channel)=[];
-					datastruct.aux.labels(mic_channel)=[];
+					birdstruct.aux.data(:,mic_channel)=[];
+					birdstruct.aux.labels(mic_channel)=[];
+
+					if isempty(birdstruct.aux.data)
+						birdstruct.aux.t=[];
+					end
 
 				case 'c'
 
-					mic_channel=find(datastruct.adc.labels==mic_trace);
+					mic_channel=find(birdstruct.adc.labels==mic_trace);
 					
-					datastruct.audio.data=datastruct.adc.data(:,mic_channel);
-					datastruct.audio.fs=datastruct.adc.fs;
-					datastruct.audio.t=datastruct.adc.t;
+					birdstruct.audio.data=birdstruct.adc.data(:,mic_channel);
+					birdstruct.audio.fs=birdstruct.adc.fs;
+					birdstruct.audio.t=birdstruct.adc.t;
 						
-					datastruct.adc.data(:,mic_channel)=[];
-					datastruct.adc.labels(mic_channel)=[];
+					birdstruct.adc.data(:,mic_channel)=[];
+					birdstruct.adc.labels(mic_channel)=[];
 
-
+					if isempty(birdstruct.adc.data)
+						birdstruct.adc.t=[];
+					end
+						
 			end
 	
 			% set up high-pass for mic data if indicated by the user
@@ -441,30 +492,19 @@ for i=1:length(proc_files)
 
 
 			if ~isempty(filtering)
-				datastruct.audio.norm_data=filtfilt(b,a,datastruct.audio.data);
+				birdstruct.audio.norm_data=filtfilt(b,a,birdstruct.audio.data);
 			else
-				datastruct.audio.norm_data=datastruct.audio.data;
+				birdstruct.audio.norm_data=birdstruct.audio.data;
 			end
 
-			datastruct.audio.norm_data=datastruct.audio.norm_data./max(abs(datastruct.audio.norm_data));
+			birdstruct.audio.norm_data=birdstruct.audio.norm_data./max(abs(birdstruct.audio.norm_data));
 		else
-			datastruct.audio.data=[];
-			datastruct.audio.norm_data=[];
+			birdstruct.audio.data=[];
+			birdstruct.audio.norm_data=[];
 		
 		end
 
-		% TODO:  finish mapping ports, copy structure ONLY with data from included ports
-
-		if ~isempty(ports)
-			include_ports=[];
-
-			for k=1:length(ports)
-
-			end
-		end
-
-		% split the data here? according to the ports for this bird
-
+	
 		if ~isempty(file_datenum) & length(sleep_window)==2
 
 			% convert the sleep window times to datenum
@@ -477,12 +517,12 @@ for i=1:length(proc_files)
 
 				disp(['Processing sleep data for file ' proc_files{i}]);
 
-				frontend_sleepdata(datastruct,name,sleep_window,sleep_segment,sleep_fileinterval,sleep_pre,...
+				frontend_sleepdata(birdstruct,name,sleep_window,sleep_segment,sleep_fileinterval,sleep_pre,...
 					fullfile(root_dir,birdid,recid),folder_format,delimiter,parse_string);	
 				
 				sleep_flag=1;
 
-				% skip song detection?
+				% TODO: skip song detection?
 
 			end
 		end
@@ -499,8 +539,8 @@ for i=1:length(proc_files)
 		
 		if ~ismic & ~isttl & ~sleep_flag
 
-			save(fullfile(data_dir,['songdet1_' name '.mat']),'-struct','datastruct','-v7.3');
-			clearvars datastruct;
+			save(fullfile(data_dir,['songdet1_' name '.mat']),'-struct','birdstruct','-v7.3');
+			clearvars birdstruct;
 
 			continue;
 
@@ -513,7 +553,7 @@ for i=1:length(proc_files)
 
 		if isttl
 
-			ttl_pts=find(datastruct.ttl.data(:)>.5)';
+			ttl_pts=find(birdstruct.ttl.data(:)>.5)';
 
 			if ~isempty(ttl_pts)
 
@@ -528,7 +568,7 @@ for i=1:length(proc_files)
 
 				disp(['TTL detected in file:  ' proc_files{i}]);
 
-				frontend_dataextract(name,datastruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
+				frontend_dataextract(name,birdstruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
 
 				% if we found TTL pulses and ttl_skip is on, skip song detection and move on to next file
 
@@ -547,7 +587,7 @@ for i=1:length(proc_files)
 			
 			try
 				disp('Entering song detection...');
-				[song_bin]=song_det(datastruct.audio.norm_data,fs,minfs,maxfs,window,...
+				[song_bin]=song_det(birdstruct.audio.norm_data,fs,minfs,maxfs,window,...
 					noverlap,songduration,ratio_thresh,song_thresh);
 			catch err
 				disp([err]);
@@ -569,7 +609,7 @@ for i=1:length(proc_files)
 			% if we're here, we've detected song
 			% factor to move from sonogram coordinates to raw audio data coordinates
 
-			son_to_vec=(length(datastruct.audio.norm_data)-noverlap)/(length(song_bin));
+			son_to_vec=(length(birdstruct.audio.norm_data)-noverlap)/(length(song_bin));
 
 			% use diff to find non_continguous song bouts separated by the audio pad + 1 second
 
@@ -582,9 +622,13 @@ for i=1:length(proc_files)
 
 			ext_pts=[startpoints(:) stoppoints(:)];
 
-			frontend_dataextract(name,datastruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors);
+			frontend_dataextract(name,birdstruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors);
 
 		end
+
+		% clear the datastructure for this bird
+
+		clear birdstruct;
 
 	end
 
@@ -594,7 +638,6 @@ for i=1:length(proc_files)
 
 	
 	try
-	
 		movefile(proc_files{i},proc_dir);
 	catch
 		disp(['Could not move file ' proc_files{i}]);

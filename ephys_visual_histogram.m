@@ -14,9 +14,6 @@ function HISTOGRAM=ephys_visual_histogram(MIC_DATA,varargin)
 %		tscale
 %		time scale for Gaussian window for the Gabor transform (in ms, default: 1.5)
 %	
-%		savedir
-%		if defined, saves the results in savedir in histogram.mat (leave blank to skip, default: pwd)
-%
 %		n
 %		window length
 %
@@ -42,7 +39,6 @@ end
 
 fs=25e3;
 tscale=1.5;
-savedir=pwd;
 N=1024;
 nfft=1024;
 overlap=1e3;
@@ -55,8 +51,6 @@ for i=1:2:nparams
 			fs=varargin{i+1};
 		case 'tscale'
 			tscale=varargin{i+1};
-		case 'savedir'
-			savedir=varargin{i+1};
 		case 'n'
 			N=varargin{i+1};
 		case 'nfft'
@@ -65,10 +59,10 @@ for i=1:2:nparams
 			overlap=varargin{i+1};
 		case 'mic_filtering'
 			filtering=varargin{i+1};
-        case 'mask_only'
-            mask_only=varargin{i+1};
-        case 'spect_thresh'
-            spect_thresh=varargin{i+1};
+		case 'mask_only'
+		    mask_only=varargin{i+1};
+		case 'spect_thresh'
+		    spect_thresh=varargin{i+1};
 
 	end
 end
@@ -95,10 +89,3 @@ MIC_DATA=MIC_DATA./repmat(max(abs(MIC_DATA),[],1),[nsamples 1]);
 % mean oscillogram
 
 HISTOGRAM.mean_osc=mean(MIC_DATA,2);
-
-% save results if specified by the user
-
-if ~isempty(savedir)
-	save(fullfile(savedir,'histogram.mat'),'HISTOGRAM');
-end
-

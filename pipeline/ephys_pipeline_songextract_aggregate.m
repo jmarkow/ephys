@@ -43,22 +43,49 @@ end
 
 % pre-allocate the matrix, store as a single
 
-load(fullfile(FILEDIR,listing(1).name),'ephys_data','channels','fs');
+is_legacy=check_legacy(fullfile(FILEDIR,listing(1).name));
+
+if is_legacy
+	load(fullfile(FILEDIR,listing(1).name),'ephys_data','channels','fs');
+	
+	ephys.labels=channels;
+	ephys.ports='';
+	ephys.data=ephys_data;
+	ephys.fs=fs;
+
+	audio.fs=ephys.fs;
+
+	clearvars ephys_data channels fs;
+else
+	load(fullfile(FILEDIR,listing(1).name),'ephys','audio');
+end
+
+EPHYS.fs=ephys.fs;
+AUDIO.fs=audio.fs;
+
+EPHYS.t=ephys.t;
+AUDIO.t=audio.t;
 
 % number of samples and channels
 
-[samples,channels]=size(ephys_data);
+[samples,channels]=size(ephys.data);
 ntrials=length(listing);
 
-disp(['Number of trials ' num2str(ntrials)]);
+disp(['Aggregating trials in: ' FILEDIR]); 
+disp(['Number of trials: ' num2str(ntrials)]);
 
 if SLEEPSTATUS
+
+	disp(['Identified sleep data...']);
 	parameters.trial_win=parameters.trial_win_sleep;
 end
 
 dircount=1;
 
 % extract in a sliding window, generate histograms and trigger mua, sua and lfp processing
+
+savefun=@(filename,aligned_ephys,aligned_audio,aligned_ttl,file_datenum) ...
+	save(filename,'agg_ephys','agg_audio','agg_ttl','agg_file_datenum','-v7.3');
 
 for i=0:parameters.trial_win:ntrials
 	
@@ -75,56 +102,76 @@ for i=0:parameters.trial_win:ntrials
 	currtrials=i+1:i+parameters.trial_win;
 	currtrials(currtrials>ntrials)=[];
 
-	channel_labels=[];
+	all_labels=[];
+	all_ports='';
+
+	disp(['Identifying channels...']);
 
 	for j=1:length(currtrials)
-		load(fullfile(FILEDIR,listing(currtrials(j)).name),'channels');
+
+		if is_legacy
+			load(fullfile(FILEDIR,listing(currtrials(j)).name),'channels');
+			ephys.labels=channels;
+		else
+			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys');
+		end
 
 		% check for any inconsistency in channel labels
 
-		for k=1:length(channels)
+		for k=1:length(ephys.labels)
 
 			% loop and if any channels are not included in the channel_label vector, include!
 
-			if ~any(channels(k)==channel_labels)
-				channel_labels=[channel_labels channels(k)];
+			if ~any(ephys.labels(k)==all_labels)
+				all_labels=[all_labels ephys.labels(k)];
+				all_ports=[all_ports ephys.ports(k)];
 			end
 		end
 	end
 
-	channel_labels=sort(channel_labels);
-	disp(['Found channels ' num2str(channel_labels)]);
+	all_labels=sort(all_labels);
+	disp(['Found channels ' num2str(all_labels)]);
 
-	EPHYS_DATA=zeros(samples,length(currtrials),length(channel_labels),'single');
-	MIC_DATA=zeros(samples,length(currtrials));
-	START_DATENUM=zeros(1,length(currtrials));
-	TTL_DATA=zeros(samples,length(currtrials));
+	EPHYS.DATA=zeros(samples,length(currtrials),length(all_labels),'single');
+	AUDIO.DATA=zeros(samples,length(currtrials));
+	FILE_DATENUM=zeros(1,length(currtrials));
+	TTL.DATA=zeros(samples,length(currtrials));
+
+	EPHYS.labels=all_labels;
+	EPHYS.ports=all_ports;
 
 	for j=1:length(currtrials)
 
-		load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys_data','mic_data','channels','fs','start_datenum','ttl_data');
-		MIC_DATA(:,j)=mic_data;
-		
-		if ~exist('ttl_data','var') | isempty(ttl_data)
-			ttl_data=zeros(size(mic_data));
+		disp(['Processing trial ' num2str(currtrials(j))]);
+
+		if is_legacy
+			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys_data','mic_data','channels','fs','start_datenum','ttl_data');
+		else
+			load(fullfile(FILEIDR,listing(currtrials(j)).name),'ephys','audio','file_datenum','ttl');
 		end
 
-		TTL_DATA(:,j)=ttl_data;
+		AUDIO.DATA(:,j)=audio.data;
+		
+		if ~exist('ttl','var') | isempty(ttl.data) | ~isfield(ttl,'data');
+			ttl.data=zeros(size(mic_data));
+		end
 
-		for k=1:length(channels)
+		TTL.DATA(:,j)=ttl.data;
 
-			ch_idx=find(channels(k)==channel_labels);
+		for k=1:length(ephys.labels)
+
+			ch_idx=find(ephys.labels(k)==all_labels);
 
 			if isempty(ch_idx)
 				continue;
 			end
 
-			EPHYS_DATA(:,j,ch_idx)=single(ephys_data(:,k));
+			EPHYS.DATA(:,j,ch_idx)=single(ephys.data(:,k));
 
 		end
 
-		if exist('start_datenum','var')
-			START_DATENUM(j)=start_datenum;
+		if exist('file_datenum','var')
+			FILE_DATENUM(j)=file_datenum;
 		else
 
 			% attempt to find the datenum
@@ -143,15 +190,13 @@ for i=0:parameters.trial_win:ntrials
 				idx=5;
 			end
 
-			START_DATENUM(j)=datenum([tokens{idx} tokens{idx+1}],'yymmddHHMMSS');
+			FILE_DATENUM(j)=datenum([tokens{idx} tokens{idx+1}],'yymmddHHMMSS');
 
 		end
 
 	end
 
-	CHANNELS=channel_labels;
-	save(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'aggregated_data.mat'),...
-		'EPHYS_DATA','fs','MIC_DATA','CHANNELS','START_DATENUM','TTL_DATA','-v7.3');
+	savefun(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'aggregated_data.mat'),EPHYS,AUDIO,TTL,FILE_DATENUM);
 
 	if SLEEPSTATUS
 
@@ -159,8 +204,10 @@ for i=0:parameters.trial_win:ntrials
 
 		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'SLEEP_DATA'),'w');
 		fclose(fid);
+
 	else
-		histogram=ephys_visual_histogram(MIC_DATA,'savedir',fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)]));
+		histogram=ephys_visual_histogram(AUDIO.DATA);
+		save(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'histogram.mat'),'histogram','-v7.3');
 	end
 
 	% touch signals to multi-unit, single-unit, and fields processing

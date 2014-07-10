@@ -1,4 +1,4 @@
-function SNR=ephys_candidate_su(EPHYS_DATA,CHANNELS,varargin)
+function SNR=ephys_candidate_su(EPHYS,varargin)
 %ephys_candidate_su.m approximates the SNR of channels by
 %assuming a low threshold (Quiroga et al. 2004) and computing 
 %the mean peak-to-peak of the spikes and comparing it to the 
@@ -7,13 +7,16 @@ function SNR=ephys_candidate_su(EPHYS_DATA,CHANNELS,varargin)
 %are found, text files are written out with the channel number and
 %the trial number with putative units
 %
-%	ephys_candidate_su(EPHYS_DATA,CHANNELS,varargin)
+%	ephys_candidate_su(EPHYS,varargin)
 %
-%	EPHYS_DATA
+%	EPHYS
+%	structure with the following fields
+%
+%	EPHYS.data
 %	sample x trial x channel matrix (single) that contains song-aligned
 %	voltage traces (stored in extracted_data.mat or aggregated_data.mat)
 %
-%	CHANNELS
+%	EPHYS.labels
 %	vector of channel labels (stored in extracted_data.mat or aggregated_data.mat)
 %
 %	The following may be 
@@ -49,7 +52,7 @@ freq_range=[800]; % frequency range for filtering
 filt_type='high';
 snr_threshold=8;
 exclude_channels=[];
-channels=CHANNELS;
+channels=EPHYS.labels;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -68,12 +71,12 @@ for i=1:2:nparams
 	end
 end
 
-[samples,ntrials,nchannels]=size(EPHYS_DATA);
+[samples,ntrials,nchannels]=size(EPHYS.data);
 
-proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
+proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
 proc_data=ephys_condition_signal(proc_data,'s','freq_range',freq_range,'filt_type',filt_type);
 
-clear EPHYS_DATA;
+clear EPHYS.data;
 
 % collect spike windows and estimate SNR
 
@@ -82,7 +85,7 @@ SNR=zeros(ntrials,length(channels));
 
 for i=1:length(channels)
 
-	disp(['Electrode ' num2str(CHANNELS(i))])
+	disp(['Electrode ' num2str(EPHYS.labels(i))])
 
 	% collect spikes
 

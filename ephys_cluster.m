@@ -61,7 +61,6 @@ function ephys_cluster(DIR,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 spect_thresh=.1; % deprecated, this parameter is no longer used
-fs=25e3; % sampling
 colors='hot';
 min_f=1;
 max_f=10e3;
@@ -98,8 +97,6 @@ for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'spect_thresh'
 			spect_thresh=varargin{i+1};
-		case 'fs'
-			fs=varargin{i+1};
 		case 'colors'
 			colors=varargin{i+1};
 		case 'masks'
@@ -200,30 +197,30 @@ end
 
 if ~exist(fullfile(proc_dir,'template_data.mat'),'file')
 
-	TEMPLATE=select_template(fullfile(DIR));
+	template=select_template(fullfile(DIR));
 
 	% compute the features of the template
 
 	disp('Computing the spectral features of the template');
-	template_features=ephys_pipeline_smscore(TEMPLATE,fs,...
+	template.features=ephys_pipeline_smscore(template.data,template.fs,...
 		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling,'lowfs',lowfs,'highfs',highfs);
-	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features','padding','lowfs','highfs');
+	save(fullfile(proc_dir,'template_data.mat'),'template','padding','lowfs','highfs');
 
 else
 	disp('Loading stored template...');
-	load(fullfile(proc_dir,'template_data.mat'),'TEMPLATE');
+	load(fullfile(proc_dir,'template_data.mat'),'template');
 	
 	disp('Computing the spectral features of the template');
-	template_features=ephys_pipeline_smscore(TEMPLATE,fs,...
+	template.features=ephys_pipeline_smscore(template.data,template.fs,...
 		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling,'lowfs',lowfs,'highfs',highfs);
-	save(fullfile(proc_dir,'template_data.mat'),'TEMPLATE','template_features','padding','lowfs','highfs');
+	save(fullfile(proc_dir,'template_data.mat'),'template','lowfs','highfs');
 
 end
 
 % generate a nice sonogram of the selected template
 
 template_fig=figure('Visible','off');
-[template_image,f,t]=pretty_sonogram(TEMPLATE,fs,'N',1024,'overlap',1000,'low',1);
+[template_image,f,t]=pretty_sonogram(template.data,template.fs,'N',1024,'overlap',1000,'low',1);
 
 startidx=max([find(f<=min_f);1]);
 
@@ -249,7 +246,7 @@ close([template_fig]);
 
 % get the template size so we can extract hits of the same size
 
-[junk,templength]=size(template_features{1});
+[junk,templength]=size(template.features{1});
 templength=templength-1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -315,7 +312,7 @@ if ~skip
 		files_to_proc=files_to_proc(subset);
 	end
 
-	template_match(template_features,files_to_proc,fullfile(proc_dir,'cluster_data.mat'),templength);
+	template_match(template.features,files_to_proc,fullfile(proc_dir,'cluster_data.mat'),templength);
 
 end
 
@@ -401,7 +398,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TEMPLATE SELECT %%%%%%%%%%%%%%%%%%%%
 
-function TEMPLATE=select_template(DIR)
+function [TEMPLATE]=select_template(DIR)
 
 pause(.001); % inserting 1 msec pause since uigetfile does not always open without it, not sure why...
 
@@ -409,8 +406,21 @@ response=[];
 
 while isempty(response)
 	[filename,pathname]=uigetfile('*.mat','Pick a sound file to extract the template from',fullfile(DIR));
-	load(fullfile(pathname,filename),'mic_data');
-	TEMPLATE=spectro_navigate(mic_data);
+	
+	is_legacy=check_legacy(fullfile(pathname,filename));
+
+	if is_legacy
+		load(fullfile(pathname,filename),'mic_data','fs');
+		audio.data=mic_data;
+		audio.fs=fs;
+
+		clearvars mic_data fs;
+	else
+		load(fullfile(path,filename),'audio');
+	end
+
+	TEMPLATE.data=spectro_navigate(audio.data);
+	TEMPLATE.fs=audio.fs;
 
 	response2=[];
 	while isempty(response2)
@@ -444,7 +454,7 @@ end
 
 function sound_file_features(DIR,SOUND_FILES,N,OVERLAP,FILTER_SCALE,DOWNSAMPLING,LOWFS,HIGHFS)
 
-par_save = @(FILE,features,lowfs,highfs,TTL) save([FILE],'features','lowfs','highfs','TTL');
+par_save = @(FILE,features,parameters,TTL) save([FILE],'features','parameters','TTL');
 
 if ~exist(fullfile(DIR,'syllable_data'),'dir')
 	mkdir(fullfile(DIR,'syllable_data'));
@@ -480,7 +490,7 @@ parfor i=1:length(SOUND_FILES)
 		continue;
 	end
 
-	sound_features=ephys_pipeline_smscore(sound_data,fs,...
+	[sound_features,parameters]=ephys_pipeline_smscore(sound_data,fs,...
 		'n',N,'overlap',OVERLAP,'filter_scale',FILTER_SCALE,'downsampling',DOWNSAMPLING,'lowfs',LOWFS,'highfs',HIGHFS);
 
 	% save for posterity's sake
@@ -491,7 +501,7 @@ parfor i=1:length(SOUND_FILES)
 		TTL=0;
 	end
 
-	par_save(output_file,sound_features,LOWFS,HIGHFS,TTL);
+	par_save(output_file,sound_features,parameters,TTL);
 
 end
 

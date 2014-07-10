@@ -18,21 +18,63 @@ disp(['Loading data from ' PROCDIR]);
 START_DATENUM=[];
 
 if ~exist(fullfile(PROCDIR,'histogram.mat'),'file')
-	HISTOGRAM=[];
+	histogram=[];
 end
 
-try
-	load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS','START_DATENUM');
-	if exist(fullfile(PROCDIR,'histogram.mat'),'file')
-		load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
-	end
-catch
-	try
-		disp('Pausing for 60 seconds and will retry');
-		pause(60);
+try	
+	tmp=whos('-file',fullfile(PROCDIR,'aggregated_data.mat'));
+	is_legacy=ismember('ephys.data',{tmp(:).name});
+
+	if is_legacy
 		load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS','START_DATENUM');
+
 		if exist(fullfile(PROCDIR,'histogram.mat'),'file')
 			load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
+		end
+
+		agg_ephys.data=EPHYS_DATA;
+		agg_ephys.labels=CHANNELS;
+		agg_file_datenum=START_DATENUM;
+		histogram=HISTOGRAM;
+		clearvars EPHYS_DATA CHANNELS HISTOGRAM START_DATENUM;
+
+	else
+		load(fullfile(PROCDIR,'aggregated_data.mat'),'agg_ephys','agg_file_datenum');
+
+		if exist(fullfile(PROCDIR,'histogram.mat'),'file')
+			load(fullfile(PROCDIR,'histogram.mat'),'histogram');
+		end
+
+	end
+catch
+	try	
+		tmp=whos('-file',fullfile(PROCDIR,'aggregated_data.mat'));
+		is_legacy=ismember('ephys.data',{tmp(:).name});
+
+		disp('Pausing for 60 seconds and will retry');
+		pause(60);
+
+		if is_legacy
+			load(fullfile(PROCDIR,'aggregated_data.mat'),'ephys.data','CHANNELS','START_DATENUM');
+
+			if exist(fullfile(PROCDIR,'histogram.mat'),'file')
+				load(fullfile(PROCDIR,'histogram.mat'),'histogram');
+			end
+
+			agg_ephys.data=ephys.data;
+			agg_ephys.labels=EPHSY_CHANNELS;
+			agg_file_datenum=start_datenum;
+			
+			histogram=HISTOGRAM;
+			clearvars EPHYS_DATA CHANNELS HISTOGRAM START_DATENUM;
+
+
+		else
+			load(fullfile(PROCDIR,'aggregated_data.mat'),'agg_ephys','agg_file_datenum');
+	
+			if exist(fullfile(PROCDIR,'histogram.mat'),'file')
+				load(fullfile(PROCDIR,'histogram.mat'),'histogram');
+			end
 		end
 	catch
 
@@ -41,18 +83,18 @@ catch
 	end
 end
 
-[samples,ntrials,nchannels]=size(EPHYS_DATA);
+[samples,ntrials,nchannels]=size(ephys.data);
 
 if ntrials>parameters.trial_max
 	disp(['Exceeded trial max, truncating to ' num2str(parameters.trial_max)]);
-	EPHYS_DATA=EPHYS_DATA(:,1:parameters.trial_max,:);
+	ephys.data=ephys.data(:,1:parameters.trial_max,:);
 end
 
-[samples,ntrials,nchannels]=size(EPHYS_DATA);
+[samples,ntrials,nchannels]=size(ephys.data);
 delete(fullfile(PROCDIR,'snr_channel_*'));
 
 disp('Computing SNR on all channels');
-SNR=ephys_pipeline_candidate_su(EPHYS_DATA,CHANNELS,'savedir',PROCDIR,'snr_threshold',parameters.snr_cutoff);
+SNR=ephys_pipeline_candidate_su(ephys,'savedir',PROCDIR,'snr_threshold',parameters.snr_cutoff);
 
 % check for contiguous windows with SNR>SNR_min
 
@@ -77,31 +119,25 @@ for i=1:nchannels
 
 	if maxregion>parameters.snr_trials
 		
-		candidate_channels=[candidate_channels;CHANNELS(i)];
+		candidate_channels=[candidate_channels;ephys.labels(i)];
 		trials=[trials;[startidx(loc) stopidx(loc)]];
 	
 	end
 
 end
 
-%candidate_channels=CHANNELS(SNR>=parameters.snr_cutoff); % channels with average SNR over cutoff for all trials
-
-%	get processed
-
 % uncommnent next line to sort everything ...
 % candidate_channels=setdiff(CHANNELS,parameters.ref_channel);
 
 for i=1:length(candidate_channels)
-
-
 	try 
-		ephys_visual_sua(EPHYS_DATA,HISTOGRAM,CHANNELS,...
+		ephys_visual_sua(ephys,histogram,...
 			'channels',candidate_channels(i),'sort',1,'auto_clust',1,...
-			'savedir',PROCDIR,'align',parameters.spike_align,'sigma_t',parameters.sigma_t,'fs',parameters.fs,...
+			'savedir',PROCDIR,'align',parameters.spike_align,'sigma_t',parameters.sigma_t,...
 			'jitter',parameters.jitter,'interpolate_f',parameters.spike_interpolate_f,'filt_type',parameters.spike_filt_type,...
 			'freq_range',parameters.spike_freq_range,'snr_cutoff',parameters.unit_snr_cutoff,...
 			'lratio_cutoff',parameters.unit_lratio_cutoff,'isod_cutoff',parameters.unit_isod_cutoff,...
-			'isi_cutoff',parameters.unit_isi_cutoff,'trial_timestamps',START_DATENUM,...
+			'isi_cutoff',parameters.unit_isi_cutoff,'trial_timestamps',agg_file_datenum,...
 			'sort_f',parameters.spike_sort_f,'maxnoisetraces',parameters.spike_exact_maxnoisetraces,...
 			'filt_order',parameters.spike_filt_order,...
 			'pcs',parameters.spike_pcs,'cluststart',parameters.spike_cluststart,...
