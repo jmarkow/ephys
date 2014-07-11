@@ -112,6 +112,7 @@ for i=0:parameters.trial_win:ntrials
 		if is_legacy
 			load(fullfile(FILEDIR,listing(currtrials(j)).name),'channels');
 			ephys.labels=channels;
+			ephys.ports=repmat('A',[1 length(channels)]);
 		else
 			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys');
 		end
@@ -120,17 +121,27 @@ for i=0:parameters.trial_win:ntrials
 
 		for k=1:length(ephys.labels)
 
+			label_chk=ephys.labels(k)==all_labels;
+			port_chk=ephys.ports(k)==all_ports;
+
 			% loop and if any channels are not included in the channel_label vector, include!
 
-			if ~any(ephys.labels(k)==all_labels)
+			if ~any(label_chk&&port_chk)	
 				all_labels=[all_labels ephys.labels(k)];
 				all_ports=[all_ports ephys.ports(k)];
 			end
 		end
 	end
 
-	all_labels=sort(all_labels);
-	disp(['Found channels ' num2str(all_labels)]);
+	%[all_labels=sort(all_labels);
+
+	disp(['Found channels:  ']);
+
+	for j=1:length(all_labels)
+		fprintf(1,'%i%s ',all_labels(j),all_ports(j));
+	end
+
+	fprintf(1,'\n');
 
 	EPHYS.DATA=zeros(samples,length(currtrials),length(all_labels),'single');
 	AUDIO.DATA=zeros(samples,length(currtrials));
@@ -146,6 +157,21 @@ for i=0:parameters.trial_win:ntrials
 
 		if is_legacy
 			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys_data','mic_data','channels','fs','start_datenum','ttl_data');
+			
+			ephys.data=ephys_data;
+			ephys.fs=fs;
+			ephys.labels=channels;
+
+			audio.data=mic_data;
+			audio.fs=fs;
+
+			ttl.data=ttl_data;
+			ttl.fs=fs;
+
+			file_datenum=start_datenum;
+
+			clearvars ephys_data mic_data channels fs start_datenum ttl_data;
+
 		else
 			load(fullfile(FILEIDR,listing(currtrials(j)).name),'ephys','audio','file_datenum','ttl');
 		end

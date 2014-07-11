@@ -43,7 +43,7 @@ fprintf('Parameters\n\n%-10s%-10s%-10s%-10s\n\n','N','Overlap','FiltScale','Down
 fprintf('%-10d%-10d%-10d%-10d\n\n\n',...
 	parameters.smscore_n,parameters.smscore_overlap,parameters.smscore_filter_scale,parameters.smscore_downsampling);
 
-features=ephys_pipeline_smscore(audio.data,audio.fs,'n',parameters.smscore_n,'overlap',parameters.smscore_overlap,...
+[features,features_parameters]=ephys_pipeline_smscore(audio.data,audio.fs,'n',parameters.smscore_n,'overlap',parameters.smscore_overlap,...
 	'filter_scale',parameters.smscore_filter_scale,'downsampling',parameters.smscore_downsampling,...
 	'norm_amp',parameters.smscore_norm_amp,'lowfs',lowfs,'highfs',highfs);
 
@@ -54,4 +54,4 @@ if ~exist(fullfile(path,'syllable_data'),'dir')
 	mkdir(fullfile(path,'syllable_data'));
 end
 
-save(fullfile(path,'syllable_data',[ file '_score.mat']),'features','TTL','lowfs','highfs','parameters');
+save(fullfile(path,'syllable_data',[ file '_score.mat']),'features','features_parameters','TTL','parameters');

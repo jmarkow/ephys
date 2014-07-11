@@ -202,18 +202,18 @@ if ~exist(fullfile(proc_dir,'template_data.mat'),'file')
 	% compute the features of the template
 
 	disp('Computing the spectral features of the template');
-	template.features=ephys_pipeline_smscore(template.data,template.fs,...
+	[template.features template.feature_parameters]=ephys_pipeline_smscore(template.data,template.fs,...
 		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling,'lowfs',lowfs,'highfs',highfs);
-	save(fullfile(proc_dir,'template_data.mat'),'template','padding','lowfs','highfs');
+	save(fullfile(proc_dir,'template_data.mat'),'template','padding');
 
 else
 	disp('Loading stored template...');
 	load(fullfile(proc_dir,'template_data.mat'),'template');
 	
 	disp('Computing the spectral features of the template');
-	template.features=ephys_pipeline_smscore(template.data,template.fs,...
+	[template.features template.feature_parameters]=ephys_pipeline_smscore(template.data,template.fs,...
 		'n',n,'overlap',overlap,'filter_scale',filter_scale,'downsampling',downsampling,'lowfs',lowfs,'highfs',highfs);
-	save(fullfile(proc_dir,'template_data.mat'),'template','lowfs','highfs');
+	save(fullfile(proc_dir,'template_data.mat'),'template','padding');
 
 end
 
@@ -476,21 +476,27 @@ parfor i=1:length(SOUND_FILES)
 
 	% getfield hack to get around parfor errors
 
-	data=load(input_file,'mic_data','fs');
-	if ~isfield(data,'mic_data')
+	is_legacy=check_legacy(input_file);
+	
+	if is_legacy
+		proc=load(input_file,'mic_data','fs');
+		proc.audio.data=mic_data;
+		proc.audio.fs=fs;
+	else
+		proc=load(input_file,'audio');
+	end
+	
+	if ~isfield(proc,'audio')
 		warning('ephysPipeline:ephysCluster:errorsoundfile','Problem encountered with %s',input_file);
 		continue;
 	end
 	
-	sound_data=data.mic_data;
-	fs=data.fs;
-
-	if length(sound_data)<N
+	if length(proc.audio.data)<N
 		warning('ephysPipeline:ephysCluster:shortsound','Sound extraction too short in %s, skipping...',input_file);
 		continue;
 	end
 
-	[sound_features,parameters]=ephys_pipeline_smscore(sound_data,fs,...
+	[sound_features,parameters]=ephys_pipeline_smscore(proc.audio.data,proc.audio.fs,...
 		'n',N,'overlap',OVERLAP,'filter_scale',FILTER_SCALE,'downsampling',DOWNSAMPLING,'lowfs',LOWFS,'highfs',HIGHFS);
 
 	% save for posterity's sake
@@ -630,13 +636,15 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA EXTRACTION %%%%%%%%%%%%%%%%%%%%
 
 
-function [MIC_DATA EPHYS_DATA TTL_DATA CHANNELS USED_FILENAMES]=extract_hits(SELECTED_PEAKS,FILENAMES,TEMPLATESIZE,SPECT_THRESH,TIME_RANGE,...
+function [MIC EPHYS TTL USED_FILENAMES]=extract_hits(SELECTED_PEAKS,FILENAMES,TEMPLATESIZE,SPECT_THRESH,TIME_RANGE,...
 		fs,N,OVERLAP,DOWNSAMPLING,PADDING)
 
 TEMPLATESIZE=TEMPLATESIZE+N;
 USED_FILENAMES={};
-MIC_DATA=[];
-TTL_DATA=[];
+
+MIC=[];
+TTL=[];
+EPHYS=[];
 
 load(FILENAMES{1});
 
@@ -656,32 +664,48 @@ counter=0;
 % check for all possible channels across the whole day, a matrix will be filled with zeros if the channel
 % gets knocked out somehow...
 
-channel_labels=[];
+all_labels=[];
+all_ports=[];
 
 for i=1:length(SELECTED_PEAKS)
-	data=load(FILENAMES{i});
 
-	if ~isfield(data,'ephys_data')
-		ephys_data=data.intan_data;
+	is_legacy=check_legacy(FILENAMES{i});
+
+	if is_legacy		
+		data=load(FILENAMES{i},'channels');
+		labels=channels;
+		ports=repmat('A',[1 length(channels)]);
 	else
-		ephys_data=data.ephys_data;
-    	end
-    
-    	channels=data.channels;
+		data=load(FILENAMES{i},'ephys');
+		labels=ephys.labels;	
+		ports=ephys.ports;
+	end	
 
-	for j=1:length(channels)
+	for j=1:length(labels)
+
+		label_chk=labels(j)==all_labels;
+		port_chk=ports(j)==all_ports;
 
 		% loop and if any channels are not included in the channel_label vector, include!
 
-		if ~any(channels(j)==channel_labels)
-			channel_labels=[channel_labels channels(j)];
+		if ~any(label_chk&&port_chk)
+			all_labels=[all_labels labels(j)];
+			all_ports=[all_ports ports(j)];
 		end
+
 	end
 
 end
 
-channel_labels=sort(channel_labels);
-disp(['Found channels ' num2str(channel_labels)]);
+all_labels=sort(all_labels);
+
+disp(['Found channels:  ']);
+
+for j=i:length(all_labels)
+	fprintf(1,'%i%s ',all_labels(i),all_ports(i));
+end
+
+fprintf(1,'\n');
 
 parfor i=1:length(SELECTED_PEAKS)
 
@@ -689,16 +713,24 @@ parfor i=1:length(SELECTED_PEAKS)
 		continue;
 	end
 
-	data=load(FILENAMES{i});
-	sound_data=single(data.mic_data);
-	
-	if ~isfield(data,'ephys_data')
-		ephys_data=data.intan_data;
-	else
-		ephys_data=data.ephys_data;
-    end
+	is_legacy=check_legacy(FILENAMES{i});
 
-	fs=data.fs;
+	if is_legacy
+
+		data=load(FILENAMES{i},'mic_data','fs');
+		audio.data=single(data.mic_data);
+		audio.fs=data.fs;
+
+		clear data;
+
+	else
+		data=load(FILENAMES{i},'audio');
+		audio.data=single(data.audio.data);
+		audio.fs=audio.fs;
+
+		clear data;
+	end	
+
 	for j=1:length(SELECTED_PEAKS{i})
 		
 		peakLoc=SELECTED_PEAKS{i}(j);
@@ -709,7 +741,7 @@ parfor i=1:length(SELECTED_PEAKS)
 		startpoint=(peakLoc*(N-OVERLAP)*DOWNSAMPLING)-N;
 		endpoint=startpoint+TEMPLATESIZE;
 
-		if startpoint/fs>=TIME_RANGE(1) & endpoint/fs<=TIME_RANGE(2)
+		if startpoint/audio.fs>=TIME_RANGE(1) & endpoint/audio.fs<=TIME_RANGE(2)
 
 			if length(sound_data)>endpoint && startpoint>0
 				
@@ -725,9 +757,30 @@ disp(['Found ' num2str(counter) ' trials ']);
 
 %%%%
 
-EPHYS_DATA=zeros(TEMPLATESIZE+1,counter,length(channel_labels),'single');
-MIC_DATA=zeros(TEMPLATESIZE+1,counter,'single');
-TTL_DATA=zeros(TEMPLATESIZE+1,counter,'single');
+if is_legacy
+
+	data=load(FILENAMES{1},'fs');
+	audio.fs=fs;
+	ephys.fs=fs;
+
+	clear data;
+
+else
+	data=load(FILENAMES{1},'audio','ephys','ttl');
+	audio.data=single(data.audio.data);
+	audio.fs=audio.fs;
+
+	clear data;
+end	
+
+EPHYS.data=zeros(TEMPLATESIZE+1,counter,length(channel_labels),'single');
+EPHYS.fs=ephy.fs;
+MIC.data=zeros(TEMPLATESIZE+1,counter,'single');
+MIC.fs=audio.fs;
+TTL.data=zeros(TEMPLATESIZE+1,counter,'single');
+
+EPHYS.labels=all_labels;
+EPHYS.ports=all_ports;
 
 disp('Extracting data');
 fprintf(1,['Progress:  ' blanks(nblanks)]);
@@ -735,30 +788,43 @@ fprintf(1,['Progress:  ' blanks(nblanks)]);
 trial=1;
 for i=1:length(SELECTED_PEAKS)
 
-	fprintf(1,formatstring,round((i/length(SELECTED_PEAKS))*100));
+fprintf(1,formatstring,round((i/length(SELECTED_PEAKS))*100));
 
 	if length(SELECTED_PEAKS{i})<1
 		continue;
 	end
 
-	data=load(FILENAMES{i});
-	sound_data=single(data.mic_data);
-	
-	if ~isfield(data,'ephys_data')
-		ephys_data=data.intan_data;
-	else
-		ephys_data=data.ephys_data;
-    	end
+	is_legacy=check_legacy(FILENAMES{i});
 
-	if ~isfield(data,'ttl_data')
-		ttl_data=zeros(size(ephys_data));
+	if is_legacy
+
+		load(FILENAMES{i},'mic_data','fs','ephys_data','channels','ttl_data');
+		
+		audio.data=single(mic_data);
+		audio.fs=fs;
+
+		ephys.data=ephys_data;
+		ephys.labels=channels;
+		ephys.fs=fs;
+
+		if ~exist('ttl_data','var')
+			ttl_data=zeros(size(ephys_data));
+		else
+			ttl.data=ttl_data;
+			ttl.fs=fs;
+		end
+
+		clearvars mic_data fs ephys_data channels;
+
 	else
-		ttl_data=data.ttl_data;
+		load(FILENAMES{i},'audio','ephys','ttl');
+	end	
+
+	if audio.fs~=ephys.fs
+		error('Audio (%g) and ephys (%g) sampling rates are not equal for file %s',...
+			audio.fs,ephys.fs,FILENAMES{i});
 	end
-
-	fs=data.fs;
-	channels=data.channels;
-
+	
 	for j=1:length(SELECTED_PEAKS{i})
 		
 		peakLoc=SELECTED_PEAKS{i}(j);
@@ -769,20 +835,24 @@ for i=1:length(SELECTED_PEAKS)
 		startpoint=(peakLoc*(N-OVERLAP)*DOWNSAMPLING)-N;
 		endpoint=startpoint+TEMPLATESIZE;
 
-		if startpoint/fs>=TIME_RANGE(1) & endpoint/fs<=TIME_RANGE(2)
+		if startpoint/audio.fs>=TIME_RANGE(1) & endpoint/audio.fs<=TIME_RANGE(2)
 
 			if length(sound_data)>endpoint && startpoint>0
 
 				USED_FILENAMES{end+1}=FILENAMES{i};
-                		MIC_DATA(:,trial)=single(sound_data(startpoint:endpoint));               
-               			TTL_DATA(:,trial)=single(ttl_data(startpoint:endpoint));
+                		MIC.data(:,trial)=single(audio.data(startpoint:endpoint));               
+               			TTL.data(:,trial)=single(ttl.data(startpoint:endpoint));
 
 				% if we have differences in channel number, how to resolve?
 
-				for k=1:length(channels)
+				for k=1:length(ephys.labels)
                     
-					ch_idx=find(channels(k)==channel_labels);
-					EPHYS_DATA(:,trial,ch_idx)=single(ephys_data(startpoint:endpoint,k));
+					label_chk=ephys.labels(k)==all_labels;
+					port_chk=ephys.ports(k)==all_ports;
+
+					ch_idx=find(label_chk&&port_chk);
+
+					EPHYS.data(:,trial,ch_idx)=single(ephys.data(startpoint:endpoint,k));
 
 				end
 
@@ -794,7 +864,6 @@ for i=1:length(SELECTED_PEAKS)
 	end
 end
 
-CHANNELS=channel_labels;
 fprintf('\n');
 
 end
