@@ -44,6 +44,7 @@ nfft=1024;
 overlap=1e3;
 mic_filtering=500; % highpass for mic trace
 mask_only=0;
+spect_thresh=.2;
 
 for i=1:2:nparams
 	switch lower(varargin{i})

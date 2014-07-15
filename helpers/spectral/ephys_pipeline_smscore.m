@@ -89,6 +89,9 @@ else
 	lowpoint=480;
 	highpoint=300;
 
+	PARAMETERS.low_cutoff=f(lowpoint);
+	PARAMETERS.high_cutoff=f(highpoint);
+
 end
 
 % add FM and pitch?

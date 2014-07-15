@@ -300,6 +300,18 @@ for i=1:length(proc_files)
 	% independently for each bird
 
 	bird_split=regexp(proc_files{i},bird_delimiter,'split');
+	
+	tokens=regexp(bird_split{end},delimiter,'split');
+
+	% get the date tokens from the last bird, append to all others
+	
+	datetokens=find(parse_string=='d');
+	datestring='';
+
+	for j=1:length(tokens)
+		datestring=[datestring delimiter datetokens{j}];
+	end
+
 	nbirds=length(bird_split);
 
 	% clear out all extraction variables to be safe
@@ -332,6 +344,9 @@ for i=1:length(proc_files)
 
 			% parse the file using the format string
 
+			if j<nbirds
+				bird_split{j}=[bird_split{j} datestring];
+			end
 
 			[birdid,recid,mic_trace,mic_source,mic_port,ports,ttl_trace,ttl_source,file_datenum]=...
 				frontend_fileparse(bird_split{j},delimiter,parse_string,date_string);
