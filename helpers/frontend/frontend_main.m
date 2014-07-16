@@ -125,7 +125,7 @@ nosort=0;
 subdir='pretty_bird';
 sleep_window=[ 22 7 ]; % times for keeping track of sleep data (24 hr time, start and stop)
 auto_delete_int=1; % delete data n days old
-sleep_fileinterval=3; % specify file interval (in minutes) 
+sleep_fileinterval=30; % specify file interval (in minutes) 
 sleep_segment=5; % how much data to keep (in seconds)
 ttl_skip=1; % skip song detection if TTL detected?
 
@@ -308,7 +308,7 @@ for i=1:length(proc_files)
 	datetokens=find(parse_string=='d');
 	datestring='';
 
-	for j=1:length(tokens)
+	for j=1:length(datetokens)
 		datestring=[ datestring delimiter(end) tokens{datetokens(j)} ];
 	end
 
@@ -353,7 +353,15 @@ for i=1:length(proc_files)
 
 			disp(['Processing bird ' num2str(j) ' of ' num2str(nbirds) ]);
 			disp(['File date: ' datestr(file_datenum)]);
-
+            disp(['Bird ID:  ' birdid]);
+            disp(['Rec ID:  ' recid]);
+            disp(['Mic ch:  ' num2str(mic_trace)]);
+            disp(['Mic source:  ' mic_source]);
+            disp(['Mic port:  ' mic_port]);
+            disp(['Data ports:  ' ports]);
+            
+            
+            
 			% now create the folder it doesn't exist already
 
 			foldername=fullfile(root_dir,birdid,recid,datestr(file_datenum,folder_format));	
