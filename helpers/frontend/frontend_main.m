@@ -299,7 +299,7 @@ for i=1:length(proc_files)
 	% if user passes multiple birds, they are split by bird_delimiter, parsing is done
 	% independently for each bird
 
-	bird_split=regexp(proc_files{i},bird_delimiter,'split');
+	bird_split=regexp(name,bird_delimiter,'split');
 	
 	tokens=regexp(bird_split{end},delimiter,'split');
 
@@ -532,7 +532,7 @@ for i=1:length(proc_files)
 
 				disp(['Processing sleep data for file ' proc_files{i}]);
 
-				frontend_sleepdata(birdstruct,name,sleep_window,sleep_segment,sleep_fileinterval,sleep_pre,...
+				frontend_sleepdata(birdstruct,bird_split{j},sleep_window,sleep_segment,sleep_fileinterval,sleep_pre,...
 					fullfile(root_dir,birdid,recid),folder_format,delimiter,parse_string);	
 				
 				sleep_flag=1;
@@ -554,7 +554,7 @@ for i=1:length(proc_files)
 		
 		if ~ismic & ~isttl & ~sleep_flag
 
-			save(fullfile(data_dir,['songdet1_' name '.mat']),'-struct','birdstruct','-v7.3');
+			save(fullfile(data_dir,['songdet1_' bird_split{j} '.mat']),'-struct','birdstruct','-v7.3');
 			clearvars birdstruct;
 
 			continue;
@@ -583,7 +583,7 @@ for i=1:length(proc_files)
 
 				disp(['TTL detected in file:  ' proc_files{i}]);
 
-				frontend_dataextract(name,birdstruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
+				frontend_dataextract(bird_split{j},birdstruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
 
 				% if we found TTL pulses and ttl_skip is on, skip song detection and move on to next file
 
@@ -637,7 +637,7 @@ for i=1:length(proc_files)
 
 			ext_pts=[startpoints(:) stoppoints(:)];
 
-			frontend_dataextract(name,birdstruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors);
+			frontend_dataextract(bird_split{j},birdstruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors);
 
 		end
 
