@@ -309,7 +309,7 @@ for i=1:length(proc_files)
 	datestring='';
 
 	for j=1:length(tokens)
-		datestring=[datestring delimiter datetokens{j}];
+		datestring=[ datestring delimiter(end) tokens{datetokens(j)} ];
 	end
 
 	nbirds=length(bird_split);
