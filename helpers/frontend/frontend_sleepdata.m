@@ -9,7 +9,7 @@ newstring=repmat('?',[1 length(PARSE_STRING)+1]);
 datesym=strfind(PARSE_STRING,'d')+1;
 newstring(datesym)='d';
 
-fs=DATA.fs;
+fs=DATA.audio.fs;
 ephys_labels=DATA.ephys_labels;
 audio_extraction=[];
 file_datenum=DATA.datenum;
