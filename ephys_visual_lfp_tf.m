@@ -106,12 +106,12 @@ hist_colors='jet';
 lfp_colors='jet';
 lfp_min_f=1; % bring down to 1
 lfp_max_f=100;
-lfp_n=500; % defined frequency resolution
-lfp_overlap=495;
+lfp_n=400; % defined frequency resolution
+lfp_overlap=395;
 lfp_nfft=1024; % superficial, makes the spectrogram smoother
-lfp_w=2; % time bandwidth product if using multi-taper
+lfp_w=1; % time bandwidth product if using multi-taper
 lfp_ntapers=[]; % number of tapers, leave blank to use 2*w-1
-proc_fs=1250;
+proc_fs=1000;
 
 hist_min_f=1;
 hist_max_f=10e3;
@@ -125,9 +125,13 @@ scale='log';
 scalelabel='dB';
 singletrials=0;
 clipping=-35;
-medfilt_scale=3; % median filter scale (in ms)
+medfilt_scale=.0015; % median filter scale (in ms)
+notch=60;
+notch_bw=1;
+attenuation=40;
+ripple=.2;
 
-padding=.12;
+padding=(lfp_n/2)/proc_fs;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -175,6 +179,14 @@ for i=1:2:nparams
 			padding=varargin{i+1};
 		case 'clipping'
 			clipping=varargin{i+1};
+		case 'notch'
+			notch=varargin{i+1};
+		case 'notch_bw'
+			notch_bw=varargin{i+1};
+		case 'attenuation'
+			attenuation=varargin{i+1};
+		case 'ripple'
+			ripple=varargin{i+1};
 	end
 end
 
@@ -203,22 +215,17 @@ if mod(downfact,1)>0
 end
 
 proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
-
-[b,a]=butter(2,[200/(fs/2)],'low');
-
-for i=1:size(proc_data,3)
-	proc_data(:,:,i)=filtfilt(b,a,double(proc_data(:,:,i)));
-end
-
-proc_data=downsample(proc_data,downfact);
-
-size(proc_data)
-
-proc_data=ephys_condition_signal(proc_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale,'medfilt',1,...
-	'fs',proc_fs,'filt_order',filt_order);
-proc_data=squeeze(proc_data);
 clear EPHYS.data;
 
+proc_data=ephys_condition_signal(proc_data,'l','freq_range',[300],'filt_order',2,'filt_name','b',...
+		'medfilt_scale',medfilt_scale,'fs',fs,'notch',0); 
+proc_data=downsample(proc_data,downfact);
+
+% filter in the desired band
+
+proc_data=ephys_condition_signal(proc_data,'l','freq_range',freq_range,...
+		'fs',proc_fs,'notch',notch,'notch_bw',notch_bw,...
+		'ripple',ripple,'attenuation',attenuation,'filt_order',filt_order);
 [nsamples,ntrials,nchannels]=size(proc_data);
 
 % get rows and columns
@@ -259,6 +266,11 @@ if lower(method(1))=='m'
 	end
 
 	[tapers,lambda]=dpss(lfp_n,lfp_w,lfp_ntapers);
+
+	disp('Using multi-taper method');
+	disp(['Resolution:  ' num2str(resolution) ' Hz']);
+	disp(['Ntapers:  ' num2str(lfp_ntapers)]);
+	disp(['W:  ' num2str(lfp_w)]);
 else
 	lfp_ntapers='';
 	resolution=proc_fs/lfp_n;

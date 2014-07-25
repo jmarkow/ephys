@@ -79,10 +79,14 @@ mua_colors='hot';
 mua_colors_phase='hsv';
 figtitle='';
 freq_range=[10 80]; % frequency range for filtering
-proc_fs=1.25e3;
+proc_fs=1e3;
 channels=EPHYS.labels;
-medfilt_scale=1.5; % median filter scale (in ms)
+medfilt_scale=.0015; % median filter scale (in s)
 hampel=3;
+notch=60;
+notch_bw=1;
+ripple=.2;
+attenuation=40;
 
 %%%
 
@@ -116,6 +120,14 @@ for i=1:2:nparams
 			hampel=varargin{i+1};
 		case 'proc_fs'
 			proc_fs=varargin{i+1};
+		case 'notch'
+			notch=varargin{i+1};
+		case 'notch_bw'
+			notch=varargin{i+1};
+		case 'ripple'
+			ripple=varargin{i+1};
+		case 'attenuation'
+			attenuation=varargin{i+1};
 	end
 end
 
@@ -128,10 +140,16 @@ end
 fs=EPHYS.fs;
 
 
+% anti-alias
+
+
 proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
 clear EPHYS.data;
-proc_data=single(ephys_condition_signal(proc_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale));
 
+disp(['Anti aliasing...']);
+
+proc_data=ephys_condition_signal(proc_data,'l','freq_range',[300],'filt_order',2,'filt_name','b',...
+		'medfilt_scale',medfilt_scale,'fs',fs,'notch',0); 
 downfact=fs/proc_fs;
 
 if mod(downfact,1)>0
@@ -140,6 +158,12 @@ end
 
 disp(['Downsampling to ' num2str(proc_fs) ]);
 proc_data=downsample(proc_data,downfact);
+
+% filter in the desired band
+
+proc_data=single(ephys_condition_signal(proc_data,'l','freq_range',freq_range,...
+		'fs',proc_fs,'notch',notch,'notch_bw',notch_bw,...
+		'ripple',ripple,'attenuation',attenuation));
 
 [nsamples,ntrials,nchannels]=size(proc_data);
 LFP_RASTER.t=[1:nsamples]./proc_fs;

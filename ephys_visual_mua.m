@@ -62,7 +62,7 @@ end
 
 %%%
 
-sigma=.0025; % smoothing window in secs
+winsigma=.0025; % smoothing window in secs
 noise='none'; % common-average reference for noise removal, none to skip digital
 	      % re-referencing
 car_exclude=[];
@@ -76,10 +76,12 @@ freq_range=[500 5e3]; % frequency range for filtering
 downsampling=2;
 channels=EPHYS.labels;
 hampel=3;
+attenuation=40;
+ripple=.2;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'sigma'
+		case 'winsigma'
 			smooth_window=varargin{i+1};
 		case 'noise'
 			noise=varargin{i+1};
@@ -105,6 +107,10 @@ for i=1:2:nparams
 			channels=varargin{i+1};
 		case 'hampel'
 			hampel=varargin{i+1};
+		case 'attenuation'
+			attenuation=varargin{i+1};
+		case 'ripple'
+			ripple=varargin{i+1};
 	end
 end
 
@@ -121,7 +127,7 @@ fs=EPHYS.fs;
 
 proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
 clear EPHYS.data;
-proc_data=single(ephys_condition_signal(proc_data,'m','freq_range',freq_range,'sigma',sigma));
+proc_data=single(ephys_condition_signal(proc_data,'m','freq_range',freq_range,'winsigma',winsigma));
 
 [nsamples,ntrials,nchannels]=size(proc_data);
 TIME=[1:nsamples]./fs;

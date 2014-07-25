@@ -127,7 +127,7 @@ end
 channelboundary=[];
 fs=25e3;
 noise='none'; % none, nn for nearest neighbor, or car for common average
-car_exclude=4;
+car_exclude=[];
 savedir=pwd;
 
 min_f=1; % min frequency to show for song histogram
