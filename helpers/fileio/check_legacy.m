@@ -5,5 +5,9 @@ function IS_LEGACY=check_legacy(FILENAME)
 %
 
 tmp=whos('-file',FILENAME);
-IS_LEGACY=ismember('mic_data',{tmp(:).name});
+flag1=ismember('mic_data',{tmp(:).name});
+flag2=ismember('audio_extraction',{tmp(:).name});
+flag3=ismember('template_features',{tmp(:).name});
+
+IS_LEGACY=flag1|flag2|flag3;
 

@@ -84,7 +84,7 @@ dircount=1;
 
 % extract in a sliding window, generate histograms and trigger mua, sua and lfp processing
 
-savefun=@(filename,aligned_ephys,aligned_audio,aligned_ttl,file_datenum) ...
+savefun=@(filename,agg_ephys,agg_audio,agg_ttl,agg_file_datenum) ...
 	save(filename,'agg_ephys','agg_audio','agg_ttl','agg_file_datenum','-v7.3');
 
 for i=0:parameters.trial_win:ntrials
@@ -126,7 +126,7 @@ for i=0:parameters.trial_win:ntrials
 
 			% loop and if any channels are not included in the channel_label vector, include!
 
-			if ~any(label_chk&&port_chk)	
+			if ~any(label_chk&port_chk)	
 				all_labels=[all_labels ephys.labels(k)];
 				all_ports=[all_ports ephys.ports(k)];
 			end
@@ -143,10 +143,10 @@ for i=0:parameters.trial_win:ntrials
 
 	fprintf(1,'\n');
 
-	EPHYS.DATA=zeros(samples,length(currtrials),length(all_labels),'single');
-	AUDIO.DATA=zeros(samples,length(currtrials));
+	EPHYS.data=zeros(samples,length(currtrials),length(all_labels),'single');
+	AUDIO.data=zeros(samples,length(currtrials));
 	FILE_DATENUM=zeros(1,length(currtrials));
-	TTL.DATA=zeros(samples,length(currtrials));
+	TTL.data=zeros(samples,length(currtrials));
 
 	EPHYS.labels=all_labels;
 	EPHYS.ports=all_ports;
@@ -173,16 +173,16 @@ for i=0:parameters.trial_win:ntrials
 			clearvars ephys_data mic_data channels fs start_datenum ttl_data;
 
 		else
-			load(fullfile(FILEIDR,listing(currtrials(j)).name),'ephys','audio','file_datenum','ttl');
+			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys','audio','file_datenum','ttl');
 		end
 
-		AUDIO.DATA(:,j)=audio.data;
+		AUDIO.data(:,j)=audio.data;
 		
 		if ~exist('ttl','var') | isempty(ttl.data) | ~isfield(ttl,'data');
-			ttl.data=zeros(size(mic_data));
+			ttl.data=zeros(size(audio.data));
 		end
 
-		TTL.DATA(:,j)=ttl.data;
+		TTL.data(:,j)=ttl.data;
 
 		for k=1:length(ephys.labels)
 
@@ -192,7 +192,7 @@ for i=0:parameters.trial_win:ntrials
 				continue;
 			end
 
-			EPHYS.DATA(:,j,ch_idx)=single(ephys.data(:,k));
+			EPHYS.data(:,j,ch_idx)=single(ephys.data(:,k));
 
 		end
 
@@ -203,20 +203,7 @@ for i=0:parameters.trial_win:ntrials
 			% attempt to find the datenum
 
 			tokens=regexpi(listing(currtrials(j)).name,parameters.delimiter,'split');
-
-			if length(tokens)<6
-				continue;
-			end
-
-			% fourth is date
-
-			if strcmpi(tokens{5}(1:3),'ttl')
-				idx=6;
-			else
-				idx=5;
-			end
-
-			FILE_DATENUM(j)=datenum([tokens{idx} tokens{idx+1}],'yymmddHHMMSS');
+			FILE_DATENUM(j)=datenum([tokens{end-3} tokens{end-2}],'yymmddHHMMSS');
 
 		end
 
@@ -232,7 +219,7 @@ for i=0:parameters.trial_win:ntrials
 		fclose(fid);
 
 	else
-		histogram=ephys_visual_histogram(AUDIO.DATA);
+		histogram=ephys_visual_histogram(AUDIO.data,'fs',AUDIO.fs);
 		save(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'histogram.mat'),'histogram','-v7.3');
 	end
 

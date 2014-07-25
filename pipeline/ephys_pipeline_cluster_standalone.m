@@ -14,12 +14,21 @@ colors=hot(63); % uint8 colormap
 disp_minfs=1;
 disp_maxfs=10e3;
 parameters.smscore_n=1024;
-
 padding=[];
+
 % takes the classifier object, template features and data features and extracts any instances
 % of the template as determined by the classifier 
 
-load(TEMPLATEFILE,'template_features','TEMPLATE','padding'); % we'll get warnings if padding DNE
+is_legacy=check_legacy(TEMPLATEFILE);
+
+if is_legacy
+	load(TEMPLATEFILE,'template_features','TEMPLATE','padding'); % we'll get warnings if padding DNE
+	template.features=template_features;
+	template.data=TEMPLATE;
+	clearvars template_features TEMPLATE;
+else
+	load(TEMPLATEFILE,'template','padding');
+end
 
 % if for some reason we cannot load datafile (e.g. if the pipeline crashes, then delete it so it's 
 % recomputed on the next run)
@@ -44,9 +53,9 @@ if length(padding)==2
 	disp(['Will pad extractions using the following pads:  ' num2str(padding)]);
 end
 
-[junk,templength]=size(template_features{1});
+[junk,templength]=size(template.features{1});
 templength=templength-1;
-fulltemplength=length(TEMPLATE);
+fulltemplength=length(template.data);
 
 % before extracting make sure data file exists
 
@@ -70,7 +79,6 @@ templatename=tokens{end};
 
 rawfile=fullfile(datapath,'..',[ file(1:end-6) '.mat']);
 
-rawfile
 
 if ~exist(rawfile,'file')
 	return;
@@ -109,7 +117,7 @@ for i=1:length(features)
 	energy=[];
 
 	for j=1:featureslength-templength
-		score_temp{i}=[score_temp{i} sum(sum(abs(features{i}(:,j:j+templength)-template_features{i})))];
+		score_temp{i}=[score_temp{i} sum(sum(abs(features{i}(:,j:j+templength)-template.features{i})))];
 		energy=[energy mean(mean(features{4}(:,j:j+templength)))];
 	end
 
@@ -118,7 +126,7 @@ for i=1:length(features)
 
 	% assume that silence is the min point
 	
-	silent=min(energy)
+	silent=min(energy);
 	
 	% where is energy greater than the min + 1 STD (very conservative)
 
@@ -200,7 +208,7 @@ templength=templength+parameters.smscore_n;
 is_legacy=check_legacy(rawfile);
 
 if is_legacy
-	load(rawfile,'audio.data','ephys_data','channels','fs','ttl_data','t');
+	load(rawfile,'audio_data','ephys_data','channels','fs','ttl_data','t','start_datenum');
 	
 	ephys.data=ephys_data;
 	ephys.fs=fs;
@@ -212,10 +220,14 @@ if is_legacy
 	audio.t=t;
 	
 	ttl.data=ttl_data;
+	file_datenum=start_datenum;
 
 else
-	load(rawfile,'audio','ephys','ttl');
+	load(rawfile,'audio','ephys','ttl','file_datenum');
 end
+
+[b,a]=ellip(5,.2,80,[700]/(audio.fs/2),'high');
+
 
 if audio.fs~=ephys.fs
 	error('Unequal audio (%g) and ephys (%g) sampling rates not yet supported',audio.fs,ephys.fs);
@@ -223,7 +235,7 @@ end
 
 % write images to 'gif', wav to 'wav' and 'mat' to mat again
 
-[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(audio.data,audio.fs,'n',500,'overlap',450,'low',2.5);
+[sonogram_im sonogram_f sonogram_t]=pretty_sonogram(filtfilt(b,a,double(audio.data)),audio.fs,'n',500,'overlap',450,'low',2.5);
 startidx=max([find(sonogram_f<=disp_minfs)]);
 stopidx=min([find(sonogram_f>=disp_maxfs)]);
 sonogram_im=sonogram_im(startidx:stopidx,:);
@@ -263,18 +275,17 @@ for i=1:length(hits)
 		continue;
 	end
 
-	if length(audio.data)>endpoint && startpoint>0	
+	if length(store_audio.data)>endpoint && startpoint>0	
 
 		audio.data=store_audio.data(startpoint:endpoint);
 		ephys.data=store_ephys.data(startpoint:endpoint,:);
-		
 		audio.t=store_audio.t(startpoint:endpoint);
 		ephys.t=store_ephys.t(startpoint:endpoint);
 
-		channels=data.channels;
-		fs=audio.fs;
+		%audio.fs=fs;
+		%ephys.fs=fs;
 
-		if isfield(data,'ttl_data')
+		if isfield(store_ttl,'data') & ~isempty(store_ttl.data)
 			ttl.data=store_ttl.data(startpoint:endpoint);
 		else
 			ttl.data=[];
@@ -282,13 +293,13 @@ for i=1:length(hits)
 
 		savename=[ file(1:end-6) '_' templatename '_' num2str(i)];
 
-		save(fullfile(matdir,[savename '.mat']),'audio','ephys','ttl');
+		save(fullfile(matdir,[savename '.mat']),'audio','ephys','ttl','file_datenum');
 
 		% write out the extraction
 
 		sonogram_im(1:10,ceil(startpoint/im_son_to_vec):ceil(endpoint/im_son_to_vec))=63;
 
-		[chunk_sonogram_im chunk_sonogram_f chunk_sonogram_t]=pretty_sonogram(audio.data,audio.fs,'low',2.5);
+		[chunk_sonogram_im chunk_sonogram_f chunk_sonogram_t]=pretty_sonogram(filtfilt(b,a,double(audio.data)),audio.fs,'low',2.5);
 
 		startidx=max([find(chunk_sonogram_f<=disp_minfs)]);
 		stopidx=min([find(chunk_sonogram_f>=disp_maxfs)]);

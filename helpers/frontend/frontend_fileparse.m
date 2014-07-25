@@ -18,7 +18,7 @@ function [BIRDID,RECID,MICTRACE,MICSOURCE,MICPORT,PORTS,TTLTRACE,TTLSOURCE,DATEN
 % D=date
 
 if nargin<4 | isempty(DATEFMT), DATEFMT='yymmddHHMMSS'; end
-if nargin<3 | isempty(FMT), FMT='bimdd'; end
+if nargin<3 | isempty(FMT), FMT='bimpdd'; end
 if nargin<2 | isempty(DELIM), DELIM='\_'; end
 if nargin<1 | isempty(FILENAME), error('Need filename to continue!'); end
 
@@ -27,7 +27,6 @@ RECID=[];
 MICTRACE=[];
 MICSOURCE='';
 MICPORT='';
-
 TTLTRACE=[];
 TTLSOURCE='';
 
@@ -36,16 +35,54 @@ PORTS='';
 
 port_labels='abcd';
 
-birdtoken=strfind(lower(FMT),'b');
-rectoken=strfind(lower(FMT),'i');
-mictoken=strfind(lower(FMT),'m');
-ttltoken=strfind(lower(FMT),'t');
-datetoken=strfind(lower(FMT),'d');
-porttoken=strfind(lower(FMT),'p');
-
 [path,filename,ext]=fileparts(FILENAME);
-
 tokens=regexpi(filename,DELIM,'split');
+
+if isempty(FMT) & length(tokens)>=2
+
+	%%% find various tokens
+
+	birdtoken=1;
+	rectoken=2;
+
+	disp('Detecting token positions');
+
+	if length(tokens)>2
+
+		mictoken=find(~cellfun(@isempty,strfind(tokens(3:end),'mic')))+2;
+
+		if ~isempty(mictoken)
+			fprintf(1,'Detected mic token at %i\n',mictoken);
+		end
+
+		ttltoken=find(~cellfun(@isempty,strfind(tokens(3:end),'ttl')))+2;
+
+		if ~isempty(ttltoken)
+			fprintf(1,'Detected ttl token at %i\n',ttltoken);
+		end
+
+		porttoken=find(~cellfun(@isempty,strfind(tokens(3:end),'port')))+2;
+
+		if ~isempty(porttoken)
+			fprintf(1,'Detected port token at %i\n',porttoken);
+		end
+
+	end
+
+	datetoken=length(tokens);
+	datetoken=[datetoken-1:datetoken];
+
+	fprintf(1,'Assuming date tokens in positions %i and %i',datetoken(1),datetoken(2));
+else
+	
+	birdtoken=strfind(lower(FMT),'b');
+	rectoken=strfind(lower(FMT),'i');
+	mictoken=strfind(lower(FMT),'m');
+	ttltoken=strfind(lower(FMT),'t');
+	datetoken=strfind(lower(FMT),'d');
+	porttoken=strfind(lower(FMT),'p');
+
+end
 
 % first token should be bird number
 
@@ -68,7 +105,7 @@ end
 if ~isempty(mictoken)
 	string=tokens{mictoken};
 	[mictokens,startpoint,endpoint]=regexpi(string,'\d+','match');
-	
+
 	if isempty(mictokens)
 		error('Could not find mic trace at token %g for file %s', mictoken,FILENAME);
 	end
@@ -146,9 +183,9 @@ if ~isempty(porttoken)
 			PORTS=[ PORTS port_labels(i) ];
 		end
 	end
-	
+
 	% if isempty assume all ports
-	
+
 	PORTS=port_labels;
 
 end	

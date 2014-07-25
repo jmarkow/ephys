@@ -280,21 +280,14 @@ end
 % use all dimensions except PCA
 
 %bayesobject=NaiveBayes.fit(syllable_data(:,[1:6]),cluster.labels);
-disp('Training classifier on your selection...');
-
-% fix for MATLAB 2010a complaining about too many iterations...enforce that method=smo
-% switched to quadratic kernel function 5/28/13, linear was found to be insufficient in edge-cases
-
-classobject=svmtrain(syllable_data(:,[1:6]),cluster.labels,'method','smo','kernel_function','quadratic');
 
 [path,file,ext]=fileparts(SAVEFILE);
 cluster_choice=cluster.choice;
 
-save(SAVEFILE,'sorted_syllable','syllable_data','cluster','property_names','classobject')
+save(SAVEFILE,'sorted_syllable','syllable_data','cluster','property_names')
 
 % store classify data, place in a separate directory with template for automatic clustering
-
-save(fullfile(path,['classify_data.mat']),'classobject','cluster_choice');
+%save(fullfile(path,['classify_data.mat']),'classobject','cluster_choice');
 
 disp(['Data successfully saved!']);
 

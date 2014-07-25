@@ -17,84 +17,19 @@ disp(['Loading data from ' PROCDIR]);
 
 START_DATENUM=[];
 
-if ~exist(fullfile(PROCDIR,'histogram.mat'),'file')
-	histogram=[];
-end
-
-try	
-	tmp=whos('-file',fullfile(PROCDIR,'aggregated_data.mat'));
-	is_legacy=ismember('ephys.data',{tmp(:).name});
-
-	if is_legacy
-		load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS','START_DATENUM');
-
-		if exist(fullfile(PROCDIR,'histogram.mat'),'file')
-			load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
-		end
-
-		agg_ephys.data=EPHYS_DATA;
-		agg_ephys.labels=CHANNELS;
-		agg_file_datenum=START_DATENUM;
-		histogram=HISTOGRAM;
-		clearvars EPHYS_DATA CHANNELS HISTOGRAM START_DATENUM;
-
-	else
-		load(fullfile(PROCDIR,'aggregated_data.mat'),'agg_ephys','agg_file_datenum');
-
-		if exist(fullfile(PROCDIR,'histogram.mat'),'file')
-			load(fullfile(PROCDIR,'histogram.mat'),'histogram');
-		end
-
-	end
-catch
-	try	
-		tmp=whos('-file',fullfile(PROCDIR,'aggregated_data.mat'));
-		is_legacy=ismember('ephys.data',{tmp(:).name});
-
-		disp('Pausing for 60 seconds and will retry');
-		pause(60);
-
-		if is_legacy
-			load(fullfile(PROCDIR,'aggregated_data.mat'),'ephys.data','CHANNELS','START_DATENUM');
-
-			if exist(fullfile(PROCDIR,'histogram.mat'),'file')
-				load(fullfile(PROCDIR,'histogram.mat'),'histogram');
-			end
-
-			agg_ephys.data=ephys.data;
-			agg_ephys.labels=EPHSY_CHANNELS;
-			agg_file_datenum=start_datenum;
-			
-			histogram=HISTOGRAM;
-			clearvars EPHYS_DATA CHANNELS HISTOGRAM START_DATENUM;
-
-
-		else
-			load(fullfile(PROCDIR,'aggregated_data.mat'),'agg_ephys','agg_file_datenum');
-	
-			if exist(fullfile(PROCDIR,'histogram.mat'),'file')
-				load(fullfile(PROCDIR,'histogram.mat'),'histogram');
-			end
-		end
-	catch
-
-		disp('Could not properly load files, bailing!');
-		return;
-	end
-end
-
-[samples,ntrials,nchannels]=size(ephys.data);
+[agg_ephys,histogram,agg_file_datenum]=ephys_pipeline_dataload(PROCDIR,parameters.agg_filename);
+[samples,ntrials,nchannels]=size(agg_ephys.data);
 
 if ntrials>parameters.trial_max
 	disp(['Exceeded trial max, truncating to ' num2str(parameters.trial_max)]);
 	ephys.data=ephys.data(:,1:parameters.trial_max,:);
 end
 
-[samples,ntrials,nchannels]=size(ephys.data);
+[samples,ntrials,nchannels]=size(agg_ephys.data);
 delete(fullfile(PROCDIR,'snr_channel_*'));
 
 disp('Computing SNR on all channels');
-SNR=ephys_pipeline_candidate_su(ephys,'savedir',PROCDIR,'snr_threshold',parameters.snr_cutoff);
+SNR=ephys_pipeline_candidate_su(agg_ephys,'savedir',PROCDIR,'snr_threshold',parameters.snr_cutoff);
 
 % check for contiguous windows with SNR>SNR_min
 
@@ -119,7 +54,7 @@ for i=1:nchannels
 
 	if maxregion>parameters.snr_trials
 		
-		candidate_channels=[candidate_channels;ephys.labels(i)];
+		candidate_channels=[candidate_channels;agg_ephys.labels(i)];
 		trials=[trials;[startidx(loc) stopidx(loc)]];
 	
 	end
@@ -131,7 +66,7 @@ end
 
 for i=1:length(candidate_channels)
 	try 
-		ephys_visual_sua(ephys,histogram,...
+		ephys_visual_sua(agg_ephys,histogram,...
 			'channels',candidate_channels(i),'sort',1,'auto_clust',1,...
 			'savedir',PROCDIR,'align',parameters.spike_align,'sigma_t',parameters.sigma_t,...
 			'jitter',parameters.jitter,'interpolate_f',parameters.spike_interpolate_f,'filt_type',parameters.spike_filt_type,...

@@ -18,37 +18,18 @@ disp('Computing LFP spectrograms and rasters...');
 disp(['Loading data from ' PROCDIR]);
 
 if ~exist(fullfile(PROCDIR,'histogram.mat'),'file')
-	HISTOGRAM=[];
+	histogram=[];
 end
 
-try
-	load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS');
-	if exist(fullfile(PROCDIR,'histogram.mat'),'file')
-		load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
-	end
-catch
-	try
-		disp('Pausing for 60 seconds and will retry');
-		pause(60);
-		load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS');
-		if exist(fullfile(PROCDIR,'histogram.mat'),'file')
-			load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
-		end
-	catch
-
-		disp('Could not properly load files, bailing!');
-		return;
-	end
-end
-
-[samples,ntrials,nchannels]=size(EPHYS_DATA);
+[agg_ephys,histogram,agg_file_datenum]=ephys_pipeline_dataload(PROCDIR,parameters.agg_filename);
+[samples,ntrials,nchannels]=size(agg_ephys.data);
 
 if ntrials>parameters.trial_max
 	disp(['Exceeded trial max, truncating to ' num2str(parameters.trial_max)]);
-	EPHYS_DATA=EPHYS_DATA(:,1:parameters.trial_max,:);
+	agg_ephys.data=agg_ephys.data(:,1:parameters.trial_max,:);
 end
 
-[samples,ntrials,nchannels]=size(EPHYS_DATA);
+[samples,ntrials,nchannels]=size(agg_ephys.data);
 
 % check for peak in the mua that exceeds 4*std seems to be a good rule of thumb
 
@@ -64,7 +45,7 @@ samplemin=parameters.lfp_n/2+(parameters.lfp_minhops*(parameters.lfp_n-parameter
 disp('Computing LFP amplitudes...');
 
 for i=1:length(parameters.freq_range)
-	ephys_visual_lfp_amp(EPHYS_DATA,HISTOGRAM,CHANNELS,...
+	ephys_visual_lfp_amp(agg_ephys,histogram,...
 		'freq_range',parameters.freq_range{i},'savedir',PROCDIR,'fs',parameters.fs,'proc_fs',parameters.proc_fs);
 end
 
@@ -78,7 +59,7 @@ if samples>samplemin & ~exist(fullfile(PROCDIR,'SLEEP_DATA'),'file')
 	if lower(parameters.lfp_method(1))=='c'
 
 		disp('Computing LFP contours...');
-		ephys_visual_lfp_tf_contour(EPHYS_DATA,HISTOGRAM,CHANNELS,...
+		ephys_visual_lfp_tf_contour(agg_ephys,histogram,...
 			'savedir',PROCDIR,'lfp_min_f',...
 			parameters.lfp_min_f,'lfp_max_f',parameters.lfp_max_f,'lfp_n',...
 			parameters.lfp_n,'lfp_nfft',parameters.lfp_nfft,'lfp_overlap',...
@@ -88,7 +69,7 @@ if samples>samplemin & ~exist(fullfile(PROCDIR,'SLEEP_DATA'),'file')
 	else
 
 		disp('Computing LFP spectrograms...');
-		ephys_visual_lfp_tf(EPHYS_DATA,HISTOGRAM,CHANNELS,...
+		ephys_visual_lfp_tf(agg_ephys,histogram,...
 			'method',parameters.lfp_method,'savedir',PROCDIR,'lfp_min_f',...
 			parameters.lfp_min_f,'lfp_max_f',parameters.lfp_max_f,'lfp_n',...
 			parameters.lfp_n,'lfp_nfft',parameters.lfp_nfft,'lfp_overlap',...

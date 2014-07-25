@@ -73,9 +73,10 @@ dw=(w).*((t)/(spec_sigma^2))*-2;
 q=spectrogram(s,w,overlap,n)+eps; %gaussian windowed spectrogram
 q2=spectrogram(s,dw,overlap,n)+eps; %deriv gaussian windowed spectrogram
 
+[t,f]=getspecgram_dim(length(s),n,overlap,n,fs);
+
 if ~isempty(lowfs) & ~isempty(highfs)
 
-	[t,f]=getspecgram_dim(length(s),n,overlap,n,fs);
 	f=flipdim(f(:),1);
 
 	lowpoint=min(find(f<=lowfs))

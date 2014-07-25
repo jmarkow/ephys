@@ -1,15 +1,15 @@
-function [MUA TIME LABEL HISTOGRAM]=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
+function [MUA TIME LABEL HISTOGRAM]=ephys_visual_mua(EPHYS,HISTOGRAM,varargin)
 %generates song-aligned mult-unit rasters
 %
-%	[MUA TIME LABEL HISTOGRAM]=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,varargin)
+%	[MUA TIME LABEL HISTOGRAM]=ephys_visual_mua(EPHYS.data,HISTOGRAM,EPHYS.labels,varargin)
 %
-%	EPHYS_DATA
+%	EPHYS.data
 %	sound-aligned voltage traces from extracted_data.mat (should be the variable ephys_data)
 %
 %	HISTOGRAM
 %	contour histogram returned by ephys_visual_histogram.m (or loaded from histogram.mat)
 %
-%	CHANNELS
+%	EPHYS.labels
 %	channel labels (i.e. the channel that corresponds to a given element in the cell array
 %	ephys_data) from extracted_data.mat%
 %	the following may be specified as parameter/value pairs:
@@ -46,8 +46,12 @@ function [MUA TIME LABEL HISTOGRAM]=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNE
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION %%%%%%%%%%%%%%%%%
 
-if nargin<3
-	error('ephysPipeline:muavis:notenoughparams','Need 3 arguments to continue, see documentation');
+if nargin<2
+	HISTOGRAM=[];
+end
+
+if nargin<1
+	error('ephysPipeline:muavis:notenoughparams','Need 1 argument to continue, see documentation');
 end
 
 nparams=length(varargin);
@@ -59,7 +63,6 @@ end
 %%%
 
 sigma=.0025; % smoothing window in secs
-fs=25e3;
 noise='none'; % common-average reference for noise removal, none to skip digital
 	      % re-referencing
 car_exclude=[];
@@ -71,15 +74,13 @@ mua_colors='hot';
 figtitle='';
 freq_range=[500 5e3]; % frequency range for filtering
 downsampling=2;
-channels=CHANNELS;
+channels=EPHYS.labels;
 hampel=3;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'sigma'
 			smooth_window=varargin{i+1};
-		case 'fs'
-			fs=varargin{i+1};
 		case 'noise'
 			noise=varargin{i+1};
 		case 'savedir'
@@ -111,16 +112,19 @@ end
 
 % intan nearest neighbor mapping
 
-[nsamples,ntrials,nchannels]=size(EPHYS_DATA);
-TIME=[1:nsamples]./fs;
+fs=EPHYS.fs;
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
-proc_data=ephys_denoise_signal(EPHYS_DATA,CHANNELS,channels,'method',noise,'car_exclude',car_exclude);
-clear EPHYS_DATA;
+proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
+clear EPHYS.data;
 proc_data=single(ephys_condition_signal(proc_data,'m','freq_range',freq_range,'sigma',sigma));
+
+[nsamples,ntrials,nchannels]=size(proc_data);
+TIME=[1:nsamples]./fs;
 
 % are we downsampling
 
@@ -142,6 +146,7 @@ else
 	end
 end
 
+MUA.channels=channels;
 MUA.trials=1:ntrials;
 clear proc_data;
 
@@ -212,6 +217,6 @@ for i=1:length(channels)
 
 end
 
-save(fullfile(savedir,'mua.mat'),'MUA','freq_range','channels','CHANNELS');
+save(fullfile(savedir,'mua.mat'),'MUA','freq_range','channels');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

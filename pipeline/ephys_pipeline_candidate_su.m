@@ -43,7 +43,6 @@ if mod(nparams,2)>0
 	error('Parameters must be specified as parameter/value pairs');
 end
 
-fs=25e3;
 noise='none'; % common-average reference for noise removal
 car_exclude=[];
 filtering='y'; % if defined then filtering filter the traces
@@ -56,8 +55,6 @@ channels=EPHYS.labels;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'fs'
-			fs=varargin{i+1};
 		case 'noise'
 			noise=varargin{i+1};
 		case 'filtering'
@@ -73,6 +70,7 @@ end
 
 [samples,ntrials,nchannels]=size(EPHYS.data);
 
+fs=EPHYS.fs;
 proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
 proc_data=ephys_condition_signal(proc_data,'s','freq_range',freq_range,'filt_type',filt_type);
 
@@ -149,7 +147,7 @@ for i=1:length(channels)
 	end
 
 	SNR(:,i)=snr; % for all the spikes, how does the upper end of the distribution look?
-
+	
 	if any(snr>snr_threshold)
 
 		disp(['Found trials with snr > ' num2str(snr_threshold)]);

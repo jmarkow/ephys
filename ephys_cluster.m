@@ -83,6 +83,7 @@ n=1024;
 overlap=1000;
 filter_scale=10;
 downsampling=5;
+train_classifier=1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARAMETER COLLECTION  %%%%%%%%%%%%%%
@@ -111,6 +112,8 @@ for i=1:2:nparams
 			lowfs=varargin{i+1};
 		case 'highfs'
 			highfs=varargin{i+1};
+		case 'train_classifier'
+			train_classifier=varargin{i+1};
 	end
 end
 
@@ -350,8 +353,22 @@ if ~skip
 	uiwait(new_data_plotter(fullfile(proc_dir,'cluster_data.mat'),fullfile(proc_dir,'cluster_results.mat')));
 end
 
-load(fullfile(proc_dir,'cluster_results.mat'),'sorted_syllable');
+load(fullfile(proc_dir,'cluster_results.mat'),'sorted_syllable','syllable_data','cluster');
 load(fullfile(proc_dir,'cluster_data.mat'),'filenames');
+
+if train_classifier
+
+	disp('Training classifier on your selection...');
+
+	% fix for MATLAB 2010a complaining about too many iterations...enforce that method=smo
+	% switched to quadratic kernel function 5/28/13, linear was found to be insufficient in edge-cases
+
+	cluster_choice=cluster.choice;
+
+	classobject=svmtrain(syllable_data(:,[1:6]),cluster.labels,'method','smo','kernel_function','quadratic');
+	save(fullfile(proc_dir,'classify_data.mat'),'classobject','cluster_choice');
+
+end
 
 act_templatesize=length(template.data);
 

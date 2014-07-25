@@ -2,6 +2,8 @@
 
 source ephys_pipeline_wrapper.cfg
 
+trap 'jobs -p | xargs kill'  EXIT
+
 echo 'Starting smscore daemon: ' $EXEC_SMSCORE_D
 echo 'Log:  ' $LOG_SMSCORE
  
@@ -20,6 +22,8 @@ echo 'Log:  ' $LOG_MUA
 echo 'Log:  ' $LOG_LFP
 echo 'Log:  ' $LOG_POSTPROC
 echo 'Log:  ' $LOG_TRACK
+
+
 
 $EXEC_AGGREGATE_D $LOG_AGGREGATE &
 AGGREGATE_PID=$! 
@@ -48,11 +52,15 @@ CLUSTER_PID=$!
 read -p "Press any key to kill Intan daemons and exit... " -n1 -s
 echo ''
 
-kill -9 $SMSCORE_PID
-kill -9 $AGGREGATE_PID
-kill -9 $SUA_PID
-kill -9 $MUA_PID
-kill -9 $LFP_PID
-kill -9 $CLUSTER_PID
-kill -9 $POSTPROC_PID
-kill -9 $TRACK_PID
+#while pgrep -P "$BASHPID" > /dev/null; do
+#       	wait
+#done
+
+#kill -9 $SMSCORE_PID
+#kill -9 $AGGREGATE_PID
+#kill -9 $SUA_PID
+#kill -9 $MUA_PID
+#kill -9 $LFP_PID
+#kill -9 $CLUSTER_PID
+#kill -9 $POSTPROC_PID
+#kill -9 $TRACK_PID

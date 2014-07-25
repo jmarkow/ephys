@@ -15,40 +15,20 @@ fprintf('%-10d%-10d\n\n\n',parameters.fs,parameters.mua_downsampling);
 disp('Computing multi-unit rasters...');
 disp(['Loading data from ' PROCDIR]);
 
-if ~exist(fullfile(PROCDIR,'histogram.mat'),'file')
-	HISTOGRAM=[];
-end
+START_DATENUM=[];
 
-try
-	load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS');
-	if exist(fullfile(PROCDIR,'histogram.mat'),'file')
-		load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
-	end
-catch
-	try
-		disp('Pausing for 60 seconds and will retry');
-		pause(60);
-		load(fullfile(PROCDIR,'aggregated_data.mat'),'EPHYS_DATA','CHANNELS');
-		if exist(fullfile(PROCDIR,'histogram.mat'),'file')
-			load(fullfile(PROCDIR,'histogram.mat'),'HISTOGRAM');
-		end
-	catch
+[agg_ephys,histogram,agg_file_datenum]=ephys_pipeline_dataload(PROCDIR,parameters.agg_filename);
 
-		disp('Could not properly load files, bailing!');
-		return;
-	end
-end
-
-[samples,ntrials,nchannels]=size(EPHYS_DATA);
+[samples,ntrials,nchannels]=size(agg_ephys.data);
 
 if ntrials>parameters.trial_max
 	disp(['Exceeded trial max, truncating to ' num2str(parameters.trial_max)]);
-	EPHYS_DATA=EPHYS_DATA(:,1:parameters.trial_max,:);
+	agg_ephys.data=agg_ephys.data(:,1:parameters.trial_max,:);
 end
 
-[samples,ntrials,nchannels]=size(EPHYS_DATA);
+[samples,ntrials,nchannels]=size(agg_ephys.data);
 
-mua=ephys_visual_mua(EPHYS_DATA,HISTOGRAM,CHANNELS,'savedir',PROCDIR,'fs',parameters.fs);
+mua=ephys_visual_mua(agg_ephys,histogram,'savedir',PROCDIR,'fs',parameters.fs);
 
 % check for peak in the mua that exceeds 4*std seems to be a good rule of thumb
 
@@ -62,7 +42,7 @@ trial_edges=[1:parameters.trial_window:ntrials ntrials];
 
 % slide a window window_trials long and detect peaks
 
-for i=1:length(CHANNELS)
+for i=1:length(agg_ephys.labels)
 
 	% sum across mult-unit, check for 4.5-5*std+mean peaks, if they exist include in the candidate
 	% list, also mark as potential projection neurons
@@ -75,9 +55,9 @@ for i=1:length(CHANNELS)
 		hits=find(sumvec>parameters.proj_cutoff*std(sumvec)+mean(sumvec));
 
 		if ~isempty(hits)
-			disp(['Possible proj. cell detected on ' num2str(CHANNELS(i)) ... 
+			disp(['Possible proj. cell detected on ' num2str(agg_ephys.labels(i)) ... 
 				' trials ' num2str([trial_edges(j:j+1)]) ]);
-			fid=fopen(fullfile(PROCDIR,['proj_channel_' num2str(CHANNELS(i)) ...
+			fid=fopen(fullfile(PROCDIR,['proj_channel_' num2str(agg_ephys.labels(i)) ...
 				'_trials_' num2str(trial_edges(j)) '_' num2str(trial_edges(j+1))	]),'w');
 			fclose(fid);
 		end
