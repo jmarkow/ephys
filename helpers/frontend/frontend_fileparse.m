@@ -182,12 +182,13 @@ if ~isempty(porttoken)
 		if ~isempty(strfind(tokens{porttoken},port_labels(i)))
 			PORTS=[ PORTS port_labels(i) ];
 		end
+
 	end
+else
 
 	% if isempty assume all ports
 
 	PORTS=port_labels;
-
 end	
 
 % parse the date
