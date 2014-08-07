@@ -103,8 +103,8 @@ switch lower(ext)
 		end
 
 		if ~isempty(adc)
-		    	DATASTRUCT.adc.labels=cat(1,adc.channels(:).native_order)';
-		    	DATASTRUCT.adc.data=adc.data';
+		    DATASTRUCT.adc.labels=cat(1,adc.channels(:).native_order)';
+		    DATASTRUCT.adc.data=adc.data';
 			DATASTRUCT.adc.fs=parameters.board_adc_sample_rate;
 			DATASTRUCT.adc.t=adc.t(:);
 	   	end

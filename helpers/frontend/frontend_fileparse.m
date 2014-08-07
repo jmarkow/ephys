@@ -38,7 +38,7 @@ port_labels='abcd';
 [path,filename,ext]=fileparts(FILENAME);
 tokens=regexpi(filename,DELIM,'split');
 
-if isempty(FMT) & length(tokens)>=2
+if strcmp(FMT,'auto') & length(tokens)>=2
 
 	%%% find various tokens
 
@@ -71,8 +71,9 @@ if isempty(FMT) & length(tokens)>=2
 
 	datetoken=length(tokens);
 	datetoken=[datetoken-1:datetoken];
+ 
+	fprintf(1,'Assuming date tokens in positions %i and %i\n',datetoken(1),datetoken(2));
 
-	fprintf(1,'Assuming date tokens in positions %i and %i',datetoken(1),datetoken(2));
 else
 	
 	birdtoken=strfind(lower(FMT),'b');

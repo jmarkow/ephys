@@ -459,10 +459,13 @@ for i=1:length(proc_files)
 
 					birdstruct.ttl.data=birdstruct.adc.data(:,ttl_trace==birdstruct.adc.labels);
 					birdstruct.ttl.fs=birdstruct.adc.fs;
+                    birdstruct.ttl.t=birdstruct.adc.t;
+                    
 				case 'd'
 
 					birdstruct.ttl.data=birdstruct.digin.data(:,ttl_trace==birdstruct.digin.labels);
 					birdstruct.ttl.fs=birdstruct.digin.fs;
+                    birdstruct.ttl.t=birdstruct.digin.t;
 
 			end
 		else
