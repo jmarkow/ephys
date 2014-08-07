@@ -307,7 +307,8 @@ for i=1:length(proc_files)
 
 	% get the date tokens from the last bird, append to all others
 
-	datetokens=find(parse_string=='d');
+	%datetokens=find(parse_string=='d');
+	datetokens=[length(tokens)-1 length(tokens)];
 	datestring='';
 
 	for j=1:length(datetokens)
@@ -455,9 +456,13 @@ for i=1:length(proc_files)
 			switch lower(ttl_source(1))
 
 				case 'c'
+
 					birdstruct.ttl.data=birdstruct.adc.data(:,ttl_trace==birdstruct.adc.labels);
+					birdstruct.ttl.fs=birdstruct.adc.fs;
 				case 'd'
+
 					birdstruct.ttl.data=birdstruct.digin.data(:,ttl_trace==birdstruct.digin.labels);
+					birdstruct.ttl.fs=birdstruct.digin.fs;
 
 			end
 		else
@@ -604,7 +609,9 @@ for i=1:length(proc_files)
 
 				ext_pts=[startpoints(:) stoppoints(:)];
 
-				disp(['TTL detected in file:  ' proc_files{i}]);
+				if ~isempty(ext_pts)
+					disp(['TTL detected in file:  ' proc_files{i}]);
+				end
 
 				frontend_dataextract(bird_split{j},birdstruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
 
@@ -614,7 +621,6 @@ for i=1:length(proc_files)
 					disp('Skipping song detection...');
 					continue;
 				end	
-
 
 			end
 		end
