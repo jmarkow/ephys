@@ -4,12 +4,14 @@ function [WINDOWS TIMES TRIALS CLUSTDATA ISI STATS]=check_clusterquality(SPIKEWI
 %
 %
 
-nclust=size(MODEL.mu,1);
+nmodels=size(MODEL.mu,1);
+
+clusters=unique(LABELS(LABELS>0)); % how many clusters?
+nclust=length(clusters);
 
 STATS.lratio=zeros(1,nclust);
 STATS.isod=zeros(1,nclust);
-clusters=unique(LABELS(LABELS>0)); % how many clusters?
-features=size(SPIKEDATA,2);
+nfeatures=size(SPIKEDATA,2);
 
 for i=1:nclust
 
@@ -51,7 +53,7 @@ for i=1:nclust
 	% l-ratio
 
 	if length(otherpoints>0)
-		STATS.lratio(i)=sum(1-chi2cdf(mahaldist,features))/nclustpoints;
+		STATS.lratio(i)=sum(1-chi2cdf(mahaldist,nfeatures))/nclustpoints;
 	else
 		STATS.lratio(i)=NaN;
 	end
@@ -82,6 +84,10 @@ end
 
 OUTLIERS=SPIKEWINS(:,LABELS==0);
 
+size(TRIALNUM)
+size(LABELS)
+size(SPIKETIMES)
+
 for i=1:nclust
 
 	WINDOWS{i}=SPIKEWINS(:,LABELS==i);
@@ -95,11 +101,15 @@ for i=1:nclust
 		
 		% all spike times in this trial	
 
-		currtrial=SPIKETIMES(trial_boundary(j)+1:trial_boundary(j+1));
+		trial_idx=find(TRIALNUM==uniq_trial(j));
+
+		%currtrial=SPIKETIMES(trial_boundary(j)+1:trial_boundary(j+1));
+
+		currtrial=SPIKETIMES(trial_idx);
 
 		% now all spike ids from this trial
 
-		currlabels=LABELS(TRIALNUM==uniq_trial(j));
+		currlabels=LABELS(trial_idx);
 
 		% spike times for this cluster
 

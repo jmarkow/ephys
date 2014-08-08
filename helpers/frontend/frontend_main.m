@@ -457,15 +457,35 @@ for i=1:length(proc_files)
 
 				case 'c'
 
-					birdstruct.ttl.data=birdstruct.adc.data(:,ttl_trace==birdstruct.adc.labels);
+					ttl_channel=find(ttl_trace==birdstruct.adc.labels);
+
+					birdstruct.ttl.data=birdstruct.adc.data(:,ttl_channel);
 					birdstruct.ttl.fs=birdstruct.adc.fs;
-                    birdstruct.ttl.t=birdstruct.adc.t;
+                    			birdstruct.ttl.t=birdstruct.adc.t;
+	
+			   	        birdstruct.adc.data(:,ttl_channel)=[];
+					birdstruct.adc.labels(ttl_channel)=[];
+
+					if isempty(birdstruct.aux.data)
+						birdstruct.aux.t=[];
+					end
+
                     
 				case 'd'
 
-					birdstruct.ttl.data=birdstruct.digin.data(:,ttl_trace==birdstruct.digin.labels);
+					ttl_channel=find(ttl_trace==birdstruct.digin.labels);
+
+					birdstruct.ttl.data=birdstruct.digin.data(:,ttl_channel);
 					birdstruct.ttl.fs=birdstruct.digin.fs;
-                    birdstruct.ttl.t=birdstruct.digin.t;
+                    			birdstruct.ttl.t=birdstruct.digin.t;
+
+					birdstruct.digin.data(:,ttl_channel)=[];
+					birdstruct.digin.labels(ttl_channel)=[];
+					
+					if isempty(birdstruct.digin.data)
+						birdstruct.aux.t=[];
+					end
+
 
 			end
 		else

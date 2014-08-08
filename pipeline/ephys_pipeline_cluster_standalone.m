@@ -287,8 +287,10 @@ for i=1:length(hits)
 
 		if isfield(store_ttl,'data') & ~isempty(store_ttl.data)
 			ttl.data=store_ttl.data(startpoint:endpoint);
+			ttl.t=store_ttl.t(startpoint:endpoint);
 		else
 			ttl.data=[];
+			ttl.t=[];
 		end
 
 		savename=[ file(1:end-6) '_' templatename '_' num2str(i)];
