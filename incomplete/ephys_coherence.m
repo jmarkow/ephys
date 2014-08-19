@@ -1,4 +1,4 @@
-function [coh,spect1,spect2,freqs,store,stats]=ephys_su_lfp_coherence_spect(SIGNAL1,SIGNAL2,varargin)
+function [coh,spect1,spect2,freqs,store_cross,store_spect1,store_spect2,stats]=ephys_su_lfp_coherence_spect(SIGNAL1,SIGNAL2,varargin)
 %computes coherency spectra between fields and single units
 %
 %
@@ -56,8 +56,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DATA COLLECTION %%%%%%%%%%%%%%%%%%%%
 
-[trials,samples]=size(SIGNAL1)
-[trials,samples]=size(SIGNAL2)
+[trials,samples]=size(SIGNAL1);
+[trials,samples]=size(SIGNAL2);
 
 if isempty(nfft)
 	nfft=max([samples 2^nextpow2(samples)]);
@@ -90,9 +90,9 @@ cross_spect_mean=zeros(1,nfft);
 spect1_mean=zeros(1,nfft);
 spect2_mean=zeros(1,nfft);
 
-store.cross_spect=zeros(trials,nfft);
-store.spect1=zeros(trials,nfft);
-store.spect2=zeros(trials,nfft);
+store_cross=zeros(trials,nfft);
+store_spect1=zeros(trials,nfft);
+store_spect2=zeros(trials,nfft);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AVERAGE SPECTRA %%%%%%%%%%%%%%%%%%%%
@@ -129,9 +129,9 @@ for i=1:trials
 		spect1_tmp=spect1_tmp+power1./(ntapers);
 		spect2_tmp=spect2_tmp+power2./(ntapers);
 
-		store.cross_spect(counter,:)=cross;
-		store.spect1(counter,:)=power1;
-		store.spect2(counter,:)=power2;
+		store_cross(counter,:)=cross;
+		store_spect1(counter,:)=power1;
+		store_spect2(counter,:)=power2;
 
 		counter=counter+1;
 

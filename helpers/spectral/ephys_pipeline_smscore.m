@@ -79,11 +79,11 @@ if ~isempty(lowfs) & ~isempty(highfs)
 
 	f=flipdim(f(:),1);
 
-	lowpoint=min(find(f<=lowfs))
-	highpoint=max(find(f>=highfs))
+	lowpoint=min(find(f<=lowfs));
+	highpoint=max(find(f>=highfs));
 
 	if isempty(lowpoint), lowpoint=length(f); end
-	if isempty(highpoint), hihgpoint=1; end
+	if isempty(highpoint), highpoint=1; end
 
 else
 

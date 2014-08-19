@@ -43,7 +43,11 @@ if length(SPIKES1)~=length(SPIKES2)
 	error('ephysPipeline:spikecorrel:unequaltrials','Unequal number of trials');
 end
 
-ntrials=length(SPIKES1);
+if iscell(SPIKES1)
+    ntrials=length(SPIKES1);
+else
+    ntrials=1;
+end
 
 % center on each spike, check up to maxlag using nbins
 
@@ -55,9 +59,14 @@ density=zeros(1,length(windowbins));
 counter=0;
 for i=1:ntrials
 	
-	spiketimes1=SPIKES1{i};
-	spiketimes2=SPIKES2{i};
-
+    if ntrials>1
+        spiketimes1=SPIKES1{i};
+        spiketimes2=SPIKES2{i};
+    else
+        spiketimes1=SPIKES1;
+        spiketimes2=SPIKES2;
+    end
+        
 	% center on each spike, subtract time from second 
 	% vector of spiketimes and bin
 

@@ -34,16 +34,33 @@ end
 % recomputed on the next run)
 
 try
-	load(DATAFILE,'features');
+	load(DATAFILE,'features','features_parameters');
 catch
 	warning('ephysPipeline:clusterstandalone:loadingattempt1','Could not load %s, pausing 30 seconds',DATAFILE);
 	pause(30);
 	try
-		load(DATAFILE,'features');
+		load(DATAFILE,'features','features_parameters');
 	catch
 		warning('ephysPipeline:clusterstandalone:loadingattempt2','Could not load %s, deleting',DATAFILE);
 		delete(DATAFILE);
 		return;
+	end
+end
+
+if exist('features_parameters','var') & isfield(template.feature_parameters)
+	chk1=template.feature_parameters.low_cutoff==features_parameters.low_cutoff;
+	chk2=template.feature_parameters.high_cutoff==features_parameters.high_cutoff;
+	
+	if (~chk1)|(~chk2)
+		error('Mismatch parameters between template (lo %g hi %g) and data (lo %g hi %g)',...
+			template.feature_parameters.low_cutoff,template.feature_parameters.high_cutoff,...
+			features_parameters.low_cutoff,features_parameters.high_cutoff);
+	end
+else
+	chk=size(features{1},1)==size(template.features{1},1);
+	if ~chk
+		error('Feature size mismatch between template (%g) and data (%g)',...
+			size(features{1},1),size(template.features{1},1));
 	end
 end
 
