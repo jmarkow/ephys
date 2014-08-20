@@ -41,7 +41,8 @@ else
 	time_elapsed=(SLEEP_FILEINTERVAL*60)+1;
 end
 
-data_types={'ephys','ttl','digout','digin','adc','aux'};
+data_types={'ephys','ttl','digout','digin','adc','aux','playback'};
+
 savefun=@(filename,datastruct) save(filename,'-struct','datastruct','-v7.3');
 
 % is it greater than the proposed file interval?

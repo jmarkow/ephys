@@ -1,4 +1,4 @@
-function [BIRDID,RECID,MICTRACE,MICSOURCE,MICPORT,PORTS,TTLTRACE,TTLSOURCE,DATENUM]=frontend_fileparse(FILENAME,DELIM,FMT,DATEFMT)
+function [BIRDID,RECID,MICTRACE,MICSOURCE,MICPORT,PORTS,TTLTRACE,TTLSOURCE,PLAYBACKTRACE,PLAYBACKSOURCE,DATENUM]=frontend_fileparse(FILENAME,DELIM,FMT,DATEFMT)
 %frontend_fileparse
 %
 %	frontend_fileparse(FILENAME,DELIM,FMT)
@@ -29,7 +29,8 @@ MICSOURCE='';
 MICPORT='';
 TTLTRACE=[];
 TTLSOURCE='';
-
+PLAYBACKTRACE=[];
+PLAYBACKSOURCE=[];
 DATENUM=[];
 PORTS='';
 
@@ -67,6 +68,12 @@ if strcmp(FMT,'auto') & length(tokens)>=2
 			fprintf(1,'Detected port token at %i\n',porttoken);
 		end
 
+		playbacktoken=find(~cellfun(@isempty,strfind(tokens(3:end),'playback')))+2;
+		
+		if ~isempty(playbacktoken)
+			fprintf(1,'Detected playback token at %i\n',porttoken);
+		end
+
 	end
 
 	datetoken=length(tokens);
@@ -82,6 +89,7 @@ else
 	ttltoken=strfind(lower(FMT),'t');
 	datetoken=strfind(lower(FMT),'d');
 	porttoken=strfind(lower(FMT),'p');
+	playbacktoken=strfind(lower(FMT),'y');
 
 end
 
@@ -174,6 +182,38 @@ if ~isempty(ttltoken)
 	else
 		warning('No TTL source given, set to digital in');
 		TTLSOURCE='d';
+	end
+end
+
+
+if ~isempty(playbacktoken)
+	string=tokens{playbacktoken};
+	[playbacktokens,startpoint,endpoint]=regexpi(string,'\d+','match');
+
+	if isempty(playbacktokens)
+		error('Could not find playback trace at token %g for file %s', playbacktoken,FILENAME);
+	end
+
+	PLAYBACKTRACE=str2num(playbacktokens{1});	
+
+	if length(string)>endpoint
+		tmp=string(endpoint+1:end);
+
+		if strcmp(lower(tmp(1)),'m')
+			PLAYBACKSOURCE='m';
+		elseif strcmp(lower(tmp(1:2)),'au') 
+			PLAYBACKSOURCE='a';
+		elseif strcmp(lower(tmp(1:2)),'ad')
+			PLAYBACKSOURCE='c';
+		elseif strcmp(lower(tmp(1)),'d')
+			PLAYBACKSOURCE='d';
+		else
+			warning('Did not understand PLAYBACK source %s setting to digital in.',tmp);
+			PLAYBACKSOURCE='d';
+		end
+	else
+		warning('No PLAYBACK source given, set to adc');
+		PLAYBACKSOURCE='c';
 	end
 end
 

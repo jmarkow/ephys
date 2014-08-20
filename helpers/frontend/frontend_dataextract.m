@@ -33,7 +33,7 @@ sonogram_im=flipdim(sonogram_im,1);
 [f,t]=size(sonogram_im);
 im_son_to_vec=(length(DATA.audio.norm_data)-350)/t;
 
-data_types={'ephys','ttl','digout','digin','adc','aux','audio'};
+data_types={'ephys','ttl','digout','digin','adc','aux','audio','playback'};
 
 savefun=@(filename,datastruct) save(filename,'-struct','datastruct','-v7.3');
 

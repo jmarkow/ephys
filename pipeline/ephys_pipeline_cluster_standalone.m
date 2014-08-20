@@ -47,7 +47,7 @@ catch
 	end
 end
 
-if exist('features_parameters','var') & isfield(template.feature_parameters)
+if exist('features_parameters','var') & isfield(template,'feature_parameters')
 	chk1=template.feature_parameters.low_cutoff==features_parameters.low_cutoff;
 	chk2=template.feature_parameters.high_cutoff==features_parameters.high_cutoff;
 	

@@ -75,7 +75,7 @@ figtitle='';
 freq_range=[500 5e3]; % frequency range for filtering
 downsampling=2;
 channels=EPHYS.labels;
-hampel=3;
+hampel=6;
 attenuation=40;
 ripple=.2;
 
@@ -206,7 +206,6 @@ for i=1:length(channels)
 	else
 		imagesc(PLOTMUA.t,PLOTMUA.trials,PLOTMUA.image);
 		colormap(mua_colors);
-		axis xy;
 		xlabel('Time (in s)','FontSize',13,'FontName','Helvetica');
 		ylabel('Trial','FontSize',13,'FontName','Helvetica');
 		box off
