@@ -362,7 +362,7 @@ for i=1:length(proc_files)
 			disp(['Mic ch:  ' num2str(mic_trace)]);
 			disp(['Mic source:  ' mic_source]);
 			disp(['Mic port:  ' mic_port]);
-			disp(['Playback ch:  ' playback_trace]);
+			disp(['Playback ch:  ' num2str(playback_trace)]);
 			disp(['Playback source:  ' playback_source]);
 			disp(['Data ports:  ' ports]);
 
@@ -451,7 +451,7 @@ for i=1:length(proc_files)
 		isttl=~isempty(ttl_trace);
 		isplayback=~isempty(playback_trace);
 
-		disp(['Flags: mic ' num2str(ismic) ' ttl ' num2str(isttl)]);
+		disp(['Flags: mic ' num2str(ismic) ' ttl ' num2str(isttl) ' playback ' num2str(isplayback)]);
 
 		% if we use a ttl trigger, assume the source is digital
 
@@ -460,17 +460,17 @@ for i=1:length(proc_files)
 				
 				case 'c'
 
-					ttl_channel=find(ttl_trace==birdstruct.adc.labels);
+                    playback_channel=find(playback_trace==birdstruct.adc.labels);
 
 					birdstruct.playback.data=birdstruct.adc.data(:,playback_channel);
 					birdstruct.playback.fs=birdstruct.adc.fs;
-                    			birdstruct.playback.t=birdstruct.adc.t;
+                    birdstruct.playback.t=birdstruct.adc.t;
 	
-			   	        birdstruct.adc.data(:,playback_channel)=[];
+			   	    birdstruct.adc.data(:,playback_channel)=[];
 					birdstruct.adc.labels(playback_channel)=[];
 
-					if isempty(birdstruct.aux.data)
-						birdstruct.aux.t=[];
+					if isempty(birdstruct.adc.data)
+						birdstruct.adc.t=[];
 					end
 
                     
@@ -480,13 +480,13 @@ for i=1:length(proc_files)
 
 					birdstruct.playback.data=birdstruct.digin.data(:,playback_channel);
 					birdstruct.playback.fs=birdstruct.digin.fs;
-                    			birdstruct.playback.t=birdstruct.digin.t;
+                    birdstruct.playback.t=birdstruct.digin.t;
 
 					birdstruct.digin.data(:,playback_channel)=[];
 					birdstruct.digin.labels(playback_channel)=[];
 					
 					if isempty(birdstruct.digin.data)
-						birdstruct.aux.t=[];
+						birdstruct.digin.t=[];
 					end
 
 
@@ -505,13 +505,13 @@ for i=1:length(proc_files)
 
 					birdstruct.ttl.data=birdstruct.adc.data(:,ttl_channel);
 					birdstruct.ttl.fs=birdstruct.adc.fs;
-                    			birdstruct.ttl.t=birdstruct.adc.t;
+                    birdstruct.ttl.t=birdstruct.adc.t;
 	
-			   	        birdstruct.adc.data(:,ttl_channel)=[];
+			   	    birdstruct.adc.data(:,ttl_channel)=[];
 					birdstruct.adc.labels(ttl_channel)=[];
 
-					if isempty(birdstruct.aux.data)
-						birdstruct.aux.t=[];
+					if isempty(birdstruct.adc.data)
+						birdstruct.adc.t=[];
 					end
 
                     
@@ -527,7 +527,7 @@ for i=1:length(proc_files)
 					birdstruct.digin.labels(ttl_channel)=[];
 					
 					if isempty(birdstruct.digin.data)
-						birdstruct.aux.t=[];
+						birdstruct.digin.t=[];
 					end
 
 

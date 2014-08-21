@@ -34,9 +34,11 @@ parameters=DATA.parameters;
 % get the date number of the last saved file
 
 if ~isempty(sleep_listing)
-	[~,~,~,~,~,~,~,~,last_datenum]=frontend_fileparse(sleep_listing(end).name,DELIM,newstring);
-    disp(['Last extraction:  ' datestr(last_datenum)]);
-	time_elapsed=etime(datevec(DATA.file_datenum),datevec(last_datenum));
+    tokens=regexp(sleep_listing(end).name,DELIM,'split');
+    datetoken=length(tokens)-1:length(tokens);
+    last_datenum=datenum([tokens{datetoken}],'yymmddHHMMSS');
+	disp(['Last extraction:  ' datestr(last_datenum)]);
+	time_elapsed=etime(datevec(DATA.file_datenum),datevec(last_datenum))
 else
 	time_elapsed=(SLEEP_FILEINTERVAL*60)+1;
 end
