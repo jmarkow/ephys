@@ -31,7 +31,7 @@ end
 sonogram_im=sonogram_im(startidx:stopidx,:);
 sonogram_im=flipdim(sonogram_im,1);
 [f,t]=size(sonogram_im);
-im_son_to_vec=(length(DATA.audio.norm_data)-500)/t;
+im_son_to_vec=(length(DATA.audio.norm_data)-400)/t;
 
 data_types={'ephys','ttl','digout','digin','adc','aux','audio','playback'};
 
@@ -72,7 +72,7 @@ for i=1:size(EXT_PTS,1)
 	chunk_sonogram_im=chunk_sonogram_im(startidx:stopidx,:);
 	chunk_sonogram_im=flipdim(chunk_sonogram_im,1);
 	[f,t]=size(chunk_sonogram_im);
-	chunk_im_son_to_vec=(length(EXTDATA.audio.data)-500)/t;
+	chunk_im_son_to_vec=(length(EXTDATA.audio.data)-200)/t;
 
 	if ~isempty(EXTDATA.ttl.data)
 		ttl_points=find(EXTDATA.ttl.data>.5);

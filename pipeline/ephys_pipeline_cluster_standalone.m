@@ -4,6 +4,23 @@ function ephys_pipeline_cluster_standalone(TEMPLATEFILE,DATAFILE,CLASSIFYFILE,CO
 %
 %
 
+[templatepath,junk1,junk2]=fileparts(TEMPLATEFILE);
+
+tokens=regexp(templatepath,filesep,'split');
+templatename=tokens{end};
+
+[datapath,file,ext]=fileparts(DATAFILE);
+rawfile=fullfile(datapath,'..',[ file(1:end-6) '.mat']);
+
+savedir=fullfile(datapath,'..',templatename);
+
+disp(['Checking file ' DATAFILE]);
+disp(['Checking for matches to ' TEMPLATEFILE]);
+
+if ~exist(rawfile,'file')
+	disp(['Corresponding data file ' rawfile ' is missing, skipping...']);
+	return;
+end
 
 parameters=ephys_pipeline_readconfig(CONFIG);
 
@@ -52,16 +69,31 @@ if exist('features_parameters','var') & isfield(template,'feature_parameters')
 	chk2=template.feature_parameters.high_cutoff==features_parameters.high_cutoff;
 	
 	if (~chk1)|(~chk2)
-		error('Mismatch parameters between template (lo %g hi %g) and data (lo %g hi %g)',...
+		write_done_signal(savedir,[file ext]);
+		warning('Mismatch parameters between template (lo %g hi %g) and data (lo %g hi %g)',...
 			template.feature_parameters.low_cutoff,template.feature_parameters.high_cutoff,...
 			features_parameters.low_cutoff,features_parameters.high_cutoff);
+		return;
 	end
-else
+	
 	chk=size(features{1},1)==size(template.features{1},1);
 	if ~chk
-		error('Feature size mismatch between template (%g) and data (%g)',...
+		write_done_signal(savedir,[file ext]);
+		warning('Feature size mismatch between template (%g) and data (%g)',...
 			size(features{1},1),size(template.features{1},1));
+		return;
 	end
+
+else
+	
+	chk=size(features{1},1)==size(template.features{1},1);
+	if ~chk
+		write_done_signal(savedir,[file ext]);
+		warning('Feature size mismatch between template (%g) and data (%g)',...
+			size(features{1},1),size(template.features{1},1));
+		return;
+	end
+
 end
 
 load(CLASSIFYFILE,'cluster_choice','classobject');
@@ -69,6 +101,8 @@ load(CLASSIFYFILE,'cluster_choice','classobject');
 if length(padding)==2
 	disp(['Will pad extractions using the following pads:  ' num2str(padding)]);
 end
+
+
 
 [junk,templength]=size(template.features{1});
 templength=templength-1;
@@ -83,25 +117,11 @@ temp_mat=[];
 
 % we'll write the done signal (.dotfile) to the datafile path
 
-[templatepath,junk1,junk2]=fileparts(TEMPLATEFILE);
 
-tokens=regexp(templatepath,filesep,'split');
 
 % the template name is the directory the template data is stored in, this will
 % be a prefix for the done signal
 
-templatename=tokens{end};
-
-[datapath,file,ext]=fileparts(DATAFILE);
-
-rawfile=fullfile(datapath,'..',[ file(1:end-6) '.mat']);
-
-
-if ~exist(rawfile,'file')
-	return;
-end
-
-savedir=fullfile(datapath,'..',templatename);
 
 imagedir=fullfile(savedir,'gif');
 wavdir=fullfile(savedir,'wav');
@@ -124,7 +144,6 @@ fclose(fid);
 
 % compute in a sliding 1 sec window perhaps...
 
-disp(['Checking ' ' for matches to ' TEMPLATEFILE]);
 
 error_count=0;
 

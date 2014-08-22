@@ -30,7 +30,9 @@ while true; do
 
 	source ephys_pipeline_wrapper.cfg
 
-	BIRDLIST=( `ls -1 $ROOTDIR` )
+	# sort birdlist in reverse chronological order (most recently modified first)
+
+	BIRDLIST=( `ls -1t $ROOTDIR` )
 
 	for BIRD in ${BIRDLIST[@]}; do 
 
@@ -38,7 +40,9 @@ while true; do
 			continue;
 		fi
 
-		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*score.mat" | grep -v '/\.' | egrep -v 'ttl_score.mat'` )
+		# sort candidate files in reverse chrono order again, always work on most recent data first
+
+		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*score.mat" | grep -v '/\.' | egrep -v 'ttl_score.mat' | sort -nr` )
 
 		# check for files that have not been processed for this template
 
@@ -103,7 +107,7 @@ while true; do
 			continue;
 		fi
 
-		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*ttl_score.mat" | grep -v '/\.'` )
+		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*ttl_score.mat" | grep -v '/\.' | sort -nr` )
 
 		# check for files that have not been processed for this template
 
