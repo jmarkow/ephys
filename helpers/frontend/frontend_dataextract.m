@@ -72,6 +72,13 @@ for i=1:size(EXT_PTS,1)
 	chunk_sonogram_im=chunk_sonogram_im(startidx:stopidx,:);
 	chunk_sonogram_im=flipdim(chunk_sonogram_im,1);
 
+	if ~isempty(EXTDATA.ttl.data)
+		ttl_points=find(EXTDATA.ttl.data>.5);
+		ttl_son=round(ttl_points/im_son_to_vec);
+		ttl_son(ttl_son<1|ttl_son>size(chunk_sonogram_im,2))=[];
+		chunk_sonogram_im(1:10,round(ttl_son))=62;
+	end
+
 	imwrite(uint8(chunk_sonogram_im),colormap([ COLORS '(63)']),fullfile(DIRS.image,[ save_name '.gif']),'gif');
 
 	

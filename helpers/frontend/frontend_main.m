@@ -457,47 +457,47 @@ for i=1:length(proc_files)
 
 		if isplayback
 			switch(lower(playback_source(1)))
-				
+
 				case 'c'
 
-                    playback_channel=find(playback_trace==birdstruct.adc.labels);
+					playback_channel=find(playback_trace==birdstruct.adc.labels);
 
 					birdstruct.playback.data=birdstruct.adc.data(:,playback_channel);
 					birdstruct.playback.fs=birdstruct.adc.fs;
-                    birdstruct.playback.t=birdstruct.adc.t;
-	
-			   	    birdstruct.adc.data(:,playback_channel)=[];
+					birdstruct.playback.t=birdstruct.adc.t;
+
+					birdstruct.adc.data(:,playback_channel)=[];
 					birdstruct.adc.labels(playback_channel)=[];
 
 					if isempty(birdstruct.adc.data)
 						birdstruct.adc.t=[];
 					end
 
-                    
+
 				case 'd'
 
 					playback_channel=find(playback_trace==birdstruct.digin.labels);
 
 					birdstruct.playback.data=birdstruct.digin.data(:,playback_channel);
 					birdstruct.playback.fs=birdstruct.digin.fs;
-                    birdstruct.playback.t=birdstruct.digin.t;
+					birdstruct.playback.t=birdstruct.digin.t;
 
 					birdstruct.digin.data(:,playback_channel)=[];
 					birdstruct.digin.labels(playback_channel)=[];
-					
+
 					if isempty(birdstruct.digin.data)
 						birdstruct.digin.t=[];
 					end
 
 
-			end
-		else
+				end
+			else
 				birdstruct.playback.data=[];
-		end
+			end
 
-		if isttl
+			if isttl
 
-			switch lower(ttl_source(1))
+				switch lower(ttl_source(1))
 
 				case 'c'
 
@@ -505,9 +505,9 @@ for i=1:length(proc_files)
 
 					birdstruct.ttl.data=birdstruct.adc.data(:,ttl_channel);
 					birdstruct.ttl.fs=birdstruct.adc.fs;
-                    birdstruct.ttl.t=birdstruct.adc.t;
+                    			birdstruct.ttl.t=birdstruct.adc.t;
 	
-			   	    birdstruct.adc.data(:,ttl_channel)=[];
+			   	    	birdstruct.adc.data(:,ttl_channel)=[];
 					birdstruct.adc.labels(ttl_channel)=[];
 
 					if isempty(birdstruct.adc.data)
