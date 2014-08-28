@@ -269,23 +269,45 @@ for i=1:length(proc_files)
 
 	% delete dirIectories
 
-	tmp_isdir=cat(1,filelisting(:).isdir);
-	tmp_filelisting(isdir)=[];
+	tmp_isdir=cat(1,tmp_filelisting(:).isdir);
+	tmp_filelisting(tmp_isdir)=[];
 
-	tmp_datenums=cat(1,filelisting(:).datenum);
+	tmp_datenums=cat(1,tmp_filelisting(:).datenum);
 
-	% latest file
-	
-	last_file=datevec(max(tmp_datenums));
-	file_elapsed=etime(clock,last_file)/60; % time between now and when the last file was created
+	if email_monitor>0
 
-	% read in appropriate suffixes 
+		if isempty(tmp_datenums)
 
-	disp(['Time since last file created (mins):  ' num2str(fileopen_elapsed)]);
+			disp('No files detected, pausing for 10 seconds...');
+			pause(10);
+
+			tmp_filelisting=dir(fullfile(DIR));
+
+			% delete dirIectories
+
+			tmp_isdir=cat(1,tmp_filelisting(:).isdir);
+			tmp_filelisting(tmp_isdir)=[];
+
+			tmp_datenums=cat(1,tmp_filelisting(:).datenum);
+
+			if isempty(tmp_datenums)
+				file_elapsed=inf;
+			end
+
+		else
+
+			last_file=datevec(max(tmp_datenums));
+			file_elapsed=etime(clock,last_file)/60; % time between now and when the last file was created
+
+		end
+
+		disp(['Time since last file created (mins):  ' num2str(file_elapsed)]);
+
+	end
 
 	if email_monitor>0 & mail_flag==0
-		if fileopen_elapsed>email_monitor
-			gmail_send(['An Intan file has not been created in ' num2str(fileopen_elapsed) ' minutes.']);
+		if file_elapsed>email_monitor
+			gmail_send(['An Intan file has not been created in ' num2str(file_elapsed) ' minutes.']);
 			mail_flag=1; % don't send another e-mail!
 		end
 
