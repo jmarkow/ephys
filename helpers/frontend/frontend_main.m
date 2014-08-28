@@ -262,6 +262,35 @@ for i=1:length(proc_files)
 
 	%%% check if file is still being written to, check byte change within N msec
 
+
+	% when was the last file created?
+
+	tmp_filelisting=dir(fullfile(DIR));
+
+	% delete dirIectories
+
+	tmp_isdir=cat(1,filelisting(:).isdir);
+	tmp_filelisting(isdir)=[];
+
+	tmp_datenums=cat(1,filelisting(:).datenum);
+
+	% latest file
+	
+	last_file=datevec(max(tmp_datenums));
+	file_elapsed=etime(clock,last_file)/60; % time between now and when the last file was created
+
+	% read in appropriate suffixes 
+
+	disp(['Time since last file created (mins):  ' num2str(fileopen_elapsed)]);
+
+	if email_monitor>0 & mail_flag==0
+		if fileopen_elapsed>email_monitor
+			gmail_send(['An Intan file has not been created in ' num2str(fileopen_elapsed) ' minutes.']);
+			mail_flag=1; % don't send another e-mail!
+		end
+
+	end
+
 	dir1=dir(proc_files{i});
 	pause(file_check);
 	dir2=dir(proc_files{i});
@@ -277,21 +306,6 @@ for i=1:length(proc_files)
 
 			datastruct=frontend_readdata(proc_files{i});
 			datastruct.original_filename=proc_files{i};
-
-			fileopen_time2=clock;
-			fileopen_elapsed=etime(fileopen_time2,fileopen_time1)/60; % elapsed time in minutes
-
-			disp(['Time since last file successfully opened (mins):  ' num2str(fileopen_elapsed)]);
-
-			%if email_monitor>0 & mail_flag==0
-			%	if fileopen_elapsed>email_monitor
-			%		gmail_send(['An Intan file has not been created in ' num2str(fileopen_elapsed) ' minutes.']);
-			%		mail_flag=1; % don't send another e-mail!
-			%	end
-
-			%end
-
-			fileopen_time1=fileopen_time2;
 
 		catch err
 
