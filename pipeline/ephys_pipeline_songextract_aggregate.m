@@ -57,7 +57,7 @@ if is_legacy
 
 	clearvars ephys_data channels fs;
 else
-	load(fullfile(FILEDIR,listing(1).name),'ephys','audio');
+	load(fullfile(FILEDIR,listing(1).name),'ephys','audio','playback');
 end
 
 EPHYS.fs=ephys.fs;
@@ -65,6 +65,11 @@ AUDIO.fs=audio.fs;
 
 EPHYS.t=ephys.t;
 AUDIO.t=audio.t;
+
+if exist('playback','var')
+	PLAYBACK.t=playback.t;
+	PLAYBACK.fs=playback.fs;
+end
 
 % number of samples and channels
 
@@ -84,8 +89,8 @@ dircount=1;
 
 % extract in a sliding window, generate histograms and trigger mua, sua and lfp processing
 
-savefun=@(filename,agg_ephys,agg_audio,agg_ttl,agg_file_datenum) ...
-	save(filename,'agg_ephys','agg_audio','agg_ttl','agg_file_datenum','-v7.3');
+savefun=@(filename,agg_ephys,agg_audio,agg_ttl,agg_playback,agg_file_datenum) ...
+	save(filename,'agg_ephys','agg_audio','agg_ttl','agg_playback','agg_file_datenum','-v7.3');
 
 for i=0:parameters.trial_win:ntrials
 	
@@ -145,6 +150,7 @@ for i=0:parameters.trial_win:ntrials
 
 	EPHYS.data=zeros(samples,length(currtrials),length(all_labels),'single');
 	AUDIO.data=zeros(samples,length(currtrials));
+	PLAYBACK.data=zeros(samples,length(currtrials));
 	FILE_DATENUM=zeros(1,length(currtrials));
 	TTL.data=zeros(samples,length(currtrials));
 
@@ -173,16 +179,21 @@ for i=0:parameters.trial_win:ntrials
 			clearvars ephys_data mic_data channels fs start_datenum ttl_data;
 
 		else
-			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys','audio','file_datenum','ttl');
+			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys','audio','file_datenum','ttl','playback');
 		end
 
 		AUDIO.data(:,j)=audio.data;
 		
-		if ~exist('ttl','var') | isempty(ttl.data) | ~isfield(ttl,'data');
-			ttl.data=zeros(size(audio.data));
+		if ~exist('ttl','var') | ~isfield(ttl,'data') | isempty(ttl.data) 
+			ttl.data=ones(size(audio.data)).*NaN;
+		end
+
+		if ~exist('playback','var') |  ~isfield(playback,'data') | isempty(playback.data) 
+			playback.data=ones(size(audio.data)).*NaN;
 		end
 
 		TTL.data(:,j)=ttl.data;
+		PLAYBACK.data(:,j)=playback.data;
 
 		for k=1:length(ephys.labels)
 
@@ -209,7 +220,17 @@ for i=0:parameters.trial_win:ntrials
 
 	end
 
-	savefun(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'aggregated_data.mat'),EPHYS,AUDIO,TTL,FILE_DATENUM);
+	% clear any unused data
+
+	if sum(all(isnan(TTL.data)))==length(currtrials)
+		TTL.data=[];
+	end
+
+	if sum(all(isnan(PLAYBACK.data)))==length(currtrials)
+		PLAYBACK.data=[];
+	end
+
+	savefun(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'aggregated_data.mat'),EPHYS,AUDIO,TTL,PLAYBACK,FILE_DATENUM);
 
 	if SLEEPSTATUS
 

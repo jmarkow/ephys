@@ -125,10 +125,10 @@ nosort=0;
 subdir='pretty_bird';
 sleep_window=[ 22 7 ]; % times for keeping track of sleep data (24 hr time, start and stop)
 auto_delete_int=1; % delete data n days old
-sleep_fileinterval=30; % specify file interval (in minutes) 
+sleep_fileinterval=10; % specify file interval (in minutes) 
 sleep_segment=5; % how much data to keep (in seconds)
 ttl_skip=1; % skip song detection if TTL detected?
-
+email_monitor=0; % monitor file creation, email if no files created in email_monitor minutes
 file_check=.2; % how long to wait between file reads to check if file is no longer being written (in seconds)
 
 mfile_path = mfilename('fullpath');
@@ -202,6 +202,8 @@ for i=1:2:nparams
 			ext=varargin{i+1};
 		case 'parse_string'
 			parse_string=varargin{i+1};
+		case 'email_monitor'
+			email_monitor=varargin{i+1};
 	end
 end
 
@@ -240,6 +242,9 @@ if ~isempty(auto_delete_int)
 	auto_delete(proc_dir,auto_delete_int,ext);    
 end
 
+fileopen_time1=clock; % get the current time to track file creation
+mail_flag=0;
+
 for i=1:length(proc_files)
 
 
@@ -272,6 +277,21 @@ for i=1:length(proc_files)
 
 			datastruct=frontend_readdata(proc_files{i});
 			datastruct.original_filename=proc_files{i};
+
+			fileopen_time2=clock;
+			fileopen_elapsed=etime(fileopen_time1,fileopen_time2)/60; % elapsed time in minutes
+
+			disp(['Time since last file successfully opened (mins):  ' num2str(fileopen_elapsed)]);
+
+			if email_monitor>0 & mail_flag==0
+				if fileopen_elapsed>email_monitor
+					gmail_send(['An Intan file has not been created in ' num2str(fileopen_elapsed) ' minutes.']);
+					mail_flag=1; % don't send another e-mail!
+				end
+
+			end
+
+			fileopen_time1=fileopen_time2;
 
 		catch err
 

@@ -258,8 +258,10 @@ if is_legacy
 	ttl.data=ttl_data;
 	file_datenum=start_datenum;
 
+	playback=[];
+
 else
-	load(rawfile,'audio','ephys','ttl','file_datenum');
+	load(rawfile,'audio','ephys','ttl','file_datenum','playback');
 end
 
 [b,a]=ellip(5,.2,80,[700]/(audio.fs/2),'high');
@@ -291,6 +293,7 @@ prev_endpoint=0;
 store_audio=audio;
 store_ephys=ephys;
 store_ttl=ttl;
+store_playback=playback;
 
 disp(['Extracting ' num2str(length(hits)) ' hits']);
 
@@ -329,9 +332,17 @@ for i=1:length(hits)
 			ttl.t=[];
 		end
 
+		if isfield(store_playback,'data') & ~isempty(playback.data)
+			playback.data=store_playback.data(startpoint:endpoint);
+			playback.t=store_playback.t(startpoint:endpoint);
+		else
+			playback.data=[];
+			playback.t=[];
+		end
+
 		savename=[ file(1:end-6) '_' templatename '_' num2str(i)];
 
-		save(fullfile(matdir,[savename '.mat']),'audio','ephys','ttl','file_datenum');
+		save(fullfile(matdir,[savename '.mat']),'audio','ephys','ttl','file_datenum','playback');
 
 		% write out the extraction
 
