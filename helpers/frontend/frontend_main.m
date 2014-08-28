@@ -279,7 +279,7 @@ for i=1:length(proc_files)
 			datastruct.original_filename=proc_files{i};
 
 			fileopen_time2=clock;
-			fileopen_elapsed=etime(fileopen_time1,fileopen_time2)/60; % elapsed time in minutes
+			fileopen_elapsed=etime(fileopen_time2,fileopen_time1)/60; % elapsed time in minutes
 
 			disp(['Time since last file successfully opened (mins):  ' num2str(fileopen_elapsed)]);
 
