@@ -283,13 +283,13 @@ for i=1:length(proc_files)
 
 			disp(['Time since last file successfully opened (mins):  ' num2str(fileopen_elapsed)]);
 
-			if email_monitor>0 & mail_flag==0
-				if fileopen_elapsed>email_monitor
-					gmail_send(['An Intan file has not been created in ' num2str(fileopen_elapsed) ' minutes.']);
-					mail_flag=1; % don't send another e-mail!
-				end
+			%if email_monitor>0 & mail_flag==0
+			%	if fileopen_elapsed>email_monitor
+			%		gmail_send(['An Intan file has not been created in ' num2str(fileopen_elapsed) ' minutes.']);
+			%		mail_flag=1; % don't send another e-mail!
+			%	end
 
-			end
+			%end
 
 			fileopen_time1=fileopen_time2;
 

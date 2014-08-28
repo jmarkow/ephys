@@ -55,6 +55,7 @@ fr_smoothing=50;
 lfp_smoothing=30;
 fs=10;
 
+
 for i=1:2:nparams
 	switch lower(varargin{i})
 		case 'fr_smoothing'

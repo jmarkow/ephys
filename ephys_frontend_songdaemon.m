@@ -32,12 +32,45 @@ function ephys_songdaemon(DIR,varargin)
 
 % simply loops intan_songdet_intmic in the current directory
 
+email_monitor=0;
+
 if nargin<1
 	DIR=pwd;
 end
 
+nparams=length(varargin);
+
+if mod(nparams,2)>0
+	error('Parameters must be specified as parameter/value pairs!');
+end
+
+for i=1:2:nparams
+	switch lower(varargin{i})
+		case 'email_monitor'
+			email_monitor=varargin{i+1};
+	end
+end
+
+
+if email_monitor
+	disp(['Email monitoring enabled']);
+end
+
+mail_flag=0;
+
 while 1==1
+
+	tmp=dir(pwd);
+	lastmod=datevec(tmp(1).datenum);
+
+	fileopen_elapsed=etime(clock,lastmod)/60; % get time since directory last modified in minutes
+
+	if email_monitor>0 & mail_flag==0 & fileopen_elapsed>email_monitor
+		gmail_send(['An Intan file has not been created in ' num2str(fileopen_elapsed) ' minutes.']);
+		mail_flag=1; % don't send another e-mail!
+	end
+
 	frontend_main(DIR,varargin{:});
-	%disp('Pausing for 10 seconds');
 	pause(10);
+
 end

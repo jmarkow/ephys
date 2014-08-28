@@ -98,7 +98,8 @@ end
 
 
 for j=1:length(channels)
-	ifr=ephys_murate(agg_ephys,'channels',20,'sigma_t',sigma_t,'noise','car');
+
+	ifr=ephys_murate(agg_ephys,'channels',channels(j),'sigma_t',sigma_t,'noise','car');
 
 	kernedges=[-3*fr_sigma:1/agg_ephys.fs:3*fr_sigma];
 	kernel=normpdf(kernedges,0,fr_sigma);
@@ -108,10 +109,15 @@ for j=1:length(channels)
 
 	smooth_ifr=filter(kernel,1,ifr');
 
-	fr(1).time_series=[ downsample(smooth_ifr,downfact) ];
+	fr(j).time_series=[ downsample(smooth_ifr,downfact) ];
 	%fr.channels=[ agg_ephys.labels(j).*ones(1,size(smooth_ifr,2)) ];
-	fr(2).datenum=[ agg_file_datenum ];
+	fr(j).datenum=[ agg_file_datenum ];
+	fr(j).channels=channels(j);
+	fr(j).fs=proc_fs;
+
 end
+
+lfp=[];
 
 %nchannels=length(agg_ephys.labels);
 
