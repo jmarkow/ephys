@@ -263,7 +263,7 @@ if email_monitor>0
 
 	if isempty(tmp_datenums)
 
-		disp('No files detected, pausing for ' num2str(email_wait) ' seconds...');
+		disp(['No files detected, pausing for ' num2str(email_wait) ' seconds...']);
 		pause(email_wait);
 
 		tmp_filelisting=dir(fullfile(DIR));
