@@ -129,27 +129,3 @@ end
 
 set(gca,'TickDir','out','FontSize',9,'FontName','Helvetica');
 xlim([round(min(time_elapsed)*10)/10 round(max(time_elapsed)*10)/10]);
-
-%%%% bin time
-%
-%if sum(time_elapsed<0)>0
-%	binx(1)=-1;
-%	biny{1}=DATA(time_elapsed<0);
-%else
-%	binx=[];
-%	biny={};
-%end
-%
-%
-%for i=1:length(bins)
-%	binx(end+1)=bins(i);
-%	biny{end+1}=DATA(days_since==bins(i));
-%end
-%
-%mu=cellfun(@median,biny)
-%stdev=cellfun(@std,biny)
-%len=cellfun(@length,biny)
-%sem=stdev./sqrt(len)
-
-
-

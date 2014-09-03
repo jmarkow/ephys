@@ -257,11 +257,11 @@ tmp_filenames={tmp_filelisting(:).name};
 tmp_hits=regexp(tmp_filenames,'\.(rhd|int)','match');
 tmp_hits=cellfun(@length,tmp_hits)>0;
 tmp_filelisting=tmp_filelisting(tmp_hits);
-tmp_datenums=cat(1,tmp_filelisting(:).datenum)
+tmp_datenums=cat(1,tmp_filelisting(:).datenum);
 
 file_elapsed=0;
 
-if email_monitor>0
+if email_monitor>0 & EMAIL_FLAG==0
 
 	if isempty(tmp_datenums)
 
