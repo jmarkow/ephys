@@ -36,8 +36,12 @@ if nargin<1
 	DIR=pwd;
 end
 
+email_flag=0;
 while 1==1
-	frontend_main(DIR,varargin{:});
-	%disp('Pausing for 10 seconds');
+	
+	% return the email flag in case we're monitoring so multiple emails are not sent
+
+	email_flag=frontend_main(DIR,varargin{:},'email_flag',email_flag);
+	disp(['Email flag:  ' num2str(email_flag)]);
 	pause(10);
 end

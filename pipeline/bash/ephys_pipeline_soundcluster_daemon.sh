@@ -40,9 +40,7 @@ while true; do
 			continue;
 		fi
 
-		# sort candidate files in reverse chrono order again, always work on most recent data first
-
-		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*score.mat" | grep -v '/\.' | egrep -v 'ttl_score.mat' | sort -nr` )
+		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*score.mat" | grep -v '/\.' | egrep -v 'ttl_score.mat'` )
 
 		# check for files that have not been processed for this template
 
@@ -107,7 +105,7 @@ while true; do
 			continue;
 		fi
 
-		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*ttl_score.mat" | grep -v '/\.' | sort -nr` )
+		FILELIST=( `find $ROOTDIR/$BIRD -name "*songdet*_chunk_*ttl_score.mat" | grep -v '/\.'` )
 
 		# check for files that have not been processed for this template
 

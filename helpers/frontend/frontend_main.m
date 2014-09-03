@@ -1,4 +1,4 @@
-function intan_songdet_intmic(DIR,varargin)
+function EMAIL_FLAG=frontend_main(DIR,varargin)
 %intan_songdet_intmic.m is the core script for processing Intan files
 %on the fly.  
 %
@@ -128,7 +128,11 @@ auto_delete_int=1; % delete data n days old
 sleep_fileinterval=10; % specify file interval (in minutes) 
 sleep_segment=5; % how much data to keep (in seconds)
 ttl_skip=1; % skip song detection if TTL detected?
+
 email_monitor=0; % monitor file creation, email if no files created in email_monitor minutes
+email_flag=0;
+email_wait=120;
+
 file_check=.2; % how long to wait between file reads to check if file is no longer being written (in seconds)
 
 mfile_path = mfilename('fullpath');
@@ -204,8 +208,14 @@ for i=1:2:nparams
 			parse_string=varargin{i+1};
 		case 'email_monitor'
 			email_monitor=varargin{i+1};
+		case 'email_flag'
+			email_flag=varargin{i+1};
+		case 'email_wait'
+			email_wait=varargin{i+1};
 	end
 end
+
+EMAIL_FLAG=email_flag;
 
 if nargin<1
 	DIR=pwd;
@@ -242,8 +252,50 @@ if ~isempty(auto_delete_int)
 	auto_delete(proc_dir,auto_delete_int,ext);    
 end
 
-fileopen_time1=clock; % get the current time to track file creation
-mail_flag=0;
+tmp_filelisting=dir(fullfile(DIR));
+tmp_isdir=cat(1,tmp_filelisting(:).isdir);
+tmp_filelisting(tmp_isdir)=[];
+
+tmp_datenums=cat(1,tmp_filelisting(:).datenum);
+
+file_elapsed=0;
+if email_monitor>0
+
+	if isempty(tmp_datenums)
+
+		disp('No files detected, pausing for ' num2str(email_wait) ' seconds...');
+		pause(email_wait);
+
+		tmp_filelisting=dir(fullfile(DIR));
+
+		% delete dirIectories
+
+		tmp_isdir=cat(1,tmp_filelisting(:).isdir);
+		tmp_filelisting(tmp_isdir)=[];
+
+		tmp_datenums=cat(1,tmp_filelisting(:).datenum);
+
+		if isempty(tmp_datenums)
+			file_elapsed=inf;
+		end
+
+	else
+
+		last_file=datevec(max(tmp_datenums));
+		file_elapsed=etime(clock,last_file)/60; % time between now and when the last file was created
+
+	end
+
+	disp(['Time since last file created (mins):  ' num2str(file_elapsed)]);
+
+end
+
+if email_monitor>0 & EMAIL_FLAG==0
+	if file_elapsed>email_monitor
+		gmail_send(['An Intan file has not been created in ' num2str(file_elapsed) ' minutes.']);
+		EMAIL_FLAG=1; % don't send another e-mail!
+	end
+end
 
 for i=1:length(proc_files)
 
@@ -263,55 +315,7 @@ for i=1:length(proc_files)
 	%%% check if file is still being written to, check byte change within N msec
 
 
-	% when was the last file created?
-
-	tmp_filelisting=dir(fullfile(DIR));
-
-	% delete dirIectories
-
-	tmp_isdir=cat(1,tmp_filelisting(:).isdir);
-	tmp_filelisting(tmp_isdir)=[];
-
-	tmp_datenums=cat(1,tmp_filelisting(:).datenum);
-
-	if email_monitor>0
-
-		if isempty(tmp_datenums)
-
-			disp('No files detected, pausing for 10 seconds...');
-			pause(10);
-
-			tmp_filelisting=dir(fullfile(DIR));
-
-			% delete dirIectories
-
-			tmp_isdir=cat(1,tmp_filelisting(:).isdir);
-			tmp_filelisting(tmp_isdir)=[];
-
-			tmp_datenums=cat(1,tmp_filelisting(:).datenum);
-
-			if isempty(tmp_datenums)
-				file_elapsed=inf;
-			end
-
-		else
-
-			last_file=datevec(max(tmp_datenums));
-			file_elapsed=etime(clock,last_file)/60; % time between now and when the last file was created
-
-		end
-
-		disp(['Time since last file created (mins):  ' num2str(file_elapsed)]);
-
-	end
-
-	if email_monitor>0 & mail_flag==0
-		if file_elapsed>email_monitor
-			gmail_send(['An Intan file has not been created in ' num2str(file_elapsed) ' minutes.']);
-			mail_flag=1; % don't send another e-mail!
-		end
-
-	end
+	% when was the last file created
 
 	dir1=dir(proc_files{i});
 	pause(file_check);

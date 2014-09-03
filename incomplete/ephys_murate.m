@@ -1,4 +1,4 @@
-function IFR=ephys_murate(EPHYS,varargin)
+function [IFR,RMS,THRESHOLD,PROC_DATA]=ephys_murate(EPHYS,varargin)
 %generates song-aligned single-unit rasters
 %
 %	ephys_visual_sua(EPHYS.data,HISTOGRAM,EPHYS.labels,varargin)
@@ -44,7 +44,9 @@ max_f=10e3; % max frequency
 hist_colors='jet'; % colormap for histogram
 
 figtitle='';
-freq_range=[400 6e3]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
+freq_range=[400 4e3]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
+downfilt=5e3;
+
 filt_type='bandpass'; % high,low or bandpass
 filt_order=6;
 filt_name='e';
@@ -53,6 +55,7 @@ sigma_t=3; % multiple of noise estimate for spike threshold (generally 3-4, usin
 subtrials=[];
 channels=EPHYS.labels;
 
+bound=.2;
 car_trim=40;
 decomp_level=7;
 
@@ -61,6 +64,10 @@ sort_f=1; % if empty, downsamples back to original fs
 
 savename=''; % add if doing multiple manual sorts, will append a name to the filename
 trial_timestamps=[];
+proc_fs=10e3;
+downfilt=5e3;
+thresh_trials=[];
+thresh_time=[];
 
 % remove eps generation, too slow here...
 
@@ -94,27 +101,41 @@ for i=1:2:nparams
 			filt_order=varargin{i+1};
 		case 'car_trim'
 			car_trim=varargin{i+1};
-
+		case 'bound'
+			bound=varargin{i+1};
+		case 'proc_fs'
+			proc_fs=varargin{i+1};
+		case 'thresh_trials'
+			thresh_trials=varargin{i+1};
+		case 'thresh_time'
+			thresh_time=varargin{i+1};
 	end
 end
 
-[samples,ntrials,nchannels]=size(EPHYS.data);
+[nsamples,ntrials,nchannels]=size(EPHYS.data);
 
 if isempty(subtrials)
 	subtrials=1:ntrials;
 end
 
+if isempty(thresh_trials)
+	thresh_trials=1:ntrials;
+end
+
+if isempty(thresh_time)
+	thresh_time=1:nsamples;
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
-proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
-proc_data=ephys_condition_signal(proc_data,'s','freq_range',...
-	freq_range,'filt_type',filt_type,'filt_order',filt_order,'filt_name',filt_name,'fs',EPHYS.fs);
+PROC_DATA=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
 clear EPHYS.data;
 
-size(proc_data)
-proc_data=proc_data(:,subtrials,:);
-[samples,ntrials,newchannels]=size(proc_data);
+PROC_DATA=ephys_condition_signal(PROC_DATA,'s','freq_range',...
+	freq_range,'filt_type',filt_type,'filt_order',filt_order,'filt_name',filt_name,'fs',proc_fs);
+PROC_DATA=PROC_DATA(:,subtrials,:);
+[nsamples,ntrials,newchannels]=size(PROC_DATA);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SPIKE DETECTION %%%%%%%%%%%%%%%%%%%%
@@ -124,32 +145,30 @@ disp(['Electrode ' num2str(channels)])
 
 % collect spikes
 totalspikes=0;
-threshdata=proc_data(end-.2*EPHYS.fs:end,:,1);
+threshdata=PROC_DATA(thresh_time,thresh_trials,1);
 
-%spikethreshold=sigma_t*sqrt(mean(threshdata(:).^2))
+RMS.edge=zeros(1,ntrials);
+RMS.song=zeros(1,ntrials);
+THRESHOLD=zeros(1,ntrials);
+
 spikethreshold=sigma_t*median(abs(threshdata(:))/.6745);
+
 disp(['Spike threshold:  ' num2str(spikethreshold)]);
 
 [nblanks formatstring]=fb_progressbar(100);
 fprintf(1,['Progress:  ' blanks(nblanks)]);
 
 for i=1:ntrials
+	
 	fprintf(1,formatstring,round((i/ntrials)*100));	
+	spikes(i)=ephys_spike_detect(squeeze(PROC_DATA(:,i,:)),spikethreshold,'fs',EPHYS.fs,'visualize','n');
 
-    %spikethreshold=50;
-	%spikethreshold=sigma_t*median(abs(proc_data(end-.1*EPHYS.fs:end,:,i,1))/.6745)
-	%spikethreshold=sigma_t*std(proc_data(:,i,1))
-	%spikethreshold=sigma_t*sqrt(mean(proc_data(end-.1*EPHYS.fs:end,i,1).^2));
-	%spikethreshold=sigma_t*sqrt(mean(proc_data(:,i,1).^2))
-	% get the threshold crossings (based on first channel)
+	%tmp=ephys_spike_removespikes(PROC_DATA(:,i,1),spikes(i));
 
-	spikes(i)=ephys_spike_detect(squeeze(proc_data(:,i,:)),spikethreshold,'fs',EPHYS.fs,'visualize','n');
+	THRESHOLD(i)=spikethreshold;
+	RMS.edge(i)=sqrt(mean(squeeze(PROC_DATA(end-bound*EPHYS.fs:end,i,:)).^2));
+	RMS.song(i)=sqrt(mean(PROC_DATA(bound*EPHYS.fs:end-bound*EPHYS.fs,i,:).^2));
 
-	% get the spikeless data
-
-	tmp=ephys_spike_removespikes(proc_data(:,i,1),spikes(i));
-
-	threshold(i)=spikethreshold;
 	totalspikes=totalspikes+length(spikes(i).times);
 
 end
@@ -157,19 +176,7 @@ end
 fprintf(1,'\n');
 disp([ num2str(totalspikes) ' total spikes']);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-% simplest way to draw raster...plot([sample;sample]
-% vector of times [120 130 200;120 130 200], then next vector specifies bottom and top of tickmark
-% e.g. [1.5 1.5 1.5;.5 .5 .5] for trial 1, etc.
-
-% collapse spike windows into a single matrix, get cluster ids back and then 
-% change color according to ID
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IFR, SMOOTH RATE %%%%%%%%%%%%%%%%%%%
-
-IFR=zeros(ntrials,samples);
+IFR=zeros(ntrials,nsamples);
 
 for i=1:ntrials
 
@@ -177,6 +184,6 @@ for i=1:ntrials
 
 	% IFR will use the current sampling rate
 
-	IFR(i,:)=ephys_ifr(tmp,samples,EPHYS.fs);
+	IFR(i,:)=ephys_ifr(tmp,nsamples,EPHYS.fs);
 end
 

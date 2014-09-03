@@ -66,7 +66,7 @@ AUDIO.fs=audio.fs;
 EPHYS.t=ephys.t;
 AUDIO.t=audio.t;
 
-if exist('playback','var')
+if exist('playback','var') & ~isempty(playback.data)	
 	PLAYBACK.t=playback.t;
 	PLAYBACK.fs=playback.fs;
 end
@@ -276,4 +276,10 @@ for i=0:parameters.trial_win:ntrials
 
 	dircount=dircount+1;
 
+end
+
+% if there aren't too many directories, go ahead and concatenate the data
+
+if (dircount-1)<=parameters.cat_limit
+	ephys_collect_data(FILEDIR);
 end

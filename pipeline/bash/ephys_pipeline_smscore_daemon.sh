@@ -23,7 +23,7 @@ while true; do
 	source ephys_pipeline_wrapper.cfg
 
 
-	FILELIST=( `find $ROOTDIR -maxdepth 5 -name "*songdet1*_chunk_*.mat" | sort -nr`)
+	FILELIST=( `find $ROOTDIR -maxdepth 5 -name "*songdet1*_chunk_*.mat"`)
 
 	let COUNTER=1
 

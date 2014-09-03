@@ -1,4 +1,4 @@
-function [fr lfp]=ephys_ratetracker_plot(TIMESERIES,DATENUM,varargin)
+function [fr_smoothed]=ephys_ratetracker_plot(DATA,DATENUM,varargin)
 %generates song-aligned single-unit rasters
 %
 %	ephys_visual_sua(EPHYS.data,HISTOGRAM,EPHYS.labels,varargin)
@@ -46,15 +46,14 @@ lfp_bands=[1 15;20 40;40 60;60 100;100 200;200 400;500 1e3];
 sigma_t=4; % multiple of noise estimate for spike threshold (generally 3-4, using Quiroga's method)
 subtrials=[];
 channels=[];
-proc_fs=500;
 fr_sigma=.005;
-bound=.25;
+bound=.5;
 % remove eps generation, too slow here...
 fbstart='';
 fr_smoothing=50;
 lfp_smoothing=30;
-fs=10;
-
+fs=500;
+fig_num=[];
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -68,11 +67,15 @@ for i=1:2:nparams
 			fbstart=varargin{i+1};
 		case 'fs'
 			fs=varargin{i+1};
+		case 'fig_num'
+			fig_num=varargin{i+1};
 
 	end
 end
 
-
+if isempty(fig_num)
+	fig_num=figure();
+end
 
 %%%% firing rate plot
 %
@@ -87,7 +90,7 @@ else
 end
 
 fbstart_day=fbstart_datevec(3);
-% time since feedback started (in second
+% time since feedback started (in second)
 
 for i=1:length(time_elapsed)
 	tmp=datevec(DATENUM(i));
@@ -98,48 +101,55 @@ end
 % for each day, plot points and running average
 
 time_elapsed=time_elapsed/(3600*24);
-bound=round(fs*bound);
-fr_mu=mean(TIMESERIES(bound:end-bound,:));
+
+%bound=round(fs*bound)
+%DATA=mean(TIMESERIES(bound:end-bound,:));
 
 % interpolate to evenly spaced data, then smooth
 %
-fr_smoothed=smooth(time_elapsed,fr_mu,fr_smoothing,'sgolay',2);
+fr_smoothed.y.raw=smooth(time_elapsed,DATA,fr_smoothing,'lowess');
+fr_smoothed.x=time_elapsed;
+fr_smoothed.timescale=fr_smoothing;
+fr_smoothed.y.norm=(fr_smoothed.y.raw-min(fr_smoothed.y.raw))./(max(fr_smoothed.y.raw)-min(fr_smoothed.y.raw));
 
 %%%% plot pre first
 %
 bins=unique(days_since);
 
 if any(time_elapsed<0)
-	plot(time_elapsed(time_elapsed<0),fr_mu(time_elapsed<0),'ko');
+	plot(time_elapsed(time_elapsed<0),DATA(time_elapsed<0),'ko');
 end
 
 for i=1:length(bins)
 	hold on;
-	plot(time_elapsed(time_elapsed>=0&days_since==bins(i)),fr_mu(time_elapsed>=0&days_since==bins(i)),...
+	plot(time_elapsed(time_elapsed>=0&days_since==bins(i)),DATA(time_elapsed>=0&days_since==bins(i)),...
 		'ro','markerfacecolor','r','markersize',4);
-	plot(time_elapsed(time_elapsed>=0&days_since==bins(i)),fr_smoothed(time_elapsed>=0&days_since==bins(i)),'k-','linewidth',2);
+	plot(time_elapsed(time_elapsed>=0&days_since==bins(i)),fr_smoothed.y.raw(time_elapsed>=0&days_since==bins(i)),'k-','linewidth',2);
 end
+
+set(gca,'TickDir','out','FontSize',9,'FontName','Helvetica');
+xlim([round(min(time_elapsed)*10)/10 round(max(time_elapsed)*10)/10]);
 
 %%%% bin time
-
-if sum(time_elapsed<0)>0
-	binx(1)=-1;
-	biny{1}=fr_mu(time_elapsed<0);
-else
-	binx=[];
-	biny={};
-end
-
-
-for i=1:length(bins)
-	binx(end+1)=bins(i);
-	biny{end+1}=fr_mu(days_since==bins(i));
-end
-
-mu=cellfun(@median,biny)
-stdev=cellfun(@std,biny)
-len=cellfun(@length,biny)
-sem=stdev./sqrt(len)
+%
+%if sum(time_elapsed<0)>0
+%	binx(1)=-1;
+%	biny{1}=DATA(time_elapsed<0);
+%else
+%	binx=[];
+%	biny={};
+%end
+%
+%
+%for i=1:length(bins)
+%	binx(end+1)=bins(i);
+%	biny{end+1}=DATA(days_since==bins(i));
+%end
+%
+%mu=cellfun(@median,biny)
+%stdev=cellfun(@std,biny)
+%len=cellfun(@length,biny)
+%sem=stdev./sqrt(len)
 
 
 

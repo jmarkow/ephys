@@ -80,7 +80,6 @@ for i=1:2:nparams
 			winoverlap=varargin{i+1};
 		case 'winfft'
 			winfft=varargin{i+1};
-
 	end
 end
 

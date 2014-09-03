@@ -87,6 +87,10 @@ if isdeployed
 end
 
 likelihood=zeros(1,pcareplicates);
+
+figure();plot(SPIKE_DATA(:,1:100));
+pause();
+
 for i=1:pcareplicates
 	tmpnewmodel{i}=gmem(SPIKE_DATA',[],1,'garbage',1,'merge',0,'debug',0);
 	likelihood(i)=tmpnewmodel{i}.likelihood;

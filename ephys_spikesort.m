@@ -105,7 +105,7 @@ if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
-fs=25e3;
+fs=30e3;
 noise='none'; % none, nn for nearest neighbor, or car for common average
 car_exclude=[];
 

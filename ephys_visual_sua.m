@@ -125,7 +125,6 @@ if mod(nparams,2)>0
 end
 
 channelboundary=[];
-fs=25e3;
 noise='none'; % none, nn for nearest neighbor, or car for common average
 car_exclude=[];
 savedir=pwd;
@@ -135,9 +134,9 @@ max_f=10e3; % max frequency
 hist_colors='jet'; % colormap for histogram
 
 figtitle='';
-freq_range=[400 11e3]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
-filt_type='bandpass'; % high,low or bandpass
-filt_order=6;
+freq_range=[400]; % bandpassing <10e3 distorted results, reasoning that >800 Hz is fine for spikes < 1ms long
+filt_type='high'; % high,low or bandpass
+filt_order=3;
 filt_name='e';
 
 spikesort=1; % do we want to sort?
@@ -155,7 +154,7 @@ car_trim=40;
 decomp_level=7;
 
 interpolate_f=8; % interpolate factor
-sort_f=1; % if empty, downsamples back to original fs
+sort_f=[]; % if empty, downsamples back to original fs
 
 savename=''; % add if doing multiple manual sorts, will append a name to the filename
 isi_cutoff=.01; % percentage of ISI values <.001
@@ -164,7 +163,7 @@ isod_cutoff=20; % isolation distance defined by Harris et al.
 snr_cutoff=8; % SNR definition from Ludwig et al. 2009 (J. Neurophys)
 spike_window=[.0005 .0005];
 trial_timestamps=[];
-cluststart=1:6;
+cluststart=1:4;
 pcs=2;
 
 spikelimit=[];
@@ -184,8 +183,6 @@ colors={'b','r','g','c','m','y','k','r','g','b'};
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'fs'
-			fs=varargin{i+1};
 		case 'noise'
 			noise=varargin{i+1};
 		case 'savedir'
@@ -282,6 +279,7 @@ if isempty(sort_f)
 	sort_f=interpolate_f;
 end
 
+fs=EPHYS.fs;
 interpolate_fs=fs*interpolate_f;
 sort_fs=interpolate_fs/sort_f;
 

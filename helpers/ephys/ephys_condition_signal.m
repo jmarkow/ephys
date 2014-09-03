@@ -152,8 +152,9 @@ if wavelet_denoise
 
 	disp('Wavelet denoising');
 
-	correction=.8*sqrt(2*log(nsamples))
-
+	%correction=.8*sqrt(2*log(nsamples));
+	correction=.4*sqrt(2*log(nsamples));
+		
 	% minimax threshold is a bit more conservative
 	% multiply by scalar <1 if noise reduction is too severe (altered spike waveforms)
 
@@ -171,8 +172,8 @@ if wavelet_denoise
 			lidxs=[0;cumsum(l(1:end-1))];
 
 			for k=2:length(l)-1
-				winsigma=median(abs((c(lidxs(k):lidxs(k+1)))))/.6745;
-				idxs=find(abs(c(lidxs(k):lidxs(k+1)))<=correction*winsigma);
+				winsigma_wav=median(abs((c(lidxs(k):lidxs(k+1)))))/.6745;
+				idxs=find(abs(c(lidxs(k):lidxs(k+1)))<=correction*winsigma_wav);
 				c(idxs+lidxs(k)-1)=0;
 			end
 

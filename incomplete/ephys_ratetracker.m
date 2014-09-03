@@ -1,4 +1,4 @@
-function [fr lfp,playback]=ephys_ratetracker(DIR,varargin)
+function [fr]=ephys_ratetracker_fr(STORE_EPHYS,STORE_AUDIO,STORE_DATENUM,varargin)
 %generates song-aligned single-unit rasters
 %
 %	ephys_visual_sua(EPHYS.data,HISTOGRAM,EPHYS.labels,varargin)
@@ -33,11 +33,18 @@ car_exclude=[];
 
 lfp_bands=[1 15;20 40;40 60;60 100;100 200;200 400;500 1e3];
 
-sigma_t=3; % multiple of noise estimate for spike threshold (generally 3-4, using Quiroga's method)
+fr_sigma_t=3; % multiple of noise estimate for spike threshold (generally 3-4, using Quiroga's method)
 subtrials=[];
 channels=[];
 proc_fs=500;
 fr_sigma=.005;
+bound=.5;
+audio_range=[1.7e3 4e3];
+audio_thresh=.01;
+audio_scale=.2;
+ephys_range=[400 4.5e3];
+savedir='';
+savefile='cat_fr.mat';
 
 % remove eps generation, too slow here...
 
@@ -59,7 +66,7 @@ for i=1:2:nparams
 			freq_range=varargin{i+1};
 		case 'channels'
 			channels=varargin{i+1};
-		case 'sigma_t'
+		case 'fr_sigma_t'
 			fr_sigma_t=varargin{i+1};
 		case 'subtrials'
 			subtrials=varargin{i+1};
@@ -73,77 +80,73 @@ for i=1:2:nparams
 			car_trim=varargin{i+1};
 		case 'lfp_bands'
 			lfp_bands=varargin{i+1};
-
+		case 'ephys_range'
+			ephys_vange=varargin{i+1};
+		case 'bound'
+			bound=varargin{i+1};
+		case 'savedir'
+			savedir=varargin{i+1};
+		case 'savefile'
+			savefile=varargin{i+1};
 	end
 end
 
-
-[status,result]=unix(['find ' pwd ' -type f -name "aggregated_data.mat"']);
-ephys_file=regexp(result,'\n','split');
-ephys_file(end)=[];
-load(ephys_file{1},'agg_ephys','agg_file_datenum');
+[nsamples,ntrials,nchannels]=size(STORE_EPHYS.data);
 
 if isempty(channels)
-	channels=agg_ephys.labels;
+	channels=STORE_EPHYS.labels;
 end
 
-for i=2:length(ephys_file)
-	tmp=load(ephys_file{i},'agg_ephys','agg_file_datenum');
-	agg_ephys.data=[ agg_ephys.data tmp.agg_ephys.data ];
-	agg_file_datenum=[ agg_file_datenum tmp.agg_file_datenum ];
+disp(['Will process channels: ' num2str(channels)]);
+
+% decide which trials to include for threshold detection, check for silence after song
+
+if ~isempty(STORE_AUDIO)
+	
+	[b,a]=ellip(5,.2,40,[audio_range]/(STORE_AUDIO.fs/2),'bandpass');
+	STORE_AUDIO.data=filtfilt(b,a,double(STORE_AUDIO.data));
+
+	audio_scale_smps=round(audio_scale*STORE_AUDIO.fs);
+	coeffs=ones(1,audio_scale_smps)*1/audio_scale_smps;
+
+	score=sqrt(filter(coeffs,1,STORE_AUDIO.data(end-bound*STORE_AUDIO.fs:end,:).^2));
+	include=sum(score>audio_thresh)==0;
+
+else
+	
+	include=1:size(STORE_EPHYS.data,2);
+
 end
 
-% loop over channels
-%
+thresh_time=(nsamples-round(bound*STORE_EPHYS.fs)):nsamples;
 
+for i=1:length(channels)
 
-for j=1:length(channels)
+	disp(['Computing spike rate for channel ' num2str(channels(i)) '...']);
 
-	ifr=ephys_murate(agg_ephys,'channels',channels(j),'sigma_t',sigma_t,'noise','car');
+	[ifr,rms,threshold,proc_data]=ephys_murate(STORE_EPHYS,'channels',channels(i),'sigma_t',...
+		fr_sigma_t,'noise','car','bound',bound,'thresh_trials',find(include),'thresh_time',thresh_time);
 
-	kernedges=[-3*fr_sigma:1/agg_ephys.fs:3*fr_sigma];
+	kernedges=[-3*fr_sigma:1/STORE_EPHYS.fs:3*fr_sigma];
 	kernel=normpdf(kernedges,0,fr_sigma);
 	kernel=kernel./sum(kernel);
 
-	downfact=agg_ephys.fs/proc_fs;
-
+	downfact=STORE_EPHYS.fs/proc_fs;
 	smooth_ifr=filter(kernel,1,ifr');
 
-	fr(j).time_series=[ downsample(smooth_ifr,downfact) ];
-	%fr.channels=[ agg_ephys.labels(j).*ones(1,size(smooth_ifr,2)) ];
-	fr(j).datenum=[ agg_file_datenum ];
-	fr(j).channels=channels(j);
-	fr(j).fs=proc_fs;
+	fr(i).channel=channels(i);
+	fr(i).time_series=single(downsample(smooth_ifr,downfact));	
+	fr(i).threshold=threshold;
+	fr(i).rms=rms;
+	fr(i).raw.data=single(proc_data);
+	fr(i).raw.fs=STORE_EPHYS.fs;
+	fr(i).fs=proc_fs;
+	fr(i).silent_trials=include;
+	fr(i).datenums=STORE_DATENUM;
 
 end
 
-lfp=[];
-
-%nchannels=length(agg_ephys.labels);
-
-%for j=find(agg_ephys.labels==20)
-%
-%	agg_ephys.labels(j)
-%	ifr=ephys_murate(agg_ephys,'channels',agg_ephys.labels(j),'sigma_t',sigma_t,'noise','car');
-%	
-%	kernedges=[-3*fr_sigma:1/agg_ephys.fs:3*fr_sigma];
-%	kernel=normpdf(kernedges,0,fr_sigma);
-%	kernel=kernel./sum(kernel);
-
-%	downfact=agg_ephys.fs/proc_fs;
-
-%	smooth_ifr=filter(kernel,1,ifr');
-
-%	fr.time_series=[ fr.time_series downsample(smooth_ifr,downfact) ];
-%	fr.channels=[ fr.channels agg_ephys.labels(j).*ones(1,size(smooth_ifr,2)) ];
-%	fr.datenum=[ fr.datenum agg_file_datenum ];
-
-%	[lfptmp,lfpt]=ephys_bandpower(agg_ephys,'channels',agg_ephys.labels(j),'freq_range',lfp_bands);
-
-%	% lfp rates etc. etc.
-
-%	lfp.compval=[ lfp.compval lfptmp ];	
-%	lfp.t = [ lfp.t lfpt ];
-
-%end
-
+if ~isempty(savedir)
+	mkdir(savedir);
+	save(fullfile(savedir,savefile),'fr','-v7.3');
+end

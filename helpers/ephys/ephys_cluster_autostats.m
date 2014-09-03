@@ -142,7 +142,7 @@ isi_violations=isi_violations/length(CLUSTER.isi{j});
 
 if savemode
 	multi_fig_save(stats_fig,savedir,...
-		[ savefilename_stats 'spikestats' ],'eps','res',200);
+		[ savefilename_stats 'spikestats' ],'eps,png','res',100,'renderer','painters');
 	close([stats_fig]);
 end
 
@@ -160,9 +160,6 @@ for j=1:nplots
 			end
 		end
 	end
-
-	
-
 end
 
 if nplots<=10
@@ -181,7 +178,7 @@ if nplots<=10
 
 	if savemode
 		multi_fig_save(stats_fig,savedir,...
-			[ savefilename_stats 'cluststats' ],'eps','res',150,'renderer','painters');
+			[ savefilename_stats 'cluststats' ],'eps,png','res',100,'renderer','painters');
 		close([stats_fig]);
 	end
 
@@ -199,7 +196,7 @@ if nplots<=10
 		
 		if savemode
 			multi_fig_save(stats_fig,savedir,...
-				[ savefilename_stats 'clustplot' ],'eps','res',150);
+				[ savefilename_stats 'clustplot' ],'eps,png','res',100,'renderer','painters');
 			close([stats_fig]);
 		end
 	end
