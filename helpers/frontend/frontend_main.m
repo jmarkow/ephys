@@ -253,12 +253,14 @@ if ~isempty(auto_delete_int)
 end
 
 tmp_filelisting=dir(fullfile(DIR));
-tmp_isdir=cat(1,tmp_filelisting(:).isdir);
-tmp_filelisting(tmp_isdir)=[];
-
-tmp_datenums=cat(1,tmp_filelisting(:).datenum);
+tmp_filenames={tmp_filelisting(:).name};
+tmp_hits=regexp(tmp_filenames,'\.(rhd|int)','match');
+tmp_hits=cellfun(@length,hits)>0;
+tmp_filelisting=tmp_filelisting(hits);
+tmp_datenums=cat(1,tmp_filelisting(:).datenum)
 
 file_elapsed=0;
+
 if email_monitor>0
 
 	if isempty(tmp_datenums)
@@ -267,13 +269,11 @@ if email_monitor>0
 		pause(email_wait);
 
 		tmp_filelisting=dir(fullfile(DIR));
-
-		% delete dirIectories
-
-		tmp_isdir=cat(1,tmp_filelisting(:).isdir);
-		tmp_filelisting(tmp_isdir)=[];
-
-		tmp_datenums=cat(1,tmp_filelisting(:).datenum);
+		tmp_filenames={tmp_filelisting(:).name};
+		tmp_hits=regexp(tmp_filenames,'\.(rhd|int)','match');
+		tmp_hits=cellfun(@length,hits)>0;
+		tmp_filelisting=tmp_filelisting(hits);
+		tmp_datenums=cat(1,tmp_filelisting(:).datenum)
 
 		if isempty(tmp_datenums)
 			file_elapsed=inf;
