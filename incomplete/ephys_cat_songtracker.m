@@ -1,4 +1,4 @@
-function [fr]=ephys_ratetracker_fr(STORE_EPHYS,STORE_AUDIO,varargin)
+function [sono_store]=ephys_ratetracker_sono(STORE_AUDIO,STORE_PLAYBACK,varargin)
 %generates song-aligned single-unit rasters
 %
 %	ephys_visual_sua(EPHYS.data,HISTOGRAM,EPHYS.labels,varargin)
@@ -28,124 +28,153 @@ if mod(nparams,2)>0
 	error('ephysPipeline:argChk','Parameters must be specified as parameter/value pairs!');
 end
 
-noise='none'; % none, nn for nearest neighbor, or car for common average
-car_exclude=[];
-
-lfp_bands=[1 15;20 40;40 60;60 100;100 200;200 400;500 1e3];
-
-fr_sigma_t=3; % multiple of noise estimate for spike threshold (generally 3-4, using Quiroga's method)
 subtrials=[];
-channels=[];
-proc_fs=500;
-fr_sigma=.005;
-bound=.5;
-audio_range=[1.7e3 4e3];
-audio_thresh=.01;
-audio_scale=.2;
-ephys_range=[400 4.5e3];
+
+audio_range=[2e3 4.5e3];
+audio_thresh=.1;
+audio_scale=.08;
+
 savedir='';
-savefile='cat_fr.mat';
+savefile='cat_song.mat';
+
+bound=.5;
+
+% need sufficient resolution 
+
+nwin=256;
+noverlap=200;
+nfft=256;
+
+clipping=-3;
+
+trialwin=100;
+trialoverlap=20;
 
 % remove eps generation, too slow here...
 
 for i=1:2:nparams
 	switch lower(varargin{i})
-		case 'noise'
-			noise=varargin{i+1};
 		case 'savedir'
 			savedir=varargin{i+1};
-		case 'car_exclude'
-			car_exclude=varargin{i+1};
-		case 'figtitle'
-			figtitle=varargin{i+1};
-		case 'filt_type'
-			filt_type=varargin{i+1};
-		case 'filt_name'
-			filt_name=varargin{i+1};
-		case 'freq_range'
-			freq_range=varargin{i+1};
-		case 'channels'
-			channels=varargin{i+1};
-		case 'fr_sigma_t'
-			fr_sigma_t=varargin{i+1};
-		case 'subtrials'
-			subtrials=varargin{i+1};
-		case 'trial_timestamps'
-			trial_timestamps=varargin{i+1};
-		case 'method'
-			method=varargin{i+1};
-		case 'filt_order'
-			filt_order=varargin{i+1};
-		case 'car_trim'
-			car_trim=varargin{i+1};
-		case 'lfp_bands'
-			lfp_bands=varargin{i+1};
-		case 'ephys_range'
-			ephys_vange=varargin{i+1};
 		case 'bound'
 			bound=varargin{i+1};
 		case 'savedir'
 			savedir=varargin{i+1};
 		case 'savefile'
 			savefile=varargin{i+1};
+		case 'nwin'
+			nwin=varargin{i+1};
+		case 'nfft'
+			nfft=varargin{i+1};
+		case 'noverlap'
+			noverlap=varargin{i+1};
+		case 'clipping'
+			clipping=varargin{i+1};
+		case 'trialwin'
+			trialstep=varargin{i+1};
+		case 'trialoverlap'
+			trialoverlap=varargin{i+1};
 	end
 end
 
-[nsamples,ntrials,nchannels]=size(STORE_EPHYS.data);
+[b,a]=ellip(5,.2,60,[800]/(STORE_AUDIO.fs/2),'high');
 
-if isempty(channels)
-	channels=STORE_EPHYS.labels;
-end
+STORE_AUDIO.data=filtfilt(b,a,STORE_AUDIO.data);
+STORE_PLAYBACK.data=filtfilt(b,a,STORE_PLAYBACK.data);
 
-disp(['Will process channels: ' num2str(channels)]);
+[nsamples,ntrials]=size(STORE_AUDIO.data);
 
-% decide which trials to include for threshold detection, check for silence after song
+% take the song data in the notch, use to determine syllable boundaries
 
-if ~isempty(STORE_AUDIO)
+[t,f,minpt,maxpt]=getspecgram_dim(nsamples,nwin,noverlap,nfft,STORE_AUDIO.fs,audio_range(1),audio_range(2));
+
+mint=1/STORE_AUDIO.fs;
+maxt=nsamples/STORE_AUDIO.fs;
+
+smooth_win=audio_scale.*(1/(t(2)-t(1)));
+sono_store=zeros(length(f),length(t),length(ntrials));
+
+for i=1:ntrials
+
+	%ha=adaptfilt.lms(500,.6,.4);
+	%[y,e]=filter(ha,STORE_PLAYBACK.data(:,i),STORE_AUDIO.data(:,i));
+
+	%[s]=spectrogram(STORE_AUDIO.data(:,i)-y,nwin,noverlap,nfft,STORE_AUDIO.fs);
+	%
 	
-	[b,a]=ellip(5,.2,40,[audio_range]/(STORE_AUDIO.fs/2),'bandpass');
-	STORE_AUDIO.data=filtfilt(b,a,double(STORE_AUDIO.data));
+	[sono_store(:,:,i)]=spectrogram(STORE_AUDIO.data(:,i),nwin,noverlap,nfft,STORE_AUDIO.fs);
 
-	audio_scale_smps=round(audio_scale*STORE_AUDIO.fs);
-	coeffs=ones(1,audio_scale_smps)*1/audio_scale_smps;
+	% take energy in the relevant band
 
-	score=sqrt(filter(coeffs,1,STORE_AUDIO.data(end-bound*STORE_AUDIO.fs:end,:).^2));
-	include=sum(score>audio_thresh)==0;
+	%song_energy=max(clipping,log(mean(abs(s(minpt:maxpt,:)))));
 
-else
-	
-	include=1:size(STORE_EPHYS.data,2);
+	% smooth, moving average
+	%smooth_energy=song_energy;
+	%%smooth_energy=mfcc_deltacoef(smooth_energy,3);
+	%%
+	%smooth_energy=smooth(song_energy,smooth_win,'loess');
+	%
+	%%smooth_t=[1:length(smooth_energy)];
+
+	%idx=1:length(smooth_energy)-1;
+
+	%% get rising and falling edges
+	%
+	%rising_edges=(smooth_energy(idx)<audio_thresh)&(smooth_energy(idx+1)>audio_thresh);
+	%falling_edges=(smooth_energy(idx)>audio_thresh)&(smooth_energy(idx+1)<audio_thresh);
+
+	%im_s=abs(s);
+	%im_s=im_s./max(im_s(:));
+	%im_s=max(clipping,log(im_s));
+
+	%figure(1);
+	%ax(1)=subplot(2,1,1);imagesc(t,f,im_s);
+	%axis xy;
+	%hold on;
+	%ax(2)=subplot(2,1,2);plot(t,smooth_energy);
+
+	%t(rising_edges)
+	%t(falling_edges)
+
+	%linkaxes(ax,'x');
+
+	%pause();
+end
+
+trialstep=trialwin-trialoverlap;
+counter=1;
+steps=1:trialstep:ntrials-trialwin;
+
+for i=1:length(steps)
+
+	ledge=steps(i);
+	redge=ledge+trialwin-1;
+
+	ave_sono=mean(sono_store(:,:,ledge:redge),3);
+	%ave_abs=max(clipping,log(abs(ave_sono)));
+	ave_abs=log(abs(ave_sono));
+
+	song_energy=mean(ave_abs(minpt:maxpt,:));
+	smooth_energy=smooth(song_energy,smooth_win,'loess');
+	%smooth_energy=zscore(smooth_energy);
+	%smooth_energy=smooth_energy-smooth(smooth_energy,.3*(1/(t(2)-t(1))));
+	im_s=max(clipping,log(abs(ave_sono)));
+
+	figure(1);
+	ax(1)=subplot(2,1,1);imagesc(t,f,im_s);
+	axis xy;
+	hold on;
+	ax(2)=subplot(2,1,2);plot(t,smooth_energy);
+
+	linkaxes(ax,'x');
+
+	pause();
 
 end
 
-thresh_time=(nsamples-round(bound*STORE_EPHYS.fs)):nsamples;
+% windowed average of the complex sonogram, use as a crude denoiser and recover duration
+%
+%
 
-for i=1:length(channels)
 
-	disp(['Computing spike rate for channel ' num2str(channels(i)) '...']);
 
-	[ifr,rms,threshold,proc_data]=ephys_murate(STORE_EPHYS,'channels',channels(i),'sigma_t',...
-		fr_sigma_t,'noise','car','bound',bound,'thresh_trials',find(include),'thresh_time',thresh_time);
-
-	kernedges=[-3*fr_sigma:1/STORE_EPHYS.fs:3*fr_sigma];
-	kernel=normpdf(kernedges,0,fr_sigma);
-	kernel=kernel./sum(kernel);
-
-	downfact=STORE_EPHYS.fs/proc_fs;
-	smooth_ifr=filter(kernel,1,ifr');
-
-	fr(i).channel=channels(i);
-	fr(i).time_series=single(downsample(smooth_ifr,downfact));	
-	fr(i).threshold=threshold;
-	fr(i).rms=rms;
-	fr(i).raw.data=single(proc_data);
-	fr(i).raw.fs=STORE_EPHYS.fs;
-	fr(i).fs=proc_fs;
-	fr(i).silent_trials=include;
-
-end
-
-if ~isempty(savedir)
-	mkdir(savedir);
-	save(fullfile(savedir,savefile),'fr','-v7.3');
-end

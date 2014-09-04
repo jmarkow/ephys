@@ -34,6 +34,8 @@ for i=1:2:nparams
 			fbstart=varargin{i+1};
 		case 'fs'
 			fs=varargin{i+1};
+		case 'savedir'
+			savedir=varargin{i+1};
 
 	end
 end

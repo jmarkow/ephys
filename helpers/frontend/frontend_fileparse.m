@@ -71,7 +71,7 @@ if strcmp(FMT,'auto') & length(tokens)>=2
 		playbacktoken=find(~cellfun(@isempty,strfind(tokens(3:end),'playback')))+2;
 		
 		if ~isempty(playbacktoken)
-			fprintf(1,'Detected playback token at %i\n',porttoken);
+			fprintf(1,'Detected playback token at %i\n',playbacktoken);
 		end
 
 	end

@@ -273,7 +273,7 @@ if email_monitor>0 & EMAIL_FLAG==0
 		tmp_hits=regexp(tmp_filenames,'\.(rhd|int)','match');
 		tmp_hits=cellfun(@length,tmp_hits)>0;
 		tmp_filelisting=tmp_filelisting(tmp_hits);
-		tmp_datenums=cat(1,tmp_filelisting(:).datenum)
+		tmp_datenums=cat(1,tmp_filelisting(:).datenum);
 
 		if isempty(tmp_datenums)
 			file_elapsed=inf;
@@ -422,6 +422,8 @@ for i=1:length(proc_files)
 			disp(['Mic ch:  ' num2str(mic_trace)]);
 			disp(['Mic source:  ' mic_source]);
 			disp(['Mic port:  ' mic_port]);
+			disp(['TTL ch:  ' num2str(ttl_trace)]);
+			disp(['TTL source:  ' ttl_source]);
 			disp(['Playback ch:  ' num2str(playback_trace)]);
 			disp(['Playback source:  ' playback_source]);
 			disp(['Data ports:  ' ports]);

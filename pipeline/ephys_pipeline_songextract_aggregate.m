@@ -278,8 +278,29 @@ for i=0:parameters.trial_win:ntrials
 
 end
 
+clearvars EPHYS AUDIO;
+
 % if there aren't too many directories, go ahead and concatenate the data
 
 if (dircount-1)<=parameters.cat_limit
-	ephys_collect_data(FILEDIR);
+
+	disp('Concatenating directory data...');
+
+	ephys_cat_collect_data(FILEDIR);
+	
+	load(fullfile(FILEDIR,'ephys_cat','cat_data.mat'),'cat_audio','cat_ephys','cat_file_datenum');
+
+	disp('Computing firing rate across all trials on all channels...');
+
+	ephys_cat_ratetracker(cat_ephys,cat_audio,cat_file_datenum,'savedir',fullfile(FILEDIR,'ephys_cat'),...
+		'channels',cat_ephys.labels);
+
+	clearvars cat_audio cat_ephys cat_file_datenum;
+
+	load(fullfile(FILEDIR,'ephys_cat','cat_fr.mat'),'fr');
+
+	disp('Generating plots...');
+
+	ephys_visual_cat_mutrack(fr,'savedir',fullfile(FILEDIR,'ephys_cat'));
+
 end
