@@ -89,15 +89,17 @@ dircount=1;
 
 % extract in a sliding window, generate histograms and trigger mua, sua and lfp processing
 
-savefun=@(filename,agg_ephys,agg_audio,agg_ttl,agg_playback,agg_file_datenum) ...
-	save(filename,'agg_ephys','agg_audio','agg_ttl','agg_playback','agg_file_datenum','-v7.3');
+savefun=@(filename,agg_ephys,agg_audio,agg_ttl,agg_playback,agg_file_datenum,agg_rms) ...
+	save(filename,'agg_ephys','agg_audio','agg_ttl','agg_playback','agg_file_datenum','agg_rms','-v7.3');
 
 for i=0:parameters.trial_win:ntrials
 	
-	if ~exist(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)]),'dir')
-		mkdir(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)]));
+	savedir=fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)]);
+
+	if ~exist(savedir,'dir')
+		mkdir(savedir);
 	else
-		if exist(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'.done_extraction'),'file')
+		if exist(fullfile(savedir,'.done_extraction'),'file')
 			disp(['Directory ' num2str(dircount) ' finished, continuing']);
 			dircount=dircount+1;
 			continue;
@@ -112,14 +114,22 @@ for i=0:parameters.trial_win:ntrials
 
 	disp(['Identifying channels...']);
 
+	rms_listing={};
+
 	for j=1:length(currtrials)
 
+		tmpfile=fullfile(FILEDIR,listing(currtrials(j)).name);
+
 		if is_legacy
-			load(fullfile(FILEDIR,listing(currtrials(j)).name),'channels');
+			load(tmpfile,'channels');
 			ephys.labels=channels;
 			ephys.ports=repmat('A',[1 length(channels)]);
 		else
-			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys');
+			load(tmpfile,'ephys');
+		end
+
+		if isempty(whos('rms','-file',tmpfile)) & ~SLEEPSTATUS
+			rms_listing{end+1}=listing(currtrials(j)).name;
 		end
 
 		% check for any inconsistency in channel labels
@@ -136,6 +146,11 @@ for i=0:parameters.trial_win:ntrials
 				all_ports=[all_ports ephys.ports(k)];
 			end
 		end
+	end
+	
+	if ~SLEEPSTATUS
+		disp(['Computing RMS for ' num2str(length(rms_listing)) ' files...']);
+		ephys_collect_rms(FILEDIR,rms_listing);
 	end
 
 	%[all_labels=sort(all_labels);
@@ -154,6 +169,17 @@ for i=0:parameters.trial_win:ntrials
 	FILE_DATENUM=zeros(1,length(currtrials));
 	TTL.data=zeros(samples,length(currtrials));
 
+	if ~SLEEPSTATUS
+		
+		RMS.standard=zeros(length(all_labels),length(currtrials));
+		RMS.robust=zeros(length(all_labels),length(currtrials));
+		RMS.labels=all_labels(:);
+		RMS.ports=all_ports(:);
+
+	else
+		RMS=[];
+	
+	end
 	EPHYS.labels=all_labels;
 	EPHYS.ports=all_ports;
 
@@ -162,7 +188,8 @@ for i=0:parameters.trial_win:ntrials
 		disp(['Processing trial ' num2str(currtrials(j))]);
 
 		if is_legacy
-			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys_data','mic_data','channels','fs','start_datenum','ttl_data');
+		
+			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys_data','mic_data','channels','fs','start_datenum','ttl_data','rms');
 			
 			ephys.data=ephys_data;
 			ephys.fs=fs;
@@ -179,7 +206,7 @@ for i=0:parameters.trial_win:ntrials
 			clearvars ephys_data mic_data channels fs start_datenum ttl_data;
 
 		else
-			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys','audio','file_datenum','ttl','playback');
+			load(fullfile(FILEDIR,listing(currtrials(j)).name),'ephys','audio','file_datenum','ttl','playback','rms');
 		end
 
 		AUDIO.data(:,j)=audio.data;
@@ -207,6 +234,14 @@ for i=0:parameters.trial_win:ntrials
 
 		end
 
+		if ~SLEEPSTATUS
+			for k=1:length(rms.channels)
+				ch_idx=find(rms.channels(k)==all_labels);
+				RMS.standard(ch_idx,j)=rms.standard(k);
+				RMS.robust(ch_idx,j)=rms.robust(k);
+			end
+		end
+
 		if exist('file_datenum','var')
 			FILE_DATENUM(j)=file_datenum;
 		else
@@ -230,19 +265,35 @@ for i=0:parameters.trial_win:ntrials
 		PLAYBACK.data=[];
 	end
 
-	savefun(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'aggregated_data.mat'),EPHYS,AUDIO,TTL,PLAYBACK,FILE_DATENUM);
+	% save the collected data
+
+	savefun(fullfile(savedir,'aggregated_data.mat'),EPHYS,AUDIO,TTL,PLAYBACK,FILE_DATENUM,RMS);
+	
+	% collect the firing rate for each directory
+
+	if SLEEPSTATUS==1
+		fr=ephys_cat_ratetracker(EPHYS,AUDIO,FILE_DATENUM,'savedir',savedir,...
+			'savefile','aggregated_stats.mat','channels',EPHYS.labels,'bound',[]);
+	else
+		fr=ephys_cat_ratetracker(EPHYS,AUDIO,FILE_DATENUM,'savedir',savedir,...
+			'savefile','aggregated_stats.mat','channels',EPHYS.labels,'rms',RMS);
+	end
+
 
 	if SLEEPSTATUS
 
 		% write out a file to indicate that this is sleep data
 
-		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'SLEEP_DATA'),'w');
+		fid=fopen(fullfile(savedir,'SLEEP_DATA'),'w');
 		fclose(fid);
 
 	else
 		histogram=ephys_visual_histogram(AUDIO.data,'fs',AUDIO.fs);
-		save(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'histogram.mat'),'histogram','-v7.3');
+		save(fullfile(savedir,'histogram.mat'),'histogram','-v7.3');
 	end
+
+	% collect the firing rate for each empty directory, concatenate this later on for showing 
+	% movement of RMS, etc. etc., across the day
 
 	% touch signals to multi-unit, single-unit, and fields processing
 
@@ -250,17 +301,17 @@ for i=0:parameters.trial_win:ntrials
 
 		% multi-unit signal
 
-		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'.mua_signal'),'w');
+		fid=fopen(fullfile(savedir,'.mua_signal'),'w');
 		fclose(fid);
 
 		% signal-unit signal
 
-		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'.sua_signal'),'w');
+		fid=fopen(fullfile(savedir,'.sua_signal'),'w');
 		fclose(fid);
 
 		% lfp signal
 
-		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'.lfp_signal'),'w');
+		fid=fopen(fullfile(savedir,'.lfp_signal'),'w');
 		fclose(fid);
 
 	end
@@ -269,12 +320,13 @@ for i=0:parameters.trial_win:ntrials
 
 		% don't process again if we have a full window
 
-		fid=fopen(fullfile(FILEDIR,[SAVEDIR '_' num2str(dircount)],'.done_extraction'),'w');
+		fid=fopen(fullfile(savedir,'.done_extraction'),'w');
 		fclose(fid);
 
 	end
 
 	dircount=dircount+1;
+
 
 end
 
@@ -282,25 +334,59 @@ clearvars EPHYS AUDIO;
 
 % if there aren't too many directories, go ahead and concatenate the data
 
-if (dircount-1)<=parameters.cat_limit
+dircount=dircount-1; % remove the extra dir
+
+if dircount<=parameters.cat_limit
 
 	disp('Concatenating directory data...');
 
-	ephys_cat_collect_data(FILEDIR);
-	
-	load(fullfile(FILEDIR,'ephys_cat','cat_data.mat'),'cat_audio','cat_ephys','cat_file_datenum');
+	ephys_cat_collect_data(FILEDIR);	
 
-	disp('Computing firing rate across all trials on all channels...');
+	disp('Collecting firing rate across all trials on all channels...');
 
-	ephys_cat_ratetracker(cat_ephys,cat_audio,cat_file_datenum,'savedir',fullfile(FILEDIR,'ephys_cat'),...
-		'channels',cat_ephys.labels);
+	% use entire trial for spike threshold detection if sleep data
 
-	clearvars cat_audio cat_ephys cat_file_datenum;
+	disp('Directory 1');
 
-	load(fullfile(FILEDIR,'ephys_cat','cat_fr.mat'),'fr');
+	load(fullfile(FILEDIR,[SAVEDIR '_' num2str(1)],'aggregated_stats.mat'),'fr')
+	cat_fr=fr;
+	clear fr;
+
+	for i=2:dircount
+
+		disp(['Directory ' num2str(i)]);
+
+		load(fullfile(FILEDIR,[SAVEDIR '_' num2str(i)],'aggregated_stats.mat'),'fr');
+
+		if length(fr)~=length(cat_fr)
+			disp('Channel mismatch for firing rates, bailing!');
+			return;
+		end
+
+		for j=1:length(cat_fr)
+
+			cat_fr(j).time_series=[cat_fr(j).time_series fr(j).time_series];
+			cat_fr(j).threshold=[cat_fr(j).threshold fr(j).threshold];
+			cat_fr(j).rms.edge=[cat_fr(j).rms.edge fr(j).rms.edge];
+			cat_fr(j).rms.song=[cat_fr(j).rms.song fr(j).rms.song];
+			cat_fr(j).datenums=[cat_fr(j).datenums fr(j).datenums];
+
+		end
+
+		clear fr;
+
+	end
+
+	% generate plots first, i/o is a little slow here
 
 	disp('Generating plots...');
 
-	ephys_visual_cat_mutrack(fr,'savedir',fullfile(FILEDIR,'ephys_cat'));
+	ephys_visual_cat_mutrack(cat_fr,'savedir',fullfile(FILEDIR,'ephys_cat'));
+
+	mkdir(fullfile(FILEDIR,'ephys_cat'))
+	save(fullfile(FILEDIR,'ephys_cat','cat_fr.mat'),'cat_fr','-v7.3');
+
+	clear cat_fr;
+
 
 end

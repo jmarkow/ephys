@@ -542,7 +542,7 @@ function template_match(TEMPLATE,TARGET_FILES,SAVEFILE,TEMPLATESIZE)
 %disp('Comparing the target sounds to the template...');
 
 
-for i=1:length(TARGET_FILES)
+parfor i=1:length(TARGET_FILES)
 
 	% load the features of the sound data
 
@@ -675,6 +675,16 @@ counter=0;
 all_labels=[];
 all_ports=[];
 
+% in case we have no ephys or ttl data
+%
+ 
+ephys.labels=[];
+ephys.ports=[];
+ephys.fs=[];
+ephys.data=[];
+ttl.data=[];
+ttl.fs=[];
+
 for i=1:length(SELECTED_PEAKS)
 
 	is_legacy=check_legacy(FILENAMES{i});
@@ -685,6 +695,7 @@ for i=1:length(SELECTED_PEAKS)
 		ports=repmat('A',[1 length(channels)]);
 	else
 		load(FILENAMES{i},'ephys');
+
 		labels=ephys.labels;	
 		ports=ephys.ports;
 	end	
@@ -795,6 +806,9 @@ disp('Extracting data');
 fprintf(1,['Progress:  ' blanks(nblanks)]);
 
 trial=1;
+eflag=1;
+tflag=1;
+
 for i=1:length(SELECTED_PEAKS)
 
 	fprintf(1,formatstring,round((i/length(SELECTED_PEAKS))*100));
@@ -829,7 +843,15 @@ for i=1:length(SELECTED_PEAKS)
 		load(FILENAMES{i},'audio','ephys','ttl');
 	end	
 
-	if audio.fs~=ephys.fs
+	if ~exist('ephys','var')
+		eflag=0;
+	end
+
+	if ~exist('ttl','var')
+		tflag=0;
+	end
+
+	if audio.fs~=ephys.fs & eflag
 		error('Audio (%g) and ephys (%g) sampling rates are not equal for file %s',...
 			audio.fs,ephys.fs,FILENAMES{i});
 	end
@@ -851,12 +873,16 @@ for i=1:length(SELECTED_PEAKS)
 				USED_FILENAMES{end+1}=FILENAMES{i};
                 		MIC.data(:,trial)=single(audio.data(startpoint:endpoint));               
               
-				if ~isempty(ttl.data)
+				if ~isempty(ttl.data) & tflag
 					TTL.data(:,trial)=single(ttl.data(startpoint:endpoint));
 				end
 
 				% if we have differences in channel number, how to resolve?
 
+				if ~eflag
+					continue;
+				end
+				
 				for k=1:length(ephys.labels)
                     
 					label_chk=ephys.labels(k)==all_labels;

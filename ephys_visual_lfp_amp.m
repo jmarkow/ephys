@@ -142,20 +142,19 @@ fs=EPHYS.fs;
 
 % anti-alias
 
-
-proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
-clear EPHYS.data;
-
-disp(['Anti aliasing...']);
-
-proc_data=ephys_condition_signal(proc_data,'l','freq_range',[300],'filt_order',2,'filt_name','b',...
-		'medfilt_scale',medfilt_scale,'fs',fs,'notch',0); 
 downfact=fs/proc_fs;
 
 if mod(downfact,1)>0
 	error('ephysPipeline:spectcoherence:downsamplenotinteger','Need to downsample by integer');
 end
 
+proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
+clear EPHYS.data;
+
+disp(['Anti alias filtering and downsampling...']);
+
+proc_data=ephys_condition_signal(proc_data,'l','freq_range',[proc_fs/2],'filt_order',2,'filt_name','b',...
+		'medfilt_scale',[],'fs',fs,'notch',0); 
 disp(['Downsampling to ' num2str(proc_fs) ]);
 proc_data=downsample(proc_data,downfact);
 
@@ -163,7 +162,7 @@ proc_data=downsample(proc_data,downfact);
 
 proc_data=single(ephys_condition_signal(proc_data,'l','freq_range',freq_range,...
 		'fs',proc_fs,'notch',notch,'notch_bw',notch_bw,...
-		'ripple',ripple,'attenuation',attenuation));
+		'ripple',ripple,'attenuation',attenuation,'medfilt_scale',medfilt_scale));
 
 [nsamples,ntrials,nchannels]=size(proc_data);
 LFP_RASTER.t=[1:nsamples]./proc_fs;

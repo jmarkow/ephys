@@ -304,16 +304,22 @@ for i=1:length(hits)
 	startpoint=(hitloc*(parameters.smscore_n-parameters.smscore_overlap)*parameters.smscore_downsampling);
 	endpoint=startpoint+fulltemplength;
 
-	if length(padding)==2
-		startpoint=startpoint-floor(padding(1)*audio.fs);
-		endpoint=endpoint+ceil(padding(2)*audio.fs);
-	end
+	% comment this out to include overlapping songs
 
-	if startpoint-prev_endpoint<=0
+	if startpoint<prev_endpoint
 		disp('Hits are overlapping, skipping...');
 		continue;
 	end
 
+	chk_endpoint=endpoint; % store the endpoint w/o padding (overlapping pad is OK)
+
+	% add padding
+
+	if length(padding)==2
+		startpoint=startpoint-floor(padding(1)*audio.fs);
+		endpoint=endpoint+ceil(padding(2)*audio.fs);
+	end
+	
 	if length(store_audio.data)>endpoint && startpoint>0	
 
 		audio.data=store_audio.data(startpoint:endpoint);
@@ -356,7 +362,11 @@ for i=1:length(hits)
 		chunk_sonogram_im=flipdim(chunk_sonogram_im,1);
 		imwrite(uint8(chunk_sonogram_im),colors,fullfile(imagedir,[savename '.gif']),'gif');
 		wavwrite(audio.data,audio.fs,fullfile(wavdir,[savename '.wav']));
-		prev_endpoint=endpoint;
+		
+		% if we've gotten to this point an extraction has been succesfully written
+		% store the endpoint so we can check for overlap
+
+		prev_endpoint=chk_endpoint;
 	
 	end
 

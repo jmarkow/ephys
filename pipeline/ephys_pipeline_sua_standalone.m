@@ -29,7 +29,8 @@ end
 delete(fullfile(PROCDIR,'snr_channel_*'));
 
 disp('Computing SNR on all channels');
-SNR=ephys_pipeline_candidate_su(agg_ephys,'savedir',PROCDIR,'snr_threshold',parameters.snr_cutoff);
+SNR=ephys_pipeline_candidate_su(agg_ephys,'savedir',PROCDIR,'snr_threshold',parameters.snr_cutoff,'noise',...
+	parameters.spike_noise_method,'car_exclude',parameters.spike_car_exclude,'car_trim',parameters.spike_car_trim);
 
 % check for contiguous windows with SNR>SNR_min
 
@@ -80,7 +81,8 @@ for i=1:length(candidate_channels)
 			'spike_window',parameters.spike_window,'spikelimit',parameters.spike_spikelimit,'modelselection',...
 			parameters.spike_modelselection,'smem',parameters.spike_smem,'garbage',parameters.spike_garbage,...
 			'spikeworkers',parameters.spike_workers);
-	catch
+	catch err
+		rethrow([err]);
 		disp(['Could not process channel ' num2str(candidate_channels(i)) ', continuing...']);
 	end
 

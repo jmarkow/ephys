@@ -32,9 +32,6 @@ end
 [samples,ntrials,nchannels]=size(agg_ephys.data);
 
 % check for peak in the mua that exceeds 4*std seems to be a good rule of thumb
-
-disp('Computing spectrograms...');
-
 % only compute spectrograms if the extraction is sufficiently long
 
 % hops start at n/2 and increment n-overlap

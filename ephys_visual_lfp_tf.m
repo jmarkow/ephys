@@ -111,7 +111,7 @@ lfp_overlap=395;
 lfp_nfft=1024; % superficial, makes the spectrogram smoother
 lfp_w=1; % time bandwidth product if using multi-taper
 lfp_ntapers=[]; % number of tapers, leave blank to use 2*w-1
-proc_fs=1000;
+proc_fs=1e3;
 
 hist_min_f=1;
 hist_max_f=10e3;
@@ -139,7 +139,7 @@ for i=1:2:nparams
 			savedir=varargin{i+1};
 		case 'hist_colors'
 			hist_colors=varargin{i+1};
-		case 'car_exclude'
+		case 'car_exclu'
 			car_exclude=varargin{i+1};
 		case 'figtitle'
 			figtitle=varargin{i+1};
@@ -217,15 +217,19 @@ end
 proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
 clear EPHYS.data;
 
-proc_data=ephys_condition_signal(proc_data,'l','freq_range',[300],'filt_order',2,'filt_name','b',...
-		'medfilt_scale',medfilt_scale,'fs',fs,'notch',0); 
+disp('Anti-alias filtering and downsampling');
+
+proc_data=ephys_condition_signal(proc_data,'l','freq_range',[proc_fs/2],'filt_order',2,'filt_name','b',...
+		'medfilt_scale',[],'fs',fs,'notch',0); 
+
+disp(['Downsampling to ' num2str(proc_fs) ]);
 proc_data=downsample(proc_data,downfact);
 
-% filter in the desired band
+% filter in the desired band, median filter after downsampling (time_intensive operation)
 
 proc_data=ephys_condition_signal(proc_data,'l','freq_range',freq_range,...
 		'fs',proc_fs,'notch',notch,'notch_bw',notch_bw,...
-		'ripple',ripple,'attenuation',attenuation,'filt_order',filt_order);
+		'ripple',ripple,'attenuation',attenuation,'filt_order',filt_order,'medfilt_scale',medfilt_scale);
 [nsamples,ntrials,nchannels]=size(proc_data);
 
 % get rows and columns

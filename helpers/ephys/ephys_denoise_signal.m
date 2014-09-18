@@ -68,7 +68,15 @@ for i=1:length(CHOUT)
 	end
 end
 
-DATA=zeros(samples,ntrials,length(chmap));
+if ndims_ephys==3
+	DATA=zeros(samples,ntrials,length(chmap));
+elseif ndims_ephys==2
+	DATA=zeros(samples,ntrials);
+elseif ndims_ephys==1
+	DATA=zeros(samples,1);
+else
+	error('Data must contain 1-3 dimensions');
+end
 
 switch lower(method)
 
@@ -79,23 +87,57 @@ switch lower(method)
 		disp(['Using electrodes ' num2str(CHIN(car_electrodes)) ' for CAR']);
 		disp(['Trimmed mean prctile ' num2str(car_trim)]);
 
-		CAR=trimmean(EPHYS_DATA(:,:,car_electrodes),car_trim,'round',3);
+		if ndims_ephys==3
+			CAR=trimmean(EPHYS_DATA(:,:,car_electrodes),car_trim,'round',3);
 
-		for i=1:length(chmap)
-			DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-CAR;
+			for i=1:length(chmap)
+				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-CAR;
+			end
+		elseif ndims_ephys==2
+			
+			CAR=trimmean(EPHYS_DATA(:,car_electrodes),car_trim,'round',2);
+
+			for i=1:length(chmap)
+				DATA(:,i)=EPHYS_DATA(:,chmap(i))-CAR;
+			end
+
+		else
+			error('Data must contain at least two dimensions!');
 		end
 
 	case 'nn'
 
-		for i=1:length(chmap)
-			DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-EPHYS_DATA(:,:,find(channel_map==chmap(i)));
+		if ndims_ephys==3
+			for i=1:length(chmap)
+				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i))-EPHYS_DATA(:,:,find(channel_map==chmap(i)));
+			end
+		elseif ndims_ephys==2
+			for i=1:length(chmap)
+				DATA(:,i)=EPHYS_DATA(:,:,chmap(i))-EPHYS_DATA(:,find(channel_map==chmap(i)));
+			end
+		else
+			error('Data must contain at least two dimensions!');			
 		end
+
+
 
 	otherwise
 
-		for i=1:length(chmap)
-			DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i));
+		if ndims_ephys==3
+
+			for i=1:length(chmap)
+				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i));
+			end
+
+		elseif ndims_ephys==3
+
+			for i=1:length(chmap)
+				DATA(:,i)=EPHYS_DATA(:,chmap(i));
+			end
+		else
+			DATA=EPHYS_DATA;
 		end
+
 
 end
 

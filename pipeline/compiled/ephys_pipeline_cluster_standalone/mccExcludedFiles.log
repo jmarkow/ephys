@@ -19692,10 +19692,10 @@ exclude if $caller in [$toolbox/matlab, $toolbox/daq] and ...
 /Applications/MATLAB_R2012b.app/toolbox/nnet/nnet/@network/adapt.m 
   called by /Applications/MATLAB_R2012b.app/toolbox/nnet/nnet/nnnetwork/linearlayer.m 
 (because of toolbox compilability rules) 
-/Applications/MATLAB_R2012b.app/toolbox/nnet/nnet/@network/gensim.m 
+/Applications/MATLAB_R2012b.app/toolbox/nnet/nnet/@network/train.m 
   called by /Applications/MATLAB_R2012b.app/toolbox/nnet/nnet/nnnetwork/linearlayer.m 
 (because of toolbox compilability rules) 
-/Applications/MATLAB_R2012b.app/toolbox/nnet/nnet/@network/train.m 
+/Applications/MATLAB_R2012b.app/toolbox/nnet/nnet/@network/gensim.m 
   called by /Applications/MATLAB_R2012b.app/toolbox/nnet/nnet/nnnetwork/linearlayer.m 
 (because of toolbox compilability rules) 
 /Applications/MATLAB_R2012b.app/toolbox/ident/ident/bj.m 

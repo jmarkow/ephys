@@ -52,6 +52,7 @@ filt_type='high';
 snr_threshold=8;
 exclude_channels=[];
 channels=EPHYS.labels;
+car_trim=40;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -65,13 +66,15 @@ for i=1:2:nparams
 			snr_threshold=varargin{i+1};
 		case 'car_exclude'
 			car_exclude=varargin{i+1};
+		case 'car_trim'
+			car_trim=varargin{i+1};
 	end
 end
 
 [samples,ntrials,nchannels]=size(EPHYS.data);
 
 fs=EPHYS.fs;
-proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
+proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
 proc_data=ephys_condition_signal(proc_data,'s','freq_range',freq_range,'filt_type',filt_type);
 
 clear EPHYS.data;

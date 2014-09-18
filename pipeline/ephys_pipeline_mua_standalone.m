@@ -28,7 +28,9 @@ end
 
 [samples,ntrials,nchannels]=size(agg_ephys.data);
 
-mua=ephys_visual_mua(agg_ephys,histogram,'savedir',PROCDIR,'fs',parameters.fs);
+mua=ephys_visual_mua(agg_ephys,histogram,'savedir',PROCDIR,'fs',parameters.fs,...
+	'noise',parameters.spike_noise_method,'car_exclude',...
+	parameters.spike_car_exclude,'proc_fs',parameters.mua_proc_fs,'car_trim',parameters.spike_car_trim);
 
 % check for peak in the mua that exceeds 4*std seems to be a good rule of thumb
 

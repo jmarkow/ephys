@@ -72,12 +72,14 @@ max_f=10e3;
 hist_colors='jet';
 mua_colors='hot';
 figtitle='';
-freq_range=[500 5e3]; % frequency range for filtering
+freq_range=[500 4.5e3]; % frequency range for filtering
+proc_fs=10e3;
 downsampling=2;
 channels=EPHYS.labels;
 hampel=6;
 attenuation=40;
 ripple=.2;
+car_trim=40;
 
 for i=1:2:nparams
 	switch lower(varargin{i})
@@ -111,6 +113,10 @@ for i=1:2:nparams
 			attenuation=varargin{i+1};
 		case 'ripple'
 			ripple=varargin{i+1};
+		case 'proc_fs'
+			proc_fs=varargin{i+1};
+		case 'car_trim'
+			car_trim=varargin{i+1};
 	end
 end
 
@@ -120,17 +126,30 @@ end
 
 fs=EPHYS.fs;
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SIGNAL CONDITIONING %%%%%%%%%%%%%%%%
 
-proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude);
+downfact=fs/proc_fs;
+
+if mod(downfact,1)>0
+	error('ephysPipeline:spectcoherence:downsamplenotinteger','Need to downsample by integer');
+end
+
+proc_data=ephys_denoise_signal(EPHYS.data,EPHYS.labels,channels,'method',noise,'car_exclude',car_exclude,'car_trim',car_trim);
 clear EPHYS.data;
-proc_data=single(ephys_condition_signal(proc_data,'m','freq_range',freq_range,'winsigma',winsigma));
+
+disp('Anti-alias filtering and downsampling');
+
+proc_data=ephys_condition_signal(proc_data,'l','freq_range',[proc_fs/2],'filt_order',2,'filt_name','b',...
+		'medfilt_scale',[],'fs',fs,'notch',0); 
+
+disp(['Downsampling to ' num2str(proc_fs) ]);
+proc_data=downsample(proc_data,downfact);
+proc_data=single(ephys_condition_signal(proc_data,'m','freq_range',freq_range,'winsigma',winsigma,'fs',proc_fs));
 
 [nsamples,ntrials,nchannels]=size(proc_data);
-TIME=[1:nsamples]./fs;
+TIME=[1:nsamples]./proc_fs;
 
 % are we downsampling
 

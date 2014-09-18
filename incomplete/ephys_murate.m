@@ -68,6 +68,8 @@ proc_fs=10e3;
 downfilt=5e3;
 thresh_trials=[];
 thresh_time=[];
+rms=[];
+threshold_smoothing=30;
 
 % remove eps generation, too slow here...
 
@@ -109,6 +111,10 @@ for i=1:2:nparams
 			thresh_trials=varargin{i+1};
 		case 'thresh_time'
 			thresh_time=varargin{i+1};
+		case 'rms'
+			rms=varargin{i+1};
+		case 'threshold_smoothing'
+			threshold_smoothing=varargin{i+1};
 	end
 end
 
@@ -145,15 +151,25 @@ disp(['Electrode ' num2str(channels)])
 
 % collect spikes
 totalspikes=0;
-threshdata=PROC_DATA(thresh_time,thresh_trials,1);
+
+% median filter the spikethreshold
+
+if isempty(rms)
+	threshdata=PROC_DATA(thresh_time,thresh_trials,1);
+	spikethreshold=sigma_t*median(abs(threshdata(:))/.6745);
+	disp(['Spike threshold:  ' num2str(spikethreshold)]);
+	spikethreshold=repmat(spikethreshold,[1 ntrials]);
+else
+	if ~isempty(threshold_smoothing)
+		spikethreshold=medfilt1(sigma_t*rms,min(threshold_smoothing,ntrials));
+	else
+		spikethreshold=sigma_t*rms;
+	end
+end
 
 RMS.edge=zeros(1,ntrials);
 RMS.song=zeros(1,ntrials);
 THRESHOLD=zeros(1,ntrials);
-
-spikethreshold=sigma_t*median(abs(threshdata(:))/.6745);
-
-disp(['Spike threshold:  ' num2str(spikethreshold)]);
 
 [nblanks formatstring]=fb_progressbar(100);
 fprintf(1,['Progress:  ' blanks(nblanks)]);
@@ -161,13 +177,20 @@ fprintf(1,['Progress:  ' blanks(nblanks)]);
 for i=1:ntrials
 	
 	fprintf(1,formatstring,round((i/ntrials)*100));	
-	spikes(i)=ephys_spike_detect(squeeze(PROC_DATA(:,i,:)),spikethreshold,'fs',EPHYS.fs,'visualize','n');
+
+	spikes(i)=ephys_spike_detect(squeeze(PROC_DATA(:,i,:)),spikethreshold(i),'fs',EPHYS.fs,'visualize','n');
 
 	%tmp=ephys_spike_removespikes(PROC_DATA(:,i,1),spikes(i));
 
-	THRESHOLD(i)=spikethreshold;
-	RMS.edge(i)=sqrt(mean(squeeze(PROC_DATA(end-bound*EPHYS.fs:end,i,:)).^2));
-	RMS.song(i)=sqrt(mean(PROC_DATA(bound*EPHYS.fs:end-bound*EPHYS.fs,i,:).^2));
+	THRESHOLD(i)=spikethreshold(i);
+
+	if ~isempty(bound)
+		RMS.edge(i)=sqrt(mean(PROC_DATA(thresh_time,i,:).^2));
+		RMS.song(i)=sqrt(mean(PROC_DATA(bound*EPHYS.fs:end-bound*EPHYS.fs,i,:).^2));
+	else
+		RMS.edge(i)=sqrt(mean(PROC_DATA(:,i,:).^2));
+		RMS.song(i)=RMS.edge(i);
+	end
 
 	totalspikes=totalspikes+length(spikes(i).times);
 

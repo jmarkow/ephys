@@ -128,4 +128,4 @@ for i=1:length(bins)
 end
 
 set(gca,'TickDir','out','FontSize',9,'FontName','Helvetica');
-xlim([round(min(time_elapsed)*10)/10 round(max(time_elapsed)*10)/10]);
+xlim([floor(min(time_elapsed)*1e2)/1e2 ceil(max(time_elapsed)*1e2)/1e2]);
