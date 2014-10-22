@@ -56,7 +56,7 @@ subtrials=[];
 channels=EPHYS.labels;
 
 bound=.2;
-car_trim=40;
+car_trim=0;
 decomp_level=7;
 
 interpolate_f=8; % interpolate factor
@@ -69,7 +69,8 @@ downfilt=5e3;
 thresh_trials=[];
 thresh_time=[];
 rms=[];
-threshold_smoothing=30;
+threshold_smoothing=35;
+fr_smoothing=.015;
 
 % remove eps generation, too slow here...
 
@@ -115,6 +116,8 @@ for i=1:2:nparams
 			rms=varargin{i+1};
 		case 'threshold_smoothing'
 			threshold_smoothing=varargin{i+1};
+		case 'fr_smoothing'
+			fr_smoothing=varargin{i+1};
 	end
 end
 
@@ -155,10 +158,12 @@ totalspikes=0;
 % median filter the spikethreshold
 
 if isempty(rms)
+	
 	threshdata=PROC_DATA(thresh_time,thresh_trials,1);
 	spikethreshold=sigma_t*median(abs(threshdata(:))/.6745);
 	disp(['Spike threshold:  ' num2str(spikethreshold)]);
 	spikethreshold=repmat(spikethreshold,[1 ntrials]);
+
 else
 	if ~isempty(threshold_smoothing)
 		spikethreshold=medfilt1(sigma_t*rms,min(threshold_smoothing,ntrials));
@@ -169,6 +174,7 @@ end
 
 RMS.edge=zeros(1,ntrials);
 RMS.song=zeros(1,ntrials);
+RMS.time_series=zeros(nsamples,ntrials);
 THRESHOLD=zeros(1,ntrials);
 
 [nblanks formatstring]=fb_progressbar(100);
@@ -192,6 +198,7 @@ for i=1:ntrials
 		RMS.song(i)=RMS.edge(i);
 	end
 
+	RMS.time_series(:,i)=sqrt(smooth(PROC_DATA(:,i,:).^2,round(fr_smoothing*EPHYS.fs)));
 	totalspikes=totalspikes+length(spikes(i).times);
 
 end

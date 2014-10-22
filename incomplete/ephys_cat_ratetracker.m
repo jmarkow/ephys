@@ -132,7 +132,7 @@ for i=1:length(channels)
 	disp(['Computing spike rate for channel ' num2str(channels(i)) '...']);
 
 	if ~isempty(rms)
-		tmprms=rms.robust(find(rms.labels==channels(i)),:);
+		tmprms=rms.silentpts.robust(find(rms.labels==channels(i)),:);
 	else
 		tmprms=[];
 	end
@@ -151,7 +151,9 @@ for i=1:length(channels)
 	fr(i).time_series=single(downsample(smooth_ifr,downfact));	
 	fr(i).threshold=single(threshold);
 	fr(i).rms.edge=single(trialrms.edge);
-	fr(i).rms.song=single(trialsrms.song);
+	fr(i).rms.song=single(trialrms.song);
+	fr(i).rms.time_series=single(downsample(trialrms.time_series,downfact));
+	fr(i).rms.fs=proc_fs;
 	fr(i).fs=proc_fs;
 	fr(i).datenums=STORE_DATENUM;
 

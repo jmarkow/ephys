@@ -42,6 +42,7 @@ end
 
 CAR=[];
 
+
 % intan nearest neighbor mapping
 
 channel_map=[4 3 2 1 16 15 14 13 5 6 7 8 9 10 11 12];
@@ -54,9 +55,9 @@ for i=1:length(car_exclude)
 end
 
 car_electrodes=setdiff(1:length(CHIN),exclude_channels); % which electrodes are good for CAR?
-ndims_ephys=ndims(EPHYS_DATA);
+ndims_ephys=ndims(EPHYS_DATA)
 
-[samples,ntrials,nchannels]=size(EPHYS_DATA);
+[samples,ntrials,nchannels]=size(EPHYS_DATA)
 
 % map each channel appropriately
 
@@ -71,7 +72,7 @@ end
 if ndims_ephys==3
 	DATA=zeros(samples,ntrials,length(chmap));
 elseif ndims_ephys==2
-	DATA=zeros(samples,ntrials);
+	DATA=zeros(samples,length(chmap));
 elseif ndims_ephys==1
 	DATA=zeros(samples,1);
 else
@@ -121,7 +122,8 @@ switch lower(method)
 
 
 
-	otherwise
+    otherwise
+
 
 		if ndims_ephys==3
 
@@ -129,7 +131,7 @@ switch lower(method)
 				DATA(:,:,i)=EPHYS_DATA(:,:,chmap(i));
 			end
 
-		elseif ndims_ephys==3
+		elseif ndims_ephys==2
 
 			for i=1:length(chmap)
 				DATA(:,i)=EPHYS_DATA(:,chmap(i));

@@ -92,7 +92,7 @@ maxfs=6e3; % the song 'band'
 ratio_thresh=2; % power ratio between song and non-song band
 window=250; % window to calculate ratio in (samples)
 noverlap=0; % just do no overlap, faster
-song_thresh=.15; % between .2 and .3 seems to work best (higher is more exlusive)
+song_thresh=.3; % between .2 and .3 seems to work best (higher is more exlusive)
 songduration=.8; % moving average of ratio
 low=5;
 high=10;
@@ -101,14 +101,14 @@ disp_minfs=1;
 disp_maxfs=10e3;
 filtering=300; % changed to 100 from 700 as a more sensible default, leave empty to filter later
 fs=25e3;
-audio_pad=5; % pad on either side of the extraction
+audio_pad=7; % pad on either side of the extraction (in seconds)
 error_buffer=5; % if we can't load a file, how many days old before deleting
 ext='rhd';
 
 % parameters for folder creation
 
 folder_format='yyyy-mm-dd';
-parse_string='bimpdd'; % how to parse filenames, b=birdid, i=recid, m=micid, t=ttlid, d=date
+parse_string='auto'; % how to parse filenames, b=birdid, i=recid, m=micid, t=ttlid, d=date
 		       % character position indicates which token (after delim split) contains the info
 date_string='yymmddHHMMSS'; % parse date using datestr format
 
@@ -120,7 +120,7 @@ data_pre='mat';
 sleep_pre='sleep';
 
 delimiter='\_'; % delimiter for splitting fields in filename
-bird_delimiter='\|'; % delimiter for splitting multiple birds
+bird_delimiter='\&'; % delimiter for splitting multiple birds
 nosort=0;
 subdir='pretty_bird';
 sleep_window=[ 22 7 ]; % times for keeping track of sleep data (24 hr time, start and stop)
@@ -129,22 +129,20 @@ sleep_fileinterval=10; % specify file interval (in minutes)
 sleep_segment=5; % how much data to keep (in seconds)
 ttl_skip=1; % skip song detection if TTL detected?
 
-email_monitor=0; % monitor file creation, email if no files created in email_monitor minutes
+email_monitor=45; % monitor file creation, email if no files created in email_monitor minutes
 email_flag=0;
 email_wait=120;
-email_noisecut=100;
-email_noiselen=1;
+email_noisecut=500;
+email_noiselen=4;
 
-
-
-file_check=.2; % how long to wait between file reads to check if file is no longer being written (in seconds)
+file_check=5; % how long to wait between file reads to check if file is no longer being written (in seconds)
 
 mfile_path = mfilename('fullpath');
 [script_path,~,~]=fileparts(mfile_path);
 
 % where to place the parsed files
 
-root_dir=fullfile(pwd,'..','..','data','intan_data'); % where will the detected files go
+root_dir=fullfile(pwd,'..','..','intan_data'); % where will the detected files go
 proc_dir=fullfile(pwd,'..','processed'); % where do we put the files after processing, maybe auto-delete
 					 % after we're confident in the operation of the pipeline
 unorganized_dir=fullfile(pwd,'..','unorganized');
@@ -340,6 +338,7 @@ for i=1:length(proc_files)
 
 		catch err
 
+            file_datenum=dir2.datenum;
 			file_age=daysdif(file_datenum,datenum(now));
 
 			if file_age>error_buffer
@@ -391,11 +390,11 @@ for i=1:length(proc_files)
 
 		% if all channels have high noise levels, alert the user
 
-		if all(noiseflag)
+		% TODO:  setting for checking across multiple files (could use simple counter)
 
+		if all(noiseflag) & EMAIL_FLAG==0
 			gmail_send(['Found excessive noise levels on all channels, make sure headstage is connected!']);
 			EMAIL_FLAG=1; % don't send another e-mail!
-
 		end
 
 	end
@@ -598,269 +597,270 @@ for i=1:length(proc_files)
 					end
 
 
-				end
+			end
+		else
+			birdstruct.playback.data=[];
+		end
+
+		if isttl
+
+			switch lower(ttl_source(1))
+
+				case 'c'
+
+					ttl_channel=find(ttl_trace==birdstruct.adc.labels);
+
+					birdstruct.ttl.data=birdstruct.adc.data(:,ttl_channel);
+					birdstruct.ttl.fs=birdstruct.adc.fs;
+					birdstruct.ttl.t=birdstruct.adc.t;
+
+					birdstruct.adc.data(:,ttl_channel)=[];
+					birdstruct.adc.labels(ttl_channel)=[];
+
+					if isempty(birdstruct.adc.data)
+						birdstruct.adc.t=[];
+					end
+
+
+				case 'd'
+
+					ttl_channel=find(ttl_trace==birdstruct.digin.labels);
+
+					birdstruct.ttl.data=birdstruct.digin.data(:,ttl_channel);
+					birdstruct.ttl.fs=birdstruct.digin.fs;
+					birdstruct.ttl.t=birdstruct.digin.t;
+
+					birdstruct.digin.data(:,ttl_channel)=[];
+					birdstruct.digin.labels(ttl_channel)=[];
+
+					if isempty(birdstruct.digin.data)
+						birdstruct.digin.t=[];
+					end
+
+
+			end
+
+		else
+			birdstruct.ttl.data=[];
+		end
+
+		if ismic		
+
+			% (m)ain channels (i.e. electrode channel), (a)ux or a(d)c?
+
+			switch lower(mic_source(1))
+
+				case 'm'
+
+					mic_channel=find(birdstruct.ephys.labels==mic_trace&birdstruct.ephys.ports==mic_port);
+
+					% take out the mic channel from the ephys labels
+
+					birdstruct.audio.data=birdstruct.ephys.data(:,mic_channel);
+					birdstruct.audio.fs=birdstruct.ephys.fs;
+					birdstruct.audio.t=birdstruct.ephys.t;
+
+					birdstruct.ephys.data(:,mic_channels)=[];
+					birdstruct.ephys.labels(mic_channel)=[];
+
+					if isempty(birdstruct.ephys.data)
+						birdstruct.ephys.t=[];
+					end
+
+				case 'a'
+
+					mic_channel=find(birdstruct.aux.labels==mic_trace&birdstruct.aux.ports==mic_port);
+
+					birdstruct.audio.data=birdstruct.aux.data(:,mic_channel);
+					birdstruct.audio.fs=birdstruct.aux.fs;
+					birdstruct.audio.t=birdstruct.aux.t;
+
+					birdstruct.aux.data(:,mic_channel)=[];
+					birdstruct.aux.labels(mic_channel)=[];
+
+					if isempty(birdstruct.aux.data)
+						birdstruct.aux.t=[];
+					end
+
+				case 'c'
+
+					mic_channel=find(birdstruct.adc.labels==mic_trace);
+
+					birdstruct.audio.data=birdstruct.adc.data(:,mic_channel);
+					birdstruct.audio.fs=birdstruct.adc.fs;
+					birdstruct.audio.t=birdstruct.adc.t;
+
+					birdstruct.adc.data(:,mic_channel)=[];
+					birdstruct.adc.labels(mic_channel)=[];
+
+					if isempty(birdstruct.adc.data)
+						birdstruct.adc.t=[];
+					end
+
+			end
+
+			% set up high-pass for mic data if indicated by the user
+
+			if ~isempty(filtering)
+				[b,a]=butter(5,[filtering/(fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
 			else
-				birdstruct.playback.data=[];
+				b=[];
+				a=[];
 			end
 
-			if isttl
 
-				switch lower(ttl_source(1))
+			if ~isempty(filtering)
+				birdstruct.audio.norm_data=filtfilt(b,a,birdstruct.audio.data);
+			else
+				birdstruct.audio.norm_data=birdstruct.audio.data;
+			end
 
-					case 'c'
+			birdstruct.audio.norm_data=birdstruct.audio.norm_data./max(abs(birdstruct.audio.norm_data));
+		else
+			birdstruct.audio.data=[];
+			birdstruct.audio.norm_data=[];
 
-						ttl_channel=find(ttl_trace==birdstruct.adc.labels);
-
-						birdstruct.ttl.data=birdstruct.adc.data(:,ttl_channel);
-						birdstruct.ttl.fs=birdstruct.adc.fs;
-						birdstruct.ttl.t=birdstruct.adc.t;
-
-						birdstruct.adc.data(:,ttl_channel)=[];
-						birdstruct.adc.labels(ttl_channel)=[];
-
-						if isempty(birdstruct.adc.data)
-							birdstruct.adc.t=[];
-						end
+		end
 
 
-					case 'd'
+		if ~isempty(file_datenum) & length(sleep_window)==2
 
-						ttl_channel=find(ttl_trace==birdstruct.digin.labels);
+			% convert the sleep window times to datenum
 
-						birdstruct.ttl.data=birdstruct.digin.data(:,ttl_channel);
-						birdstruct.ttl.fs=birdstruct.digin.fs;
-						birdstruct.ttl.t=birdstruct.digin.t;
+			[~,~,~,hour]=datevec(file_datenum);
 
-						birdstruct.digin.data(:,ttl_channel)=[];
-						birdstruct.digin.labels(ttl_channel)=[];
+			% compare hour, are we in the window?
 
-						if isempty(birdstruct.digin.data)
-							birdstruct.digin.t=[];
-						end
+			if hour>=sleep_window(1) | hour<=sleep_window(2)
 
+				disp(['Processing sleep data for file ' proc_files{i}]);
 
-					end
-				else
-					birdstruct.ttl.data=[];
+				frontend_sleepdata(birdstruct,bird_split{j},sleep_window,sleep_segment,sleep_fileinterval,sleep_pre,...
+					fullfile(root_dir,birdid,recid),folder_format,delimiter,parse_string);	
+
+				sleep_flag=1;
+
+				% TODO: skip song detection?
+
+			end
+		end
+
+		frontend_extract_mkdirs(foldername,image_pre,wav_pre,data_pre,isttl);
+
+		image_dir=fullfile(foldername,image_pre);
+		wav_dir=fullfile(foldername,wav_pre);
+		data_dir=fullfile(foldername,data_pre);
+
+		image_dir_ttl=fullfile(foldername,[image_pre '_ttl']);
+		wav_dir_ttl=fullfile(foldername,[wav_pre '_ttl']);
+		data_dir_ttl=fullfile(foldername,[data_pre '_ttl']);
+
+		if ~ismic & ~isttl & ~sleep_flag
+
+			save(fullfile(data_dir,['songdet1_' bird_split{j} '.mat']),'-struct','birdstruct','-v7.3');
+			clearvars birdstruct;
+
+			continue;
+
+		end
+
+		% if we have a TTL trace, extract using the TTL
+
+		dirstructttl=struct('image',image_dir_ttl,'wav',wav_dir_ttl,'data',data_dir_ttl);
+		dirstruct=struct('image',image_dir,'wav',wav_dir,'data',data_dir);
+
+		if isttl
+
+			ttl_pts=find(birdstruct.ttl.data(:)>.5)';
+
+			if ~isempty(ttl_pts)
+
+				ttl_idx=[0 find(diff(ttl_pts)>audio_pad*2*fs) length(ttl_pts)];
+
+				idx=1:length(ttl_idx)-1;
+
+				startpoints=floor(ttl_pts(ttl_idx(idx)+1)-audio_pad*fs);
+				stoppoints=ceil(ttl_pts(ttl_idx(idx+1))+audio_pad*fs);
+
+				ext_pts=[startpoints(:) stoppoints(:)];
+
+				if ~isempty(ext_pts)
+					disp(['TTL detected in file:  ' proc_files{i}]);
 				end
 
-				if ismic		
+				frontend_dataextract(bird_split{j},birdstruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
 
-					% (m)ain channels (i.e. electrode channel), (a)ux or a(d)c?
+				% if we found TTL pulses and ttl_skip is on, skip song detection and move on to next file
 
-					switch lower(mic_source(1))
-
-						case 'm'
-
-							mic_channel=find(birdstruct.ephys.labels==mic_trace&birdstruct.ephys.ports==mic_port);
-
-							% take out the mic channel from the ephys labels
-
-							birdstruct.audio.data=birdstruct.ephys.data(:,mic_channel);
-							birdstruct.audio.fs=birdstruct.ephys.fs;
-							birdstruct.audio.t=birdstruct.ephys.t;
-
-							birdstruct.ephys.data(:,mic_channels)=[];
-							birdstruct.ephys.labels(mic_channel)=[];
-
-							if isempty(birdstruct.ephys.data)
-								birdstruct.ephys.t=[];
-							end
-
-						case 'a'
-
-							mic_channel=find(birdstruct.aux.labels==mic_trace&birdstruct.aux.ports==mic_port);
-
-							birdstruct.audio.data=birdstruct.aux.data(:,mic_channel);
-							birdstruct.audio.fs=birdstruct.aux.fs;
-							birdstruct.audio.t=birdstruct.aux.t;
-
-							birdstruct.aux.data(:,mic_channel)=[];
-							birdstruct.aux.labels(mic_channel)=[];
-
-							if isempty(birdstruct.aux.data)
-								birdstruct.aux.t=[];
-							end
-
-						case 'c'
-
-							mic_channel=find(birdstruct.adc.labels==mic_trace);
-
-							birdstruct.audio.data=birdstruct.adc.data(:,mic_channel);
-							birdstruct.audio.fs=birdstruct.adc.fs;
-							birdstruct.audio.t=birdstruct.adc.t;
-
-							birdstruct.adc.data(:,mic_channel)=[];
-							birdstruct.adc.labels(mic_channel)=[];
-
-							if isempty(birdstruct.adc.data)
-								birdstruct.adc.t=[];
-							end
-
-						end
-
-						% set up high-pass for mic data if indicated by the user
-
-						if ~isempty(filtering)
-							[b,a]=butter(5,[filtering/(fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
-						else
-							b=[];
-							a=[];
-						end
-
-
-						if ~isempty(filtering)
-							birdstruct.audio.norm_data=filtfilt(b,a,birdstruct.audio.data);
-						else
-							birdstruct.audio.norm_data=birdstruct.audio.data;
-						end
-
-						birdstruct.audio.norm_data=birdstruct.audio.norm_data./max(abs(birdstruct.audio.norm_data));
-					else
-						birdstruct.audio.data=[];
-						birdstruct.audio.norm_data=[];
-
-					end
-
-
-					if ~isempty(file_datenum) & length(sleep_window)==2
-
-						% convert the sleep window times to datenum
-
-						[~,~,~,hour]=datevec(file_datenum);
-
-						% compare hour, are we in the window?
-
-						if hour>=sleep_window(1) | hour<=sleep_window(2)
-
-							disp(['Processing sleep data for file ' proc_files{i}]);
-
-							frontend_sleepdata(birdstruct,bird_split{j},sleep_window,sleep_segment,sleep_fileinterval,sleep_pre,...
-								fullfile(root_dir,birdid,recid),folder_format,delimiter,parse_string);	
-
-							sleep_flag=1;
-
-							% TODO: skip song detection?
-
-						end
-					end
-
-					frontend_extract_mkdirs(foldername,image_pre,wav_pre,data_pre,isttl);
-
-					image_dir=fullfile(foldername,image_pre);
-					wav_dir=fullfile(foldername,wav_pre);
-					data_dir=fullfile(foldername,data_pre);
-
-					image_dir_ttl=fullfile(foldername,[image_pre '_ttl']);
-					wav_dir_ttl=fullfile(foldername,[wav_pre '_ttl']);
-					data_dir_ttl=fullfile(foldername,[data_pre '_ttl']);
-
-					if ~ismic & ~isttl & ~sleep_flag
-
-						save(fullfile(data_dir,['songdet1_' bird_split{j} '.mat']),'-struct','birdstruct','-v7.3');
-						clearvars birdstruct;
-
-						continue;
-
-					end
-
-					% if we have a TTL trace, extract using the TTL
-
-					dirstructttl=struct('image',image_dir_ttl,'wav',wav_dir_ttl,'data',data_dir_ttl);
-					dirstruct=struct('image',image_dir,'wav',wav_dir,'data',data_dir);
-
-					if isttl
-
-						ttl_pts=find(birdstruct.ttl.data(:)>.5)';
-
-						if ~isempty(ttl_pts)
-
-							ttl_idx=[0 find(diff(ttl_pts)>audio_pad*2*fs) length(ttl_pts)];
-
-							idx=1:length(ttl_idx)-1;
-
-							startpoints=floor(ttl_pts(ttl_idx(idx)+1)-audio_pad*fs);
-							stoppoints=ceil(ttl_pts(ttl_idx(idx+1))+audio_pad*fs);
-
-							ext_pts=[startpoints(:) stoppoints(:)];
-
-							if ~isempty(ext_pts)
-								disp(['TTL detected in file:  ' proc_files{i}]);
-							end
-
-							frontend_dataextract(bird_split{j},birdstruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
-
-							% if we found TTL pulses and ttl_skip is on, skip song detection and move on to next file
-
-							if ttl_skip
-								disp('Skipping song detection...');
-								continue;
-							end	
-
-						end
-					end
-
-					% did we detect song?
-
-					if ismic
-
-						try
-							disp('Entering song detection...');
-							[song_bin]=song_det(birdstruct.audio.norm_data,fs,minfs,maxfs,window,...
-								noverlap,songduration,ratio_thresh,song_thresh);
-						catch err
-							disp([err]);
-							disp('Song detection failed, continuing...');
-							fclose('all');
-							continue;
-						end
-
-
-						song_pts=find(song_bin>0);
-
-						if isempty(song_pts)
-							disp(['No song detected in file:  ' proc_files{i}]);
-							continue;
-						else
-							disp(['Song detected in file:  ' proc_files{i}]);
-						end
-
-						% if we're here, we've detected song
-						% factor to move from sonogram coordinates to raw audio data coordinates
-
-						son_to_vec=(length(birdstruct.audio.norm_data)-noverlap)/(length(song_bin));
-
-						% use diff to find non_continguous song bouts separated by the audio pad + 1 second
-
-						song_idx=[0 find(diff(song_pts*son_to_vec)>fs+audio_pad*2*fs) length(song_pts)];
-
-						idx=1:length(song_idx)-1;
-
-						startpoints=floor(song_pts(song_idx(idx)+1)*son_to_vec-audio_pad*fs);
-						stoppoints=ceil(song_pts(song_idx(idx+1))*son_to_vec+audio_pad*fs);
-
-						ext_pts=[startpoints(:) stoppoints(:)];
-
-						frontend_dataextract(bird_split{j},birdstruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors);
-
-					end
-
-					% clear the datastructure for this bird
-
-					clear birdstruct;
-
-				end
-
-				% if there is neither a mic nor a TTL signal, store everything
-
-				clearvars datastruct dirstruct dirstructttl;
-
-				try
-					movefile(proc_files{i},proc_dir);
-				catch
-					disp(['Could not move file ' proc_files{i}]);
-					fclose('all');
+				if ttl_skip
+					disp('Skipping song detection...');
 					continue;
-				end
+				end	
 
 			end
+		end
+
+		% did we detect song?
+
+		if ismic
+
+			try
+				disp('Entering song detection...');
+				[song_bin]=song_det(birdstruct.audio.norm_data,fs,minfs,maxfs,window,...
+					noverlap,songduration,ratio_thresh,song_thresh);
+			catch err
+				disp([err]);
+				disp('Song detection failed, continuing...');
+				fclose('all');
+				continue;
+			end
+
+
+			song_pts=find(song_bin>0);
+
+			if isempty(song_pts)
+				disp(['No song detected in file:  ' proc_files{i}]);
+				continue;
+			else
+				disp(['Song detected in file:  ' proc_files{i}]);
+			end
+
+			% if we're here, we've detected song
+			% factor to move from sonogram coordinates to raw audio data coordinates
+
+			son_to_vec=(length(birdstruct.audio.norm_data)-noverlap)/(length(song_bin));
+
+			% use diff to find non_continguous song bouts separated by the audio pad + 1 second
+
+			song_idx=[0 find(diff(song_pts*son_to_vec)>fs+audio_pad*2*fs) length(song_pts)];
+
+			idx=1:length(song_idx)-1;
+
+			startpoints=floor(song_pts(song_idx(idx)+1)*son_to_vec-audio_pad*fs);
+			stoppoints=ceil(song_pts(song_idx(idx+1))*son_to_vec+audio_pad*fs);
+
+			ext_pts=[startpoints(:) stoppoints(:)];
+
+			frontend_dataextract(bird_split{j},birdstruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors);
+
+		end
+
+		% clear the datastructure for this bird
+
+		clear birdstruct;
+
+	end
+
+	% if there is neither a mic nor a TTL signal, store everything
+
+	clearvars datastruct dirstruct dirstructttl;
+
+	try
+		movefile(proc_files{i},proc_dir);
+	catch
+		disp(['Could not move file ' proc_files{i}]);
+		fclose('all');
+		continue;
+	end
+
+end

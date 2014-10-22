@@ -80,8 +80,15 @@ for i=2:length(ephys_file)
 	STORE_DATENUM=[STORE_DATENUM agg_file_datenum];
 	STORE_PLAYBACK.data=[STORE_PLAYBACK.data agg_playback.data];
 	STORE_AUDIO.data=[STORE_AUDIO.data agg_audio.data];
-	STORE_RMS.standard=[STORE_RMS.standard agg_rms.standard];
-	STORE_RMS.robust=[STORE_RMS.robust agg_rms.robust];
+
+	if ~isempty(STORE_RMS)
+		STORE_RMS.allpts.standard=[STORE_RMS.allpts.standard agg_rms.allpts.standard];
+		STORE_RMS.allpts.robust=[STORE_RMS.allpts.robust agg_rms.allpts.robust];
+		STORE_RMS.songpts.standard=[STORE_RMS.songpts.standard agg_rms.songpts.standard];
+		STORE_RMS.songpts.robust=[STORE_RMS.songpts.robust agg_rms.songpts.robust];
+		STORE_RMS.silentpts.standard=[STORE_RMS.silentpts.standard agg_rms.silentpts.standard];
+		STORE_RMS.silentpts.robust=[STORE_RMS.silentpts.robust agg_rms.silentpts.robust];
+	end
 	clearvars agg_file_datenum agg_playback agg_audio agg_rms;
 
 end

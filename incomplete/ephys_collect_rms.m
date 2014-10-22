@@ -48,9 +48,13 @@ freq_range=[400 4e3]; % bandpassing <10e3 distorted results, reasoning that >800
 filt_type='bandpass'; % high,low or bandpass
 filt_order=6;
 filt_name='e';
-car_trim=40;
+car_trim=0;
 
-
+songfs=[ 2e3 8e3 ]; % vector, lower to upper fs cutoffs for song
+smoothing=.2; % smoothing of song energy ratio
+rthresh=1; % ratio threshold (song/nonsong)
+songlen=.08; % length of extraction that contains significant song energy
+winsize=.005; % fft window size (in seconds) for song detection
 
 %proc_fs=10e3;
 
@@ -139,6 +143,7 @@ end
 
 counter=1;
 
+
 for i=1:length(uniq_files)
 
 	matches=find(filemap==uniq_files(i));
@@ -146,7 +151,7 @@ for i=1:length(uniq_files)
 	% first load the original file
 
 	source_file=fullfile(DIR,'..','..',rawlist{uniq_files(i)});
-	load(source_file,'ephys');
+	load(source_file,'ephys','audio');
 
 	% process as we would for multi-unit spike detection
 
@@ -154,17 +159,57 @@ for i=1:length(uniq_files)
 	PROC_DATA=ephys_condition_signal(PROC_DATA,'s','freq_range',...
 		freq_range,'filt_type',filt_type,'filt_order',filt_order,'filt_name',filt_name,'fs',ephys.fs);
 
-	rms.standard=sqrt(mean(PROC_DATA.^2));
-	rms.robust=median(abs(PROC_DATA)/.6745);
+	[b,a]=ellip(5,.2,40,[500]/(audio.fs/2),'high');
+
+	% first get rms for all data, then data spanning silence/song only
+
+	micdata=filtfilt(b,a,audio.data);
+	[s,f,t]=spectrogram(micdata,round(winsize*audio.fs),0,[],audio.fs);
+
+	spect_fs=1/(t(2)-t(1));
+
+	energy=abs(s);
+
+	minfs=min(find(f>=songfs(1)));
+	maxfs=max(find(f<=songfs(2)));
+
+	% get the ratio of song/nonsong energy
+
+	songenergy=mean(energy(minfs:maxfs,:)); % song energy
+	nonsongenergy=mean(energy([ 1:minfs maxfs:size(energy,1)],:)); % nonsong energy
+	ratio=smooth(songenergy./nonsongenergy,smoothing*spect_fs); % simple moving average
+
+	% write out points where we detected song offline, use this to calculate thresholds
+	% for how many points did we detect song?
+
+	songpts=double(ratio>rthresh);
+
+	timebase=[1:length(micdata)]/audio.fs;
+	songdet_offline=interp1(t,songpts,timebase,'nearest');
+
+	% interpolate from song detection to original vector
+
+	songpts=songdet_offline>0;
+	silentpts=songdet_offline==0;
+
 	rms.channels=ephys.labels;
+
+	rms.allpts.standard=sqrt(mean(PROC_DATA.^2));
+	rms.allpts.robust=median(abs(PROC_DATA)/.6745);
+
+	rms.songpts.standard=sqrt(mean(PROC_DATA(songpts,:).^2));
+	rms.songpts.robust=median(abs(PROC_DATA(songpts,:))/.6745);
+	
+	rms.silentpts.standard=sqrt(mean(PROC_DATA(silentpts,:).^2));
+	rms.silentpts.robust=median(abs(PROC_DATA(silentpts,:))/.6745);
 
 	for j=1:length(matches)
 
 		disp(['File ' num2str(counter) ' of ' num2str(length(FILELIST))]);
-		
+
 		extraction_file=FILELIST{matches(j)};
 		save(fullfile(DIR,extraction_file),'rms','source_file','-append');
-		
+
 		counter=counter+1;
 
 	end

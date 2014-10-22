@@ -171,8 +171,15 @@ for i=0:parameters.trial_win:ntrials
 
 	if ~SLEEPSTATUS
 		
-		RMS.standard=zeros(length(all_labels),length(currtrials));
-		RMS.robust=zeros(length(all_labels),length(currtrials));
+		RMS.allpts.standard=zeros(length(all_labels),length(currtrials));
+		RMS.allpts.robust=zeros(length(all_labels),length(currtrials));
+
+		RMS.songpts.standard=zeros(length(all_labels),length(currtrials));
+		RMS.songpts.robust=zeros(length(all_labels),length(currtrials));
+
+		RMS.silentpts.standard=zeros(length(all_labels),length(currtrials));
+		RMS.silentpts.robust=zeros(length(all_labels),length(currtrials));
+
 		RMS.labels=all_labels(:);
 		RMS.ports=all_ports(:);
 
@@ -237,8 +244,16 @@ for i=0:parameters.trial_win:ntrials
 		if ~SLEEPSTATUS
 			for k=1:length(rms.channels)
 				ch_idx=find(rms.channels(k)==all_labels);
-				RMS.standard(ch_idx,j)=rms.standard(k);
-				RMS.robust(ch_idx,j)=rms.robust(k);
+				RMS.allpts.standard(ch_idx,j)=rms.allpts.standard(k);
+				RMS.allpts.robust(ch_idx,j)=rms.allpts.robust(k);
+
+				RMS.songpts.standard(ch_idx,j)=rms.songpts.standard(k);
+				RMS.songpts.robust(ch_idx,j)=rms.songpts.robust(k);
+
+				RMS.silentpts.standard(ch_idx,j)=rms.silentpts.standard(k);
+				RMS.silentpts.robust(ch_idx,j)=rms.silentpts.robust(k);
+
+
 			end
 		end
 
@@ -369,6 +384,7 @@ if dircount<=parameters.cat_limit
 			cat_fr(j).threshold=[cat_fr(j).threshold fr(j).threshold];
 			cat_fr(j).rms.edge=[cat_fr(j).rms.edge fr(j).rms.edge];
 			cat_fr(j).rms.song=[cat_fr(j).rms.song fr(j).rms.song];
+			cat_fr(j).rms.time_series=[cat_fr(j).rms.time_series fr(j).rms.time_series];
 			cat_fr(j).datenums=[cat_fr(j).datenums fr(j).datenums];
 
 		end
@@ -387,6 +403,5 @@ if dircount<=parameters.cat_limit
 	save(fullfile(FILEDIR,'ephys_cat','cat_fr.mat'),'cat_fr','-v7.3');
 
 	clear cat_fr;
-
 
 end
