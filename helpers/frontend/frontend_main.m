@@ -93,6 +93,7 @@ ratio_thresh=2; % power ratio between song and non-song band
 window=250; % window to calculate ratio in (samples)
 noverlap=0; % just do no overlap, faster
 song_thresh=.3; % between .2 and .3 seems to work best (higher is more exlusive)
+pow_thresh=.12; % raw power threshold (so extremely weak signals are excluded)
 songduration=.8; % moving average of ratio
 low=5;
 high=10;
@@ -807,7 +808,7 @@ for i=1:length(proc_files)
 			try
 				disp('Entering song detection...');
 				[song_bin]=song_det(birdstruct.audio.norm_data,fs,minfs,maxfs,window,...
-					noverlap,songduration,ratio_thresh,song_thresh);
+					noverlap,songduration,ratio_thresh,song_thresh,pow_thresh);
 			catch err
 				disp([err]);
 				disp('Song detection failed, continuing...');

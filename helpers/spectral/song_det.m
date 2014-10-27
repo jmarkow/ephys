@@ -1,5 +1,9 @@
-function [song_idx power f t song_detvec]=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh)
+function [song_idx power f t song_detvec]=song_det(audio,fs,minfs,maxfs,window,noverlap,songduration,ratio_thresh,song_thresh,pow_thresh)
 %based on Andalmann's code
+
+if nargin<10 | isempty(pow_thresh)
+    pow_thresh=0;
+end
 
 [s,f,t]=spectrogram(audio,window,noverlap,[],fs);
 
@@ -23,8 +27,12 @@ filt_size=round((fs*songduration)/(window-noverlap));
 mov_filt=ones(1,filt_size)*1/filt_size;
 song_detvec=conv(double(song_ratio>ratio_thresh),mov_filt,'same');
 
-% where is the threshold exceeded?
+% where is the threshold exceeded for both the raw power and the ratio?
 
-song_idx=song_detvec>song_thresh;
+pow_idx=song>pow_thresh;
+ratio_idx=song_detvec>song_thresh;
 
+%%%%
+
+song_idx=pow_idx&ratio_idx;
 
