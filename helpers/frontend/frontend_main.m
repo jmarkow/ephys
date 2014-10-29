@@ -109,8 +109,13 @@ ext='rhd';
 % parameters for folder creation
 
 folder_format='yyyy-mm-dd';
+parse_method='auto'; % auto parse parameters from filename? otherwise MUST provide parameters
+		     % through cmdline options
 parse_string='auto'; % how to parse filenames, b=birdid, i=recid, m=micid, t=ttlid, d=date
 		       % character position indicates which token (after delim split) contains the info
+
+
+
 date_string='yymmddHHMMSS'; % parse date using datestr format
 
 % directory names
@@ -125,7 +130,7 @@ bird_delimiter='\&'; % delimiter for splitting multiple birds
 nosort=0;
 subdir='pretty_bird';
 sleep_window=[ 22 7 ]; % times for keeping track of sleep data (24 hr time, start and stop)
-auto_delete_int=1; % delete data n days old
+auto_delete_int=inf; % delete data n days old (set to inf to never delete)
 sleep_fileinterval=10; % specify file interval (in minutes) 
 sleep_segment=5; % how much data to keep (in seconds)
 ttl_skip=1; % skip song detection if TTL detected?
@@ -135,6 +140,23 @@ email_flag=0;
 email_wait=120;
 email_noisecut=500;
 email_noiselen=4;
+
+playback_extract=0; % set to 1 if you'd like to extract based on playback
+playback_thresh=.01;
+playback_rmswin=.025;
+
+% define for manual parsing
+
+mic_trace=[];
+mic_source='';
+mic_port='';
+ports='';
+ttl_trace=[];
+ttl_source='';
+playback_trace=[];
+playback_source='';
+birdid='pretty_bird';
+recid='mysterious_brainarea';
 
 file_check=5; % how long to wait between file reads to check if file is no longer being written (in seconds)
 
@@ -175,6 +197,22 @@ end
 
 for i=1:2:nparams
 	switch lower(varargin{i})
+		case 'mic_trace'
+			mic_trace=varargin{i+1};
+		case 'mic_source'
+			mic_source=varargin{i+1};
+		case 'mic_port'
+			mic_port=varargin{i+1};
+		case 'ports'
+			ports=varargin{i+1};
+		case 'ttl_trace'
+			ttl_trace=varargin{i+1};
+		case 'ttl_source'
+			ttl_source=varargin{i+1};
+		case 'playback_trace'
+			playback_trace=varargin{i+1};
+		case 'playback_source'
+			playback_source=varargin{i+1};
 		case 'auto_delete_int'
 			auto_delete_int=varargin{i+1};
 		case 'sleep_window'
@@ -215,6 +253,12 @@ for i=1:2:nparams
 			email_flag=varargin{i+1};
 		case 'email_wait'
 			email_wait=varargin{i+1};
+		case 'playback_extract'
+			playback_extract=varargin{i+1};
+		case 'playback_thresh'
+			playback_thresh=varargin{i+1};
+		case 'playback_rmswin'
+			playback_rmswin=varargin{i+1};
 	end
 end
 
@@ -339,7 +383,7 @@ for i=1:length(proc_files)
 
 		catch err
 
-            file_datenum=dir2.datenum;
+            		file_datenum=dir2.datenum;
 			file_age=daysdif(file_datenum,datenum(now));
 
 			if file_age>error_buffer
@@ -457,12 +501,22 @@ for i=1:length(proc_files)
 				bird_split{j}=[bird_split{j} datestring];
 			end
 
-			[birdid,recid,mic_trace,mic_source,mic_port,ports,ttl_trace,ttl_source,...
-				playback_trace,playback_source,file_datenum]=...
-				frontend_fileparse(bird_split{j},delimiter,parse_string,date_string);
 
+			% auto_parse
+
+			if lower(parse_method(1))=='a'
+				[birdid,recid,mic_trace,mic_source,mic_port,ports,ttl_trace,ttl_source,...
+					playback_trace,playback_source,file_datenum]=...
+					frontend_fileparse(bird_split{j},delimiter,parse_string,date_string);
+			elseif lower(parse_method(1))=='s'
+				% semi-automatic
+				[birdid,recid,~,~,~,~,~,~,~,~,file_datenum]=...
+					frontend_fileparse(bird_split{j},delimiter,parse_string,date_string);
+			end
+	
+			disp(['Parameter setting method:  ' parse_method]);
 			disp(['Processing bird ' num2str(j) ' of ' num2str(nbirds) ]);
-			disp(['File date: ' datestr(file_datenum)]);
+			disp(['File date:  ' datestr(file_datenum)]);
 			disp(['Bird ID:  ' birdid]);
 			disp(['Rec ID:  ' recid]);
 			disp(['Mic ch:  ' num2str(mic_trace)]);
@@ -598,7 +652,18 @@ for i=1:length(proc_files)
 					end
 
 
+			
 			end
+
+			if ~isempty(filtering)
+				birdstruct.playback.norm_data=filtfilt(b,a,birdstruct.playback.data);
+			else
+				birdstruct.playback.norm_data=detrend(birdstruct.playback.data);
+			end
+
+			birdstruct.playback.norm_data=birdstruct.playback.norm_data./max(abs(birdstruct.playback.norm_data));
+
+
 		else
 			birdstruct.playback.data=[];
 		end
@@ -713,7 +778,7 @@ for i=1:length(proc_files)
 			if ~isempty(filtering)
 				birdstruct.audio.norm_data=filtfilt(b,a,birdstruct.audio.data);
 			else
-				birdstruct.audio.norm_data=birdstruct.audio.data;
+				birdstruct.audio.norm_data=detrend(birdstruct.audio.data);
 			end
 
 			birdstruct.audio.norm_data=birdstruct.audio.norm_data./max(abs(birdstruct.audio.norm_data));
@@ -748,6 +813,8 @@ for i=1:length(proc_files)
 
 		frontend_extract_mkdirs(foldername,image_pre,wav_pre,data_pre,isttl);
 
+		% set up file directories
+
 		image_dir=fullfile(foldername,image_pre);
 		wav_dir=fullfile(foldername,wav_pre);
 		data_dir=fullfile(foldername,data_pre);
@@ -756,7 +823,11 @@ for i=1:length(proc_files)
 		wav_dir_ttl=fullfile(foldername,[wav_pre '_ttl']);
 		data_dir_ttl=fullfile(foldername,[data_pre '_ttl']);
 
-		if ~ismic & ~isttl & ~sleep_flag
+		image_dir_pback=fullfile(foldername,[image_pre '_pback']);
+		wav_dir_pback=fullfile(foldername,[wav_pre '_pback']);
+		data_dir_pback=fullfile(foldername,[data_pre '_pback']);
+
+		if ~ismic & ~isttl & ~sleep_flag & ~isplayback
 
 			save(fullfile(data_dir,['songdet1_' bird_split{j} '.mat']),'-struct','birdstruct','-v7.3');
 			clearvars birdstruct;
@@ -769,6 +840,10 @@ for i=1:length(proc_files)
 
 		dirstructttl=struct('image',image_dir_ttl,'wav',wav_dir_ttl,'data',data_dir_ttl);
 		dirstruct=struct('image',image_dir,'wav',wav_dir,'data',data_dir);
+
+		% first check TTL, sometimes we want to bail after TTL (ttl_skip)
+		% second check playback, sometimes we want to bail after TTL/playback (min. amplitude threshold)
+		% finally check for song
 
 		if isttl
 
@@ -801,13 +876,55 @@ for i=1:length(proc_files)
 			end
 		end
 
+		% did we detect playback?
+
+		% run song detection on the playback signal...
+
+
+		if isplayback & playback_extract
+		
+			% insert song detection code, change audio to playback?, or pass flag for show 
+			% playback data
+		
+			disp('Entering playback detection...');
+
+			% simply take rms of playback signal
+			
+			rmswin_smps=round(playback_rmswin*birdstruct.playback.fs);
+			rms=sqrt(smooth(birdstruct.playback.norm.^2,rmswin_smps));
+
+			playback_pts=find(rms>playback_thresh);
+
+			if isempty(playback_pts)
+				disp(['No playback detected in file:  ' proc_files{i}]);
+				continue;
+			else
+				disp(['Playback detected in file ' proc_files{i}]);
+			end
+
+			% make sure pads don't result in overlapping extractions
+			
+			playback_idx=[0 find(diff(playback_pts)>audio_pad*2*fs) length(playback_pts)];
+
+			idx=1:length(playback_idx)-1;
+		
+			startpoints=floor(song_pts(playback_idx(idx)+1)*son_to_vec-audio_pad*fs);
+			stoppoints=ceil(song_pts(playback_idx(idx+1))*son_to_vec+audio_pad*fs);
+
+			ext_pts=[startpoints(:) stoppoints(:)];
+
+			frontend_dataextract(bird_split{j},birdstruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors,'playback');
+
+		end
+
+
 		% did we detect song?
 
 		if ismic
 
 			try
 				disp('Entering song detection...');
-				[song_bin]=song_det(birdstruct.audio.norm_data,fs,minfs,maxfs,window,...
+				song_bin=song_det(birdstruct.audio.norm_data,fs,minfs,maxfs,window,...
 					noverlap,songduration,ratio_thresh,song_thresh,pow_thresh);
 			catch err
 				disp([err]);
@@ -831,9 +948,11 @@ for i=1:length(proc_files)
 
 			son_to_vec=(length(birdstruct.audio.norm_data)-noverlap)/(length(song_bin));
 
-			% use diff to find non_continguous song bouts separated by the audio pad + 1 second
+			% make sure pads don't result in overlapping extractions
 
-			song_idx=[0 find(diff(song_pts*son_to_vec)>fs+audio_pad*2*fs) length(song_pts)];
+			% change to simply audio pad
+
+			song_idx=[0 find(diff(song_pts*son_to_vec)>audio_pad*2*fs) length(song_pts)];
 
 			idx=1:length(song_idx)-1;
 
@@ -842,9 +961,10 @@ for i=1:length(proc_files)
 
 			ext_pts=[startpoints(:) stoppoints(:)];
 
-			frontend_dataextract(bird_split{j},birdstruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors);
+			frontend_dataextract(bird_split{j},birdstruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors,'audio');
 
 		end
+
 
 		% clear the datastructure for this bird
 
