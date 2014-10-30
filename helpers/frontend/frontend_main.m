@@ -144,6 +144,7 @@ email_noiselen=4;
 playback_extract=0; % set to 1 if you'd like to extract based on playback
 playback_thresh=.01;
 playback_rmswin=.025;
+playback_skip=0;
 
 % define for manual parsing
 
@@ -259,6 +260,10 @@ for i=1:2:nparams
 			playback_thresh=varargin{i+1};
 		case 'playback_rmswin'
 			playback_rmswin=varargin{i+1};
+		case 'parse_method'
+			parse_method=varargin{i+1};
+		case 'playback_skip'
+			playback_skip=varargin{i+1};
 	end
 end
 
@@ -656,12 +661,22 @@ for i=1:length(proc_files)
 			end
 
 			if ~isempty(filtering)
+				[b,a]=butter(5,[filtering/(fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
+			else
+				b=[];
+				a=[];
+			end
+
+
+			if ~isempty(filtering)
 				birdstruct.playback.norm_data=filtfilt(b,a,birdstruct.playback.data);
 			else
 				birdstruct.playback.norm_data=detrend(birdstruct.playback.data);
 			end
 
-			birdstruct.playback.norm_data=birdstruct.playback.norm_data./max(abs(birdstruct.playback.norm_data));
+			% don't amplitude normalize playback data, volume is used for detection!!!!
+
+			%birdstruct.playback.norm_data=birdstruct.playback.norm_data./max(abs(birdstruct.playback.norm_data));
 
 
 		else
@@ -811,7 +826,7 @@ for i=1:length(proc_files)
 			end
 		end
 
-		frontend_extract_mkdirs(foldername,image_pre,wav_pre,data_pre,isttl);
+		frontend_extract_mkdirs(foldername,image_pre,wav_pre,data_pre,isttl,isplayback);
 
 		% set up file directories
 
@@ -839,6 +854,7 @@ for i=1:length(proc_files)
 		% if we have a TTL trace, extract using the TTL
 
 		dirstructttl=struct('image',image_dir_ttl,'wav',wav_dir_ttl,'data',data_dir_ttl);
+		dirstructpback=struct('image',image_dir_pback,'wav',wav_dir_pback,'data',data_dir_pback);
 		dirstruct=struct('image',image_dir,'wav',wav_dir,'data',data_dir);
 
 		% first check TTL, sometimes we want to bail after TTL (ttl_skip)
@@ -864,7 +880,8 @@ for i=1:length(proc_files)
 					disp(['TTL detected in file:  ' proc_files{i}]);
 				end
 
-				frontend_dataextract(bird_split{j},birdstruct,dirstructttl,ext_pts,disp_minfs,disp_maxfs,1,colors);
+				frontend_dataextract(bird_split{j},birdstruct,dirstructttl,...
+					ext_pts,disp_minfs,disp_maxfs,1,colors,'audio',1,'songdet1_','_ttl');
 
 				% if we found TTL pulses and ttl_skip is on, skip song detection and move on to next file
 
@@ -891,7 +908,7 @@ for i=1:length(proc_files)
 			% simply take rms of playback signal
 			
 			rmswin_smps=round(playback_rmswin*birdstruct.playback.fs);
-			rms=sqrt(smooth(birdstruct.playback.norm.^2,rmswin_smps));
+			rms=sqrt(smooth(birdstruct.playback.norm_data.^2,rmswin_smps));
 
 			playback_pts=find(rms>playback_thresh);
 
@@ -908,12 +925,20 @@ for i=1:length(proc_files)
 
 			idx=1:length(playback_idx)-1;
 		
-			startpoints=floor(song_pts(playback_idx(idx)+1)*son_to_vec-audio_pad*fs);
-			stoppoints=ceil(song_pts(playback_idx(idx+1))*son_to_vec+audio_pad*fs);
+			startpoints=floor(playback_pts(playback_idx(idx)+1)-audio_pad*fs);
+			stoppoints=ceil(playback_pts(playback_idx(idx+1))+audio_pad*fs);
 
 			ext_pts=[startpoints(:) stoppoints(:)];
 
-			frontend_dataextract(bird_split{j},birdstruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors,'playback');
+			frontend_dataextract(bird_split{j},birdstruct,dirstructpback,...
+				ext_pts,disp_minfs,disp_maxfs,colors,'playback',1,'songdet1_','_pback');
+			%frontend_dataextract(bird_split{j},birdstruct,dirstructpback,...
+			%	ext_pts,disp_minfs,disp_maxfs,colors,'audio',1,'songdet1_','');
+
+			if playback_skip
+				disp('Skipping song detection...');
+				continue;
+			end
 
 		end
 
@@ -961,7 +986,8 @@ for i=1:length(proc_files)
 
 			ext_pts=[startpoints(:) stoppoints(:)];
 
-			frontend_dataextract(bird_split{j},birdstruct,dirstruct,ext_pts,disp_minfs,disp_maxfs,0,colors,'audio');
+			frontend_dataextract(bird_split{j},birdstruct,dirstruct,...
+				ext_pts,disp_minfs,disp_maxfs,colors,'audio',1,'songdet1_','');
 
 		end
 

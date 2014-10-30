@@ -1,4 +1,4 @@
-function frontend_extract_data(FILENAME,DATA,DIRS,EXT_PTS,DISP_MINFS,DISP_MAXFS,ISTTL,COLORS,SOURCE)
+function frontend_extract_data(FILENAME,DATA,DIRS,EXT_PTS,DISP_MINFS,DISP_MAXFS,COLORS,SOURCE,DATASAVE,PREFIX,SUFFIX,SKIP)
 %extracts data given a set of points (e.g. TTL or SONG EXTRACTION)
 %
 %
@@ -7,15 +7,32 @@ function frontend_extract_data(FILENAME,DATA,DIRS,EXT_PTS,DISP_MINFS,DISP_MAXFS,
 %
 %
 
+
 fs=DATA.(SOURCE).fs;
 
-suffix='';
-if ISTTL
-	suffix='_ttl';
+if nargin<12
+	SKIP=0;
 end
 
-if nargin<9 | isempty(SOURCE)
+if nargin<11 
+	SUFFIX='';
+end
+
+if nargin<10
+	PREFIX='songdet1_';
+end
+
+if nargin<9 | isempty(DATASAVE)
+	DATASAVE=0;
+end
+
+if nargin<8 | isempty(SOURCE)
 	SOURCE='audio';
+end
+
+[b,a]=ellip(5,.2,40,[300/(fs/2)],'high'); 
+if ~isfield(DATA.(SOURCE),'norm_data')
+	DATA.(SOURCE).norm_data=filtfilt(b,a,DATA.(SOURCE).data);
 end
 
 [sonogram_im sonogram_f sonogram_t]=pretty_sonogram(DATA.(SOURCE).norm_data,fs,'n',500,'overlap',100,'low',1.5);
@@ -35,22 +52,30 @@ end
 sonogram_im=sonogram_im(startidx:stopidx,:);
 sonogram_im=flipdim(sonogram_im,1);
 [f,t]=size(sonogram_im);
-im_son_to_vec=(length(DATA.SOURCE.norm_data)-100)/t;
+im_son_to_vec=(length(DATA.(SOURCE).norm_data)-100)/t;
 
 data_types={'ephys','ttl','digout','digin','adc','aux','audio','playback'};
 
 savefun=@(filename,datastruct) save(filename,'-struct','datastruct','-v7.3');
+sonogram_filename=fullfile(DIRS.image,[ PREFIX FILENAME SUFFIX '.gif' ]);
 
 for i=1:size(EXT_PTS,1)
 
 	startpoint=EXT_PTS(i,1);
 	endpoint=EXT_PTS(i,2);
 
-	if startpoint<1, startpoint=1; end
-	if endpoint>length(DATA.(SOURCE).norm_data), endpoint=length(DATA.(SOURCE).norm_data); end
-
-	sonogram_filename=fullfile(DIRS.image,[ FILENAME suffix '.gif' ]);
-
+	if startpoint<1 & SKIP
+		continue;
+	elseif startpoint<1 & ~SKIP
+	       	startpoint=1; 
+	end
+	
+	if endpoint>length(DATA.(SOURCE).norm_data) & SKIP
+	       continue;
+       	elseif endpoint>length(DATA.(SOURCE).norm_data) & ~SKIP
+	       endpoint=length(DATA.(SOURCE).norm_data); 
+       	end
+	
 	% cut out the extraction
 
 	EXTDATA=DATA;
@@ -62,9 +87,9 @@ for i=1:size(EXT_PTS,1)
 		end
 	end
 
-	EXTDATA.(SOURC).norm_data=EXTDATA.(SOURCE).norm_data(startpoint:endpoint);
+	EXTDATA.(SOURCE).norm_data=EXTDATA.(SOURCE).norm_data(startpoint:endpoint);
 
-	save_name=[ FILENAME '_chunk_' num2str(i) suffix ];
+	save_name=[ PREFIX FILENAME '_chunk_' num2str(i) SUFFIX ];
 
 	sonogram_im(1:10,ceil(startpoint/im_son_to_vec):ceil(endpoint/im_son_to_vec))=62;
 
@@ -100,20 +125,22 @@ for i=1:size(EXT_PTS,1)
 	end
 
 	wavwrite(EXTDATA.(SOURCE).norm_data,fs,fullfile(DIRS.wav,[ save_name '.wav']));
-
+	
 	% remove all data used for plotting (i.e. norm_data)
 
 	for j=1:length(data_types)
 		if isfield(EXTDATA.(data_types{j}),'norm_data')
-			rmfield(EXTDATA.(data_types{j}),'norm_data');
+			EXTDATA.(data_types{j})=rmfield(EXTDATA.(data_types{j}),'norm_data');
 		end
 	end
 
 	%EXTDATA.(SOURCE)=rmfield(EXTDATA.(SOURCE),'norm_data');
 
-	savefun(fullfile(DIRS.data,['songdet1_' save_name '.mat']),EXTDATA);
-	clear EXTDATA;
+	if DATASAVE
+		savefun(fullfile(DIRS.data,[ save_name '.mat']),EXTDATA);
+	end
 
+	clear EXTDATA;
 end
 
 reformatted_im=im_reformat(sonogram_im,(ceil((length(DATA.(SOURCE).data)/fs)/10)));
