@@ -72,24 +72,26 @@ for i=1:size(EXT_PTS,1)
 
 		% convert to samples (different possible fs for each data type)
 
-		startpoint=floor(EXT_PTS(i,1)*EXTDATA.(data_types{j})*fs);
-		endpoint=ceil(EXT_PTS(i,2)*EXTDATA.(data_types{j}).fs);
-
-		if startpoint<1 & SKIP
-			continue;
-		elseif startpoint<1 & ~SKIP
-			startpoint=1; 
-		end
-
-		if endpoint>length(EXTDATA.(data_types{j}).data) & SKIP
-			continue;
-		elseif endpoint>length(EXTDATA.(data_types{j}).data) & ~SKIP
-			endpoint=length(EXTDATA.(data_types{j}).data);
-		end
-
 		if ~isempty(EXTDATA.(data_types{j}).data)
+
+			startpoint=floor(EXT_PTS(i,1)*EXTDATA.(data_types{j}).fs);
+			endpoint=ceil(EXT_PTS(i,2)*EXTDATA.(data_types{j}).fs);
+
+			if startpoint<1 & SKIP
+				continue;
+			elseif startpoint<1 & ~SKIP
+				startpoint=1; 
+			end
+
+			if endpoint>length(EXTDATA.(data_types{j}).data) & SKIP
+				continue;
+			elseif endpoint>length(EXTDATA.(data_types{j}).data) & ~SKIP
+				endpoint=length(EXTDATA.(data_types{j}).data);
+			end
+
 			EXTDATA.(data_types{j}).data=EXTDATA.(data_types{j}).data(startpoint:endpoint,:);
 			EXTDATA.(data_types{j}).t=EXTDATA.(data_types{j}).t(startpoint:endpoint);
+
 		end
 	end
 
