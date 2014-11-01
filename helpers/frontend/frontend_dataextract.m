@@ -61,26 +61,32 @@ sonogram_filename=fullfile(DIRS.image,[ PREFIX FILENAME SUFFIX '.gif' ]);
 
 for i=1:size(EXT_PTS,1)
 
-	startpoint=EXT_PTS(i,1);
-	endpoint=EXT_PTS(i,2);
-
-	if startpoint<1 & SKIP
-		continue;
-	elseif startpoint<1 & ~SKIP
-	       	startpoint=1; 
-	end
-	
-	if endpoint>length(DATA.(SOURCE).norm_data) & SKIP
-	       continue;
-       	elseif endpoint>length(DATA.(SOURCE).norm_data) & ~SKIP
-	       endpoint=length(DATA.(SOURCE).norm_data); 
-       	end
 	
 	% cut out the extraction
 
 	EXTDATA=DATA;
 
+	% trim all data types
+
 	for j=1:length(data_types)
+
+		% convert to samples (different possible fs for each data type)
+
+		startpoint=floor(EXT_PTS(i,1)*EXTDATA.(data_types{j})*fs);
+		endpoint=ceil(EXT_PTS(i,2)*EXTDATA.(data_types{j}).fs);
+
+		if startpoint<1 & SKIP
+			continue;
+		elseif startpoint<1 & ~SKIP
+			startpoint=1; 
+		end
+
+		if endpoint>length(EXTDATA.(data_types{j}).data) & SKIP
+			continue;
+		elseif endpoint>length(EXTDATA.(data_types{j}).data) & ~SKIP
+			endpoint=length(EXTDATA.(data_types{j}).data);
+		end
+
 		if ~isempty(EXTDATA.(data_types{j}).data)
 			EXTDATA.(data_types{j}).data=EXTDATA.(data_types{j}).data(startpoint:endpoint,:);
 			EXTDATA.(data_types{j}).t=EXTDATA.(data_types{j}).t(startpoint:endpoint);
@@ -112,7 +118,7 @@ for i=1:size(EXT_PTS,1)
 
 	imwrite(uint8(chunk_sonogram_im),colormap([ COLORS '(63)']),fullfile(DIRS.image,[ save_name '.gif']),'gif');
 
-	
+
 	% normalize audio to write out to wav file
 
 	min_audio=min(EXTDATA.(SOURCE).norm_data(:));
@@ -125,7 +131,7 @@ for i=1:size(EXT_PTS,1)
 	end
 
 	wavwrite(EXTDATA.(SOURCE).norm_data,fs,fullfile(DIRS.wav,[ save_name '.wav']));
-	
+
 	% remove all data used for plotting (i.e. norm_data)
 
 	for j=1:length(data_types)

@@ -871,8 +871,8 @@ for i=1:length(proc_files)
 
 				idx=1:length(ttl_idx)-1;
 
-				startpoints=floor(ttl_pts(ttl_idx(idx)+1)-audio_pad*fs);
-				stoppoints=ceil(ttl_pts(ttl_idx(idx+1))+audio_pad*fs);
+				startpoints=ttl_pts(ttl_idx(idx)+1)/fs-audio_pad;
+				stoppoints=ttl_pts(ttl_idx(idx+1))/fs+audio_pad;
 
 				ext_pts=[startpoints(:) stoppoints(:)];
 
@@ -925,8 +925,8 @@ for i=1:length(proc_files)
 
 			idx=1:length(playback_idx)-1;
 		
-			startpoints=floor(playback_pts(playback_idx(idx)+1)-audio_pad*fs);
-			stoppoints=ceil(playback_pts(playback_idx(idx+1))+audio_pad*fs);
+			startpoints=playback_pts(playback_idx(idx)+1)/fs-audio_pad;
+			stoppoints=playback_pts(playback_idx(idx+1))/fs+audio_pad;
 
 			ext_pts=[startpoints(:) stoppoints(:)];
 
@@ -981,8 +981,8 @@ for i=1:length(proc_files)
 
 			idx=1:length(song_idx)-1;
 
-			startpoints=floor(song_pts(song_idx(idx)+1)*son_to_vec-audio_pad*fs);
-			stoppoints=ceil(song_pts(song_idx(idx+1))*son_to_vec+audio_pad*fs);
+			startpoints=(song_pts(song_idx(idx)+1)*son_to_vec)/fs-audio_pad;
+			stoppoints=(song_pts(song_idx(idx+1))*son_to_vec)/fs+audio_pad;
 
 			ext_pts=[startpoints(:) stoppoints(:)];
 

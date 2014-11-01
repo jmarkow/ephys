@@ -510,11 +510,10 @@ for i=1:length(SELECTED_PEAKS)
 		
 		% padding?
 		
-		ext_pts(j,1)=SELECTED_PEAKS{i}(j)-tempsize;
-		ext_pts(j,2)=SELECTED_PEAKS{i}(j)+tempsize;
+		ext_pts(j,1)=(SELECTED_PEAKS{i}(j)-tempsize)/datastruct.audio.fs;
+		ext_pts(j,2)=(SELECTED_PEAKS{i}(j)+tempsize)/datastruct.audio.fs;
 
 		% get all the data types save, write out gif, mat, wav etc.
-		
 
 	end
 
