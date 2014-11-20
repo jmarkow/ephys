@@ -61,7 +61,7 @@ sonogram_filename=fullfile(DIRS.image,[ PREFIX FILENAME SUFFIX '.gif' ]);
 
 for i=1:size(EXT_PTS,1)
 
-	
+
 	% cut out the extraction
 
 	EXTDATA=DATA;
@@ -90,12 +90,21 @@ for i=1:size(EXT_PTS,1)
 			end
 
 			EXTDATA.(data_types{j}).data=EXTDATA.(data_types{j}).data(startpoint:endpoint,:);
+
+			if isfield(EXTDATA.(data_types{j}),'norm_data')
+				EXTDATA.(data_types{j}).norm_data=EXTDATA.(data_types{j}).norm_data(startpoint:endpoint,:);
+			end
+
 			EXTDATA.(data_types{j}).t=EXTDATA.(data_types{j}).t(startpoint:endpoint);
 
 		end
 	end
 
-	EXTDATA.(SOURCE).norm_data=EXTDATA.(SOURCE).norm_data(startpoint:endpoint);
+
+	if length(EXTDATA.(SOURCE).norm_data)<2
+		warning('Extraction failed, continuing...');
+		continue;
+	end
 
 	save_name=[ PREFIX FILENAME '_chunk_' num2str(i) SUFFIX ];
 

@@ -15,22 +15,13 @@ buffersize=1e6;
 
 % determine whether or nor we have multiple files
 
-if iscell(filename)
+nfiles=length(filename);
 
-	nfiles=length(filename);
+% specify filename using uiputfile
 
-	% specify filename using uiputfile
-	
-	tmp=uiputfile('*.nex','New filename');
-	[~,basefilename,ext]=fileparts(tmp);
-	filenames=filename;
-else
+[storefile,storepath]=uiputfile('*.nex','New filename');
 
-	nfiles=1;
-	filenames{1}=filename;
-	[~,basefilename,ext]=fileparts(filenames{1});
-end
-
+filenames=filename;
 clearvars filename;
 
 % read in first data file
@@ -42,7 +33,19 @@ switch lower(ext)
 		datastruct=frontend_readdata(fullfile(pathname,filenames{1}));
 	case '.mat'
 		datastruct=load(fullfile(pathname,filenames{1}));
+		is_legacy=check_legacy(fullfile(pathname,filenames{1}));
+
 	otherwise
+end
+
+if is_legacy
+	datastruct.ephys.data=datastruct.ephys_data;
+	datastruct.ephys.fs=datastruct.fs;
+	datastruct.ephys.ports=repmat('A',[1 size(datastruct.ephys.data,2)]);
+	datastruct.ephys.labels=datastruct.channels;
+	datastruct=rmfield(datastruct,'ephys_data');
+	datastruct=rmfield(datastruct,'fs');
+	datastruct=rmfield(datastruct,'channels');
 end
 
 fs=datastruct.ephys.fs;
@@ -79,9 +82,25 @@ for ii=1:nfiles
 			case '.rhd'
 				datastruct=frontend_readdata(fullfile(pathname,filenames{ii}));
 			case '.mat'
+				is_legacy=check_legacy(fullfile(pathname,filenames{ii}));
 				datastruct=load(fullfile(pathname,filenames{ii}));
 			otherwise
 		end
+
+		% convert legacy data if necessary
+
+
+		if is_legacy
+			datastruct.ephys.data=datastruct.ephys_data;
+			datastruct.ephys.fs=datastruct.fs;
+			datastruct.ephys.ports=repmat('A',[1 size(datastruct.ephys.data,2)]);
+			datastruct.ephys.labels=datastruct.channels;
+			datastruct=rmfield(datastruct,'ephys_data');
+			datastruct=rmfield(datastruct,'fs');
+			datastruct=rmfield(datastruct,'channels');
+		end
+
+
 	end
 
 	datasamples=size(datastruct.ephys.data,1);
@@ -90,7 +109,7 @@ for ii=1:nfiles
 	datavec=zeros(1,datalen);
 
 	% get indices
-	
+
 	chidx=[];
 	for i=1:length(datastruct.ephys.labels)
 		flag1=datastruct.ephys.labels(i)==channelselection;
@@ -99,7 +118,7 @@ for ii=1:nfiles
 	end
 
 	% stitch multiple files if necessary
-	
+
 	trial_stamps=[trial_stamps counter+1]; % every trial starts at COUNTER+1
 
 	for j=1:length(chidx)
@@ -118,8 +137,6 @@ if counter<buffersize
 	store_datavec(counter:buffersize,:)=[];
 end
 
-% write out the binary data, int16 le
-
 disp('Writing data...');
 
 nexfile=nexCreateFileData(40e3);
@@ -130,5 +147,5 @@ for i=1:size(store_datavec,2)
 end
 
 nexfile=nexAddEvent(nexfile,trial_stamps/fs,'trialtimes');
-writeNexFile(nexfile, [basefilename '.nex']);
+writeNexFile(nexfile,fullfile(storepath,storefile));
 

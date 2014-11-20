@@ -109,7 +109,7 @@ for i=1:nspikes
 	end
 
 	
-	if isfield(SPIKES,'storewindows')
+	if isfield(SPIKES,'storewindows') & ~isempty(SPIKES.storewindows)
 		for j=1:channels
 			interp_window2(:,j)=spline(timepoints,SPIKES.storewindows(:,i,j),newtimepoints);
 		end

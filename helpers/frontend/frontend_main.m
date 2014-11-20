@@ -442,7 +442,7 @@ for i=1:length(proc_files)
 
 		% TODO:  setting for checking across multiple files (could use simple counter)
 
-		if all(noiseflag) & EMAIL_FLAG==0
+		if all(noiseflag) & EMAIL_FLAG==0 & email_monitor>0
 			gmail_send(['Found excessive noise levels on all channels, make sure headstage is connected!']);
 			EMAIL_FLAG=1; % don't send another e-mail!
 		end
@@ -949,7 +949,7 @@ for i=1:length(proc_files)
 
 			try
 				disp('Entering song detection...');
-				song_bin=song_det(birdstruct.audio.norm_data,fs,minfs,maxfs,window,...
+				[song_bin,~,~,test]=song_det(birdstruct.audio.norm_data,fs,minfs,maxfs,window,...
 					noverlap,songduration,ratio_thresh,song_thresh,pow_thresh);
 			catch err
 				disp([err]);
