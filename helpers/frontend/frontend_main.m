@@ -92,8 +92,9 @@ maxfs=6e3; % the song 'band'
 ratio_thresh=2; % power ratio between song and non-song band
 window=250; % window to calculate ratio in (samples)
 noverlap=0; % just do no overlap, faster
-song_thresh=.3; % between .2 and .3 seems to work best (higher is more exlusive)
-pow_thresh=.12; % raw power threshold (so extremely weak signals are excluded)
+song_thresh=.2; % between .2 and .3 seems to work best (higher is more exlusive)
+%pow_thresh=.12; % raw power threshold (so extremely weak signals are excluded)
+pow_thresh=-inf;
 songduration=.8; % moving average of ratio
 low=5;
 high=10;
@@ -661,7 +662,7 @@ for i=1:length(proc_files)
 			end
 
 			if ~isempty(filtering)
-				[b,a]=butter(5,[filtering/(fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
+				[b,a]=butter(5,[filtering/(birdstruct.playback.fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
 			else
 				b=[];
 				a=[];
@@ -783,7 +784,7 @@ for i=1:length(proc_files)
 			% set up high-pass for mic data if indicated by the user
 
 			if ~isempty(filtering)
-				[b,a]=butter(5,[filtering/(fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
+				[b,a]=butter(5,[filtering/(birdstruct.audio.fs/2)],'high'); % don't need a sharp cutoff, butterworth should be fine
 			else
 				b=[];
 				a=[];
@@ -861,24 +862,15 @@ for i=1:length(proc_files)
 		% second check playback, sometimes we want to bail after TTL/playback (min. amplitude threshold)
 		% finally check for song
 
+
 		if isttl
 
-			ttl_pts=find(birdstruct.ttl.data(:)>.5)';
+			detection=birdstruct.ttl.data(:)>.5;
+			ext_pts=frontend_collate_idxs(detection,round(audio_pad*birdstruct.ttl.fs));
 
-			if ~isempty(ttl_pts)
+			if ~isempty(ext_pts)
 
-				ttl_idx=[0 find(diff(ttl_pts)>audio_pad*2*fs) length(ttl_pts)];
-
-				idx=1:length(ttl_idx)-1;
-
-				startpoints=ttl_pts(ttl_idx(idx)+1)/fs-audio_pad;
-				stoppoints=ttl_pts(ttl_idx(idx+1))/fs+audio_pad;
-
-				ext_pts=[startpoints(:) stoppoints(:)];
-
-				if ~isempty(ext_pts)
-					disp(['TTL detected in file:  ' proc_files{i}]);
-				end
+				disp('Found ttl..');
 
 				frontend_dataextract(bird_split{j},birdstruct,dirstructttl,...
 					ext_pts,disp_minfs,disp_maxfs,1,colors,'audio',1,'songdet1_','_ttl');
@@ -910,38 +902,25 @@ for i=1:length(proc_files)
 			rmswin_smps=round(playback_rmswin*birdstruct.playback.fs);
 			rms=sqrt(smooth(birdstruct.playback.norm_data.^2,rmswin_smps));
 
-			playback_pts=find(rms>playback_thresh);
+			detection=rms>playback_thresh;
+			ext_pts=frontend_collate_idxs(detection,round(audio_pad*birdstruct.playback.fs));
 
-			if isempty(playback_pts)
-				disp(['No playback detected in file:  ' proc_files{i}]);
-				continue;
-			else
-				disp(['Playback detected in file ' proc_files{i}]);
-			end
+			if ~isempty(ext_pts)
 
-			% make sure pads don't result in overlapping extractions
-			
-			playback_idx=[0 find(diff(playback_pts)>audio_pad*2*fs) length(playback_pts)];
+				disp('Found playback...');
 
-			idx=1:length(playback_idx)-1;
-		
-			startpoints=playback_pts(playback_idx(idx)+1)/fs-audio_pad;
-			stoppoints=playback_pts(playback_idx(idx+1))/fs+audio_pad;
+				frontend_dataextract(bird_split{j},birdstruct,dirstructpback,...
+					ext_pts,disp_minfs,disp_maxfs,colors,'playback',1,'songdet1_','_pback');
+				%frontend_dataextract(bird_split{j},birdstruct,dirstructpback,...
+				%	ext_pts,disp_minfs,disp_maxfs,colors,'audio',1,'songdet1_','');
 
-			ext_pts=[startpoints(:) stoppoints(:)];
-
-			frontend_dataextract(bird_split{j},birdstruct,dirstructpback,...
-				ext_pts,disp_minfs,disp_maxfs,colors,'playback',1,'songdet1_','_pback');
-			%frontend_dataextract(bird_split{j},birdstruct,dirstructpback,...
-			%	ext_pts,disp_minfs,disp_maxfs,colors,'audio',1,'songdet1_','');
-
-			if playback_skip
-				disp('Skipping song detection...');
-				continue;
+				if playback_skip
+					disp('Skipping song detection...');
+					continue;
+				end
 			end
 
 		end
-
 
 		% did we detect song?
 
@@ -949,7 +928,7 @@ for i=1:length(proc_files)
 
 			try
 				disp('Entering song detection...');
-				[song_bin,~,~,test]=song_det(birdstruct.audio.norm_data,fs,minfs,maxfs,window,...
+				[song_bin,~,~,song_t]=song_det(birdstruct.audio.norm_data,birdstruct.audio.fs,minfs,maxfs,window,...
 					noverlap,songduration,ratio_thresh,song_thresh,pow_thresh);
 			catch err
 				disp([err]);
@@ -958,39 +937,20 @@ for i=1:length(proc_files)
 				continue;
 			end
 
+			raw_t=[1:length(birdstruct.audio.norm_data)]./birdstruct.audio.fs;
 
-			song_pts=find(song_bin>0);
+			% interpolate song detection to original space, collate idxs
 
-			if isempty(song_pts)
-				disp(['No song detected in file:  ' proc_files{i}]);
-				continue;
-			else
+			detection=interp1(song_t,double(song_bin),raw_t,'nearest'); 
+			ext_pts=frontend_collate_idxs(detection,round(audio_pad*birdstruct.audio.fs));
+
+			if ~isempty(ext_pts)
 				disp(['Song detected in file:  ' proc_files{i}]);
+				frontend_dataextract(bird_split{j},birdstruct,dirstruct,...
+					ext_pts,disp_minfs,disp_maxfs,colors,'audio',1,'songdet1_','');	
 			end
 
-			% if we're here, we've detected song
-			% factor to move from sonogram coordinates to raw audio data coordinates
-
-			son_to_vec=(length(birdstruct.audio.norm_data)-noverlap)/(length(song_bin));
-
-			% make sure pads don't result in overlapping extractions
-
-			% change to simply audio pad
-
-			song_idx=[0 find(diff(song_pts*son_to_vec)>audio_pad*2*fs) length(song_pts)];
-
-			idx=1:length(song_idx)-1;
-
-			startpoints=(song_pts(song_idx(idx)+1)*son_to_vec)/fs-audio_pad;
-			stoppoints=(song_pts(song_idx(idx+1))*son_to_vec)/fs+audio_pad;
-
-			ext_pts=[startpoints(:) stoppoints(:)];
-
-			frontend_dataextract(bird_split{j},birdstruct,dirstruct,...
-				ext_pts,disp_minfs,disp_maxfs,colors,'audio',1,'songdet1_','');
-
 		end
-
 
 		% clear the datastructure for this bird
 

@@ -74,8 +74,11 @@ for i=1:size(EXT_PTS,1)
 
 		if ~isempty(EXTDATA.(data_types{j}).data)
 
-			startpoint=floor(EXT_PTS(i,1)*EXTDATA.(data_types{j}).fs);
-			endpoint=ceil(EXT_PTS(i,2)*EXTDATA.(data_types{j}).fs);
+			%startpoint=floor(EXT_PTS(i,1)*EXTDATA.(data_types{j}).fs);
+			%endpoint=ceil(EXT_PTS(i,2)*EXTDATA.(data_types{j}).fs);
+
+			startpoint=EXT_PTS(i,1);
+			endpoint=EXT_PTS(i,2);
 
 			if startpoint<1 & SKIP
 				continue;
@@ -99,7 +102,6 @@ for i=1:size(EXT_PTS,1)
 
 		end
 	end
-
 
 	if length(EXTDATA.(SOURCE).norm_data)<2
 		warning('Extraction failed, continuing...');
