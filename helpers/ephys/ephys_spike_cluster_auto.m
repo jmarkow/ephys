@@ -232,4 +232,3 @@ OUTLIERS=storespikewindows(:,LABELS==0);
 
 [WINDOWS TIMES TRIALS SPIKEDATA ISI STATS]=...
 	check_clusterquality(storespikewindows,spiketimes,spikedata,LABELS,trialnum,MODEL);
-

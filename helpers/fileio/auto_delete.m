@@ -28,8 +28,6 @@ filenames={listing.name};
 oldstate=recycle;
 newstate=recycle('off');
 
-
-
 for i=1:length(dates)
 
 	% for each date check to see if it is > than
