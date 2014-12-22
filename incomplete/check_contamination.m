@@ -14,7 +14,11 @@ CONTAMINATION=ones(1,nclust).*NaN;
 if any(MODEL.garbage)
 	garbage=1;
 	nclust=nclust+1;
-	alldata=cat(1,SPIKEDATA{:});
+	if iscell(SPIKEDATA)
+        alldata=cat(1,SPIKEDATA{:});
+    else
+        alldata=SPIKEDATA;
+    end
 	datarange=range(alldata);
 	datamin=min(alldata);
 	datamax=max(alldata);
@@ -24,7 +28,11 @@ end
 
 total_points=nclust*npoints;
 labels=zeros(total_points,1);
-D=size(SPIKEDATA{1},2);
+if iscell(SPIKEDATA)
+    D=size(SPIKEDATA{1},2);
+else
+    D=size(SPIKEDATA,2);
+end
 points=zeros(total_points,D);
 
 for i=1:nclust
