@@ -86,8 +86,11 @@ function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %	the following outputs are returned by the script:
 %
 %	cluster
+%   structure that contains clustering results, each field is a cell array,
+%   where cell n is the results for cluster n
 %
 %	spikeless
+%   spike data with the spikes removed
 %
 %
 % see also ephys_visual_sua.m,ephys_spike_cluster_auto.m,ephys_spike_clustergui.m,ephys_spike_detect.m
