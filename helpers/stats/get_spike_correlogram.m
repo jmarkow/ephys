@@ -59,14 +59,18 @@ density=zeros(1,length(windowbins));
 counter=0;
 for i=1:ntrials
 	
-    if ntrials>1
+    if iscell(SPIKES1)
         spiketimes1=SPIKES1{i};
-        spiketimes2=SPIKES2{i};
     else
         spiketimes1=SPIKES1;
+    end
+    
+    if iscell(SPIKES2)
+        spiketimes2=SPIKES2{i};
+    else
         spiketimes2=SPIKES2;
     end
-        
+    
 	% center on each spike, subtract time from second 
 	% vector of spiketimes and bin
 
