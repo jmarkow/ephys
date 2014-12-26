@@ -126,6 +126,8 @@ end
 if ~isempty(OUTLIERS)
 	CLUSTDATA{end+1}=SPIKEDATA(LABELS==0,:);
 end
+
+STATS.contamination=check_contamination(SPIKEDATA,MODEL);
 % if we have any outliers, assign them to the final cluster
 
 

@@ -1,10 +1,10 @@
 function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %spike sorting without automated visualizations (as in ephys_visual_sua)
 %
-%	cluster=ephys_spikesort(EPHYS_DATA,varargin)
+%	[cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %
 %	EPHYS_DATA
-%	Data for spike sorting (samples x trials)
+%	Data for spike sorting (samples x trials x channels)
 %
 %	the following may be specified as parameter/value pairs:
 %
@@ -82,6 +82,15 @@ function [cluster spikeless]=ephys_spikesort(EPHYS_DATA,varargin)
 %
 %		decomp_level
 %		parameter for wavelet denoising (default: 7)
+%	
+%	the following outputs are returned by the script:
+%
+%	cluster
+%   structure that contains clustering results, each field is a cell array,
+%   where cell n is the results for cluster n
+%
+%	spikeless
+%   spike data with the spikes removed
 %
 %
 % see also ephys_visual_sua.m,ephys_spike_cluster_auto.m,ephys_spike_clustergui.m,ephys_spike_detect.m

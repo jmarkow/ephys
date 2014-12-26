@@ -1,4 +1,4 @@
-function [amp,aux_input,params,notes,supply_voltage,adc,dig_in,dig_out,temp_sensor]=read_intan_data_cli_rhd2000(FILE,varargin)
+function [amp,aux_input,params,notes,supply_voltage,adc,dig_in,dig_out,temp_sensor,status]=read_intan_data_cli_rhd2000(FILE,varargin)
 
 % read_Intan_RHD2000_file
 %
@@ -18,6 +18,7 @@ function [amp,aux_input,params,notes,supply_voltage,adc,dig_in,dig_out,temp_sens
 % >> plot(t_amplifier, amplifier_data(1,:))
 
 
+status=0; % exit code
 notch_filt=0;
 nparams=length(varargin);
 
@@ -417,6 +418,7 @@ if (data_present)
     else
         fprintf(1, 'Warning: %d gaps in timestamp data found.  Time scale will not be uniform!\n', ...
             num_gaps);
+	status=1;
     end
 
     % Scale time steps (units = seconds).

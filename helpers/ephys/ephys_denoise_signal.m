@@ -55,9 +55,9 @@ for i=1:length(car_exclude)
 end
 
 car_electrodes=setdiff(1:length(CHIN),exclude_channels); % which electrodes are good for CAR?
-ndims_ephys=ndims(EPHYS_DATA)
+ndims_ephys=ndims(EPHYS_DATA);
 
-[samples,ntrials,nchannels]=size(EPHYS_DATA)
+[samples,ntrials,nchannels]=size(EPHYS_DATA);
 
 % map each channel appropriately
 
