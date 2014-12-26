@@ -1,5 +1,5 @@
 function CONTAMINATION=check_contamination(SPIKEDATA,MODEL)
-%
+%TODO: appears to be error in indexing, need to check thoroughly
 %
 %
 %
@@ -15,10 +15,10 @@ if any(MODEL.garbage)
 	garbage=1;
 	nclust=nclust+1;
 	if iscell(SPIKEDATA)
-        alldata=cat(1,SPIKEDATA{:});
-    else
-        alldata=SPIKEDATA;
-    end
+		alldata=cat(1,SPIKEDATA{:});
+	else
+		alldata=SPIKEDATA;
+	end
 	datarange=range(alldata);
 	datamin=min(alldata);
 	datamax=max(alldata);
@@ -29,9 +29,9 @@ end
 total_points=nclust*npoints;
 labels=zeros(total_points,1);
 if iscell(SPIKEDATA)
-    D=size(SPIKEDATA{1},2);
+	D=size(SPIKEDATA{1},2);
 else
-    D=size(SPIKEDATA,2);
+	D=size(SPIKEDATA,2);
 end
 points=zeros(total_points,D);
 
@@ -73,3 +73,7 @@ for i=1:size(MODEL.mu,1)
 	fn=sum((classification~=i)&(labels==i));
 	CONTAMINATION(i)=(fp/npoints)+(fn/npoints);
 end
+
+end
+
+

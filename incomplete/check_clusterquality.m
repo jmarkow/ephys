@@ -84,10 +84,6 @@ end
 
 OUTLIERS=SPIKEWINS(:,LABELS==0);
 
-size(TRIALNUM)
-size(LABELS)
-size(SPIKETIMES)
-
 for i=1:nclust
 
 	WINDOWS{i}=SPIKEWINS(:,LABELS==i);
