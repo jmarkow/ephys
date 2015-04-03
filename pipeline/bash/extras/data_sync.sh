@@ -20,6 +20,8 @@ for NETWORKDIR in ${ALTNETWORK[@]}; do
 	rsync --exclude "Thumbs.db" -av $NETWORKDIR $ALTLOCAL >> ~/.intan_sync.log>&1
 done
 
+#rsync -av /Volumes/mic_test/ /Users/jmarkow/Desktop/test/staging/unprocessed/ >> ~/.mic_sync.log>&1
+
 rm -f $LOCKFILE
 
 exit

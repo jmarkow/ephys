@@ -87,7 +87,7 @@ disp(['Downsampling to ' num2str(proc_fs) ]);
 proc_data=downsample(proc_data,downfact);
 
 proc_data=ephys_condition_signal(proc_data,'l','freq_range',freq_range,'medfilt_scale',medfilt_scale,...
-	'filt_name',filt_name,'filt_order',filt_order,'fs',proc_fs);
+	'filt_name',filt_name,'filt_order',filt_order,'fs',proc_fs,'notch',0,'demean',1);
 
 [nsamples,ntrials]=size(proc_data);
 
