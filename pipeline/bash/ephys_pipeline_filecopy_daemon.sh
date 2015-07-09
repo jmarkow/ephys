@@ -18,28 +18,24 @@ COUNTER=1
 
 # construct a list of files to process for each template
 
-if [ $# -lt 1 ]; then
-	1=&1
-fi
-
 while true; do
 
 	# get the list of birds
 
 	# re-source in case we've changed the configuration
 
-	source ephys_pipeline_wrapper.cfg
+	source ephys_pipeline_dirs.cfg
 
 	# sort birdlist in reverse chronological order (most recently modified first)
 
-	FILELIST=( `find $NETFILEDUMP -type f -mtime +10m` )
+	FILELIST=( `find $NETFILEDUMP -type f -mtime +5m` )
 
 	for FILE in ${FILELIST[@]}; do
-		echo 'Moving ' $FILE ' to ' $LOCALFILEDUMP >> $1
+		echo 'Moving ' $FILE ' to ' $LOCALFILEDUMP
 		mv $FILE $LOCALFILEDUMP
 	done
 
-	date >> $1
+	date 
 	sleep $(($INTERVAL_FILECOPY*60))
 done
 
